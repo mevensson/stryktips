@@ -9,15 +9,15 @@
   outputs = { self, nixpkgs, flake-utils, ... }: flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs { inherit system; };
-      pythonEnv = pkgs.python311.withPackages (ps: with ps; [ pip setuptools wheel pytest ]);
+      pythonEnv = pkgs.python312.withPackages (ps: with ps; [ pip setuptools wheel pytest ]);
     in {
       devShells.default = pkgs.mkShell {
         buildInputs = [
           pythonEnv
-          pkgs.python311Packages.black
-          pkgs.python311Packages.ruff
-          pkgs.python311Packages.mypy
-          pkgs.python311Packages.ipython
+          pkgs.python312Packages.black
+          pkgs.python312Packages.ruff
+          pkgs.python312Packages.mypy
+          pkgs.python312Packages.ipython
         ];
 
         shellHook = ''
