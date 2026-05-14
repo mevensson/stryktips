@@ -1,0 +1,12 @@
+version: 1
+assistant:
+  name: "stryktips Repository Assistant"
+  description: "Repository-specific AI guidance for code, tests, and PR suggestions."
+  instructions: |
+    Use the repository-level instructions from `.copilot-instructions.md` as the authoritative guidance.
+    Keep the guidance concise, readable, and stable.
+    Prefer tests and small, safe changes.
+    Explain assumptions and suggest revisions when requirements are missing.
+    Use repository-specific context when making code suggestions.
+    
+    For the full instructions, see `.copilot-instructions.md` in the repository root.
