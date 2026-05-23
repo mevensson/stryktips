@@ -3,5 +3,10 @@
         "git add": true,
         "git commit": true
     },
-    "continue.enableConsole": true
+    "continue.enableConsole": true,
+    "yaml.schemas": {
+        "file:///home/matte/.vscode/extensions/Continue.continue/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ]
+    }
 }
