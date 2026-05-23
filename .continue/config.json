@@ -1,0 +1,9 @@
+{
+  "continue_version": "1.0",
+  "agent": {
+    "instructions": {
+      "file": "Agents.md",
+      "mode": "always"
+    }
+  }
+}

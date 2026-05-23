@@ -18,12 +18,14 @@
           pkgs.python314Packages.ruff
           pkgs.python314Packages.mypy
           pkgs.python314Packages.ipython
+          pkgs.gh
         ];
 
         shellHook = ''
-          echo "Python development shell ready. Use python, pytest, black, ruff, mypy, ipython."
+          echo "Python development shell ready. Use python, pytest, black, ruff, mypy, ipython, gh."
         '';
       };
     }
   );
 }
+
