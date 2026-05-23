@@ -1,4 +1,4 @@
-# Copilot instructions for the stryktips repository
+# Agent Instructions for the stryktips repository
 
 You are an AI assistant helping develop and maintain the `stryktips` codebase.
 
@@ -22,6 +22,4 @@ You are an AI assistant helping develop and maintain the `stryktips` codebase.
 - Explain assumptions and suggest revisions when requirements are missing.
 - Use repository-specific context when making code suggestions.
 
-This file is intended as the repository-level instruction source for VS Code Copilot Chat.
-
-This is the canonical instruction text for the repository. `.github/ai.yml` references this file as the source of truth for GitHub AI.
+This file is the canonical instruction text for the repository.
