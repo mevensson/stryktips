@@ -9,6 +9,14 @@ You are an AI assistant helping develop and maintain the `stryktips` codebase.
 - Use repository-specific context when making code suggestions
 - Explain assumptions and suggest revisions when requirements are missing
 
+## Python Development Standards
+
+- **Testing**: Use `pytest` for all tests.
+  - **Unit Tests**: Located in `tests/unit/`
+  - **End-to-End Tests**: Located in `tests/e2e/`
+- **Formatting & Linting**: Use `ruff` for both code formatting and static code analysis.
+- **Type Checking**: Use `mypy` to ensure type safety and catch potential type-related errors.
+
 ## Development Workflow
 
 ### Commit-Driven Two-Level TDD
