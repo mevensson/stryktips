@@ -14,7 +14,6 @@
       devShells.default = pkgs.mkShell {
         buildInputs = [
           pythonEnv
-          pkgs.python314Packages.black
           pkgs.python314Packages.ruff
           pkgs.python314Packages.mypy
           pkgs.python314Packages.ipython
