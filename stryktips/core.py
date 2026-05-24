@@ -7,6 +7,12 @@ def create_parser() -> argparse.ArgumentParser:
         prog="stryktips.py",
         description="Stryktips command line interface.",
     )
+    parser.add_argument(
+        "--week",
+        type=int,
+        required=True,
+        help="Week number for Stryktipset data",
+    )
     return parser
 
 
