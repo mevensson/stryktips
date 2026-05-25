@@ -1,5 +1,8 @@
 import argparse
 
+from stryktips.api import fetch_week
+from stryktips.display import format_matches
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create and return the argument parser for the stryktips CLI."""
@@ -19,5 +22,13 @@ def create_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
-    parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    events = fetch_week(args.week)
+    matches = format_matches(events)
+
+    print(f"Stryktipset Week {args.week}")
+    for match in matches:
+        print(match)
+
     return 0

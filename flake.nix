@@ -9,7 +9,7 @@
   outputs = { self, nixpkgs, flake-utils, ... }: flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = import nixpkgs { inherit system; };
-      pythonEnv = pkgs.python314.withPackages (ps: with ps; [ pip setuptools wheel pytest ]);
+      pythonEnv = pkgs.python314.withPackages (ps: with ps; [ pip setuptools wheel pytest requests types-requests ]);
     in {
       devShells.default = pkgs.mkShell {
         buildInputs = [

@@ -25,7 +25,7 @@ def test_week_4900_displays_13_matches():
     matches = result.stdout.strip().split("\n")
     assert len(matches) == 14, f"Expected 14 lines (header + 13 matches), got {len(matches)}"
     assert "Bournemou" in result.stdout
-    assert "Aston Villa" in result.stdout
+    assert "Aston V" in result.stdout
 
 
 def test_invalid_week_number_catches_error():
