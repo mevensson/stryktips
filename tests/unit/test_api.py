@@ -24,8 +24,7 @@ def test_fetch_week_success(mock_get, mock_api_response):
     assert len(result) == 13
     assert mock_get.call_count == 1
     mock_get.assert_called_once_with(
-        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
-        timeout=30
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900", timeout=30
     )
 
 
@@ -33,7 +32,7 @@ def test_fetch_week_success(mock_get, mock_api_response):
 def test_fetch_week_invalid_number(mock_get):
     """Test that invalid week number is caught."""
     mock_get.side_effect = ValueError("Invalid integer")
-    
+
     with pytest.raises(ValueError):
         fetch_week("invalid")
 

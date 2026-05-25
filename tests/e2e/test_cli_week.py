@@ -23,7 +23,9 @@ def test_week_4900_displays_13_matches():
     assert result.returncode == 0
     assert "4900" in result.stdout
     matches = result.stdout.strip().split("\n")
-    assert len(matches) == 14, f"Expected 14 lines (header + 13 matches), got {len(matches)}"
+    assert len(matches) == 14, (
+        f"Expected 14 lines (header + 13 matches), got {len(matches)}"
+    )
     assert "Bournemou" in result.stdout
     assert "Aston V" in result.stdout
 
