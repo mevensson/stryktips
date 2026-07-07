@@ -24,11 +24,11 @@ def main(argv=None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
 
-    events = fetch_week(args.week)
-    matches = format_matches(events)
+    draw = fetch_week(args.week)
+    lines = format_matches(draw.matches)
 
-    print(f"Stryktipset Week {args.week}")
-    for match in matches:
-        print(match)
+    print(f"Stryktipset Draw {draw.draw_number}")
+    for line in lines:
+        print(line)
 
     return 0
