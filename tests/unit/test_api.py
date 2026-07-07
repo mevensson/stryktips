@@ -29,15 +29,6 @@ def test_fetch_week_success(mock_get, mock_api_response):
 
 
 @patch("stryktips.api.requests.get")
-def test_fetch_week_invalid_number(mock_get):
-    """Test that invalid week number is caught."""
-    mock_get.side_effect = ValueError("Invalid integer")
-
-    with pytest.raises(ValueError):
-        fetch_week("invalid")
-
-
-@patch("stryktips.api.requests.get")
 def test_fetch_week_empty_response(mock_get):
     """Test that empty API response is handled."""
     mock_get.return_value.json.return_value = {"draw": {"drawEvents": []}}

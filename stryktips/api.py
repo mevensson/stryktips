@@ -12,9 +12,6 @@ def fetch_week(week_num: int) -> list[dict]:
     Returns:
         List of draw events from the API.
     """
-    if not isinstance(week_num, int):
-        raise ValueError("Week number must be an integer")
-
     url = f"https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{week_num}"
     response = requests.get(url, timeout=30)
     response.raise_for_status()
