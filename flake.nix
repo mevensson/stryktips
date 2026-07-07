@@ -21,7 +21,7 @@
         ];
 
         shellHook = ''
-          echo "Python development shell ready. Use python, pytest, black, ruff, mypy, ipython, gh."
+          echo "Python development shell ready. Use python, pytest, ruff, mypy, ipython, gh."
         '';
       };
     }
