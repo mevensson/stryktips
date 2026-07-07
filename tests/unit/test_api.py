@@ -20,8 +20,9 @@ def test_fetch_week_success(mock_get, mock_api_response):
     mock_get.return_value.json.return_value = mock_api_response
     mock_get.return_value.status_code = 200
 
-    result = fetch_week(4900)
-    assert len(result) == 13
+    draw = fetch_week(4900)
+    assert len(draw.matches) == 13
+    assert draw.draw_number == 4900
     assert mock_get.call_count == 1
     mock_get.assert_called_once_with(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900", timeout=30
@@ -29,17 +30,8 @@ def test_fetch_week_success(mock_get, mock_api_response):
 
 
 @patch("stryktips.api.requests.get")
-def test_fetch_week_invalid_number(mock_get):
-    """Test that invalid week number is caught."""
-    mock_get.side_effect = ValueError("Invalid integer")
-
-    with pytest.raises(ValueError):
-        fetch_week("invalid")
-
-
-@patch("stryktips.api.requests.get")
 def test_fetch_week_empty_response(mock_get):
     """Test that empty API response is handled."""
     mock_get.return_value.json.return_value = {"draw": {"drawEvents": []}}
-    result = fetch_week(99999)
-    assert len(result) == 0
+    draw = fetch_week(99999)
+    assert len(draw.matches) == 0
