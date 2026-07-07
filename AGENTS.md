@@ -3,6 +3,12 @@
 ## Overview
 You are an AI assistant helping develop and maintain the `stryktips` codebase.
 
+## Environment
+
+Dependencies and tooling are managed via Nix. Enter the dev shell with
+`nix develop` (or use `direnv` — `.envrc` handles it automatically).
+The shell provides Python 3.14, pytest, ruff, mypy, and gh.
+
 ## Core Principles
 - Focus on concise, readable code and stable logic
 - Prefer tests and small, safe changes
@@ -12,10 +18,12 @@ You are an AI assistant helping develop and maintain the `stryktips` codebase.
 ## Python Development Standards
 
 - **Testing**: Use `pytest` for all tests.
-  - **Unit Tests**: Located in `tests/unit/`
-  - **End-to-End Tests**: Located in `tests/e2e/`
+  - **Unit Tests**: Located in `tests/unit/` — run `pytest tests/unit`
+  - **End-to-End Tests**: Located in `tests/e2e/` — run `pytest tests/e2e`
 - **Formatting & Linting**: Use `ruff` for both code formatting and static code analysis.
-- **Type Checking**: Use `mypy` to ensure type safety and catch potential type-related errors.
+  - Format check: `ruff format --check .`
+  - Lint: `ruff check .`
+- **Type Checking**: Use `mypy` to ensure type safety. Run `mypy .`
 
 ## Development Workflow
 
@@ -34,3 +42,7 @@ All five canonical labels use their default names: `needs-triage`, `needs-info`,
 ### Domain docs
 
 Single-context layout — one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Pull Requests
+
+All changes are submitted via GitHub PRs. Use the `gh` CLI for PR operations.
