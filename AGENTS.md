@@ -39,3 +39,17 @@ When adding functionality, follow this commit-driven TDD workflow:
 3. **Iteration**
    - Continue the inner loop until the end-to-end test can pass
    - Before each commit, show the user the proposed changes so they can verify the diff
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked on GitHub Issues, using the `gh` CLI. External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+All five canonical labels use their default names: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
