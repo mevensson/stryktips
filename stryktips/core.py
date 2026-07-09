@@ -19,7 +19,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv=None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
     args = parser.parse_args(argv)
@@ -27,8 +27,8 @@ def main(argv=None) -> int:
     draw = fetch_week(args.week)
     lines = format_matches(draw.matches)
 
-    print(f"Stryktipset Draw {draw.draw_number}")
+    print(f"Stryktipset Draw {draw.draw_number}")  # noqa: T201
     for line in lines:
-        print(line)
+        print(line)  # noqa: T201
 
     return 0

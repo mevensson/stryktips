@@ -7,6 +7,7 @@ def test_week_argument_required():
         [sys.executable, "stryktips.py"],
         capture_output=True,
         text=True,
+        check=False,
     )
 
     assert result.returncode != 0
@@ -18,6 +19,7 @@ def test_week_4900_displays_13_matches():
         [sys.executable, "stryktips.py", "--week", "4900"],
         capture_output=True,
         text=True,
+        check=True,
     )
 
     assert result.returncode == 0
@@ -35,6 +37,7 @@ def test_invalid_week_number_catches_error():
         [sys.executable, "stryktips.py", "--week", "invalid"],
         capture_output=True,
         text=True,
+        check=False,
     )
 
     assert result.returncode != 0
@@ -46,6 +49,7 @@ def test_help_shows_week_usage():
         [sys.executable, "stryktips.py", "--help"],
         capture_output=True,
         text=True,
+        check=True,
     )
 
     assert result.returncode == 0

@@ -1,6 +1,7 @@
 """Unit tests for stryktipset API client."""
 
 import json
+from pathlib import Path
 
 import pytest
 import requests
@@ -12,8 +13,7 @@ from stryktips.api import fetch_week
 @pytest.fixture
 def mock_api_response():
     """Load real API response for week 4900."""
-    with open("tests/fixtures/week_4900.json") as f:
-        return json.load(f)
+    return json.loads(Path("tests/fixtures/week_4900.json").read_text())
 
 
 def test_fetch_week_returns_draw_with_13_matches(mock_api_response):

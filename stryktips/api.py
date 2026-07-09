@@ -4,37 +4,7 @@ import requests
 
 from stryktips.models import Draw, Match, SvenskaFolket
 
-
-def _parse_match(event: dict) -> Match:
-    match = event["match"]
-    home_team = match["participants"][0]["mediumName"]
-    away_team = match["participants"][1]["mediumName"]
-    event_number = event["eventNumber"]
-
-    fulltime = next((r for r in match["result"] if r["type"] == 2), None)
-    if fulltime:
-        home_score = int(fulltime["home"])
-        away_score = int(fulltime["away"])
-    else:
-        home_score = None
-        away_score = None
-
-    sf = event.get("svenskaFolket")
-    if sf:
-        svenska_folket = SvenskaFolket(
-            one=sf.get("one", "0"), x=sf.get("x", "0"), two=sf.get("two", "0")
-        )
-    else:
-        svenska_folket = None
-
-    return Match(
-        event_number=event_number,
-        home_team=home_team,
-        away_team=away_team,
-        home_score=home_score,
-        away_score=away_score,
-        svenska_folket=svenska_folket,
-    )
+_RESULT_TYPE_FULLTIME = 2
 
 
 def fetch_week(week_num: int) -> Draw:
@@ -57,3 +27,36 @@ def fetch_week(week_num: int) -> Draw:
     matches = [_parse_match(event) for event in events]
 
     return Draw(draw_number=draw_number, matches=matches)
+
+
+def _parse_match(event: dict) -> Match:
+    match = event["match"]
+    home_score, away_score = _parse_scores(match)
+    svenska_folket = _parse_svenska_folket(event)
+
+    return Match(
+        event_number=event["eventNumber"],
+        home_team=match["participants"][0]["mediumName"],
+        away_team=match["participants"][1]["mediumName"],
+        home_score=home_score,
+        away_score=away_score,
+        svenska_folket=svenska_folket,
+    )
+
+
+def _parse_scores(match: dict) -> tuple[int | None, int | None]:
+    for r in match["result"]:
+        if r["type"] == _RESULT_TYPE_FULLTIME:
+            return int(r["home"]), int(r["away"])
+    return None, None
+
+
+def _parse_svenska_folket(event: dict) -> SvenskaFolket | None:
+    sf = event.get("svenskaFolket")
+    if sf:
+        return SvenskaFolket(
+            one=sf.get("one", "0"),
+            x=sf.get("x", "0"),
+            two=sf.get("two", "0"),
+        )
+    return None

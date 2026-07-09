@@ -1,0 +1,20 @@
+[lint]
+select = [
+    "E", "F",      # pycodestyle + pyflakes (defaults)
+    "I",           # isort
+    "UP",          # pyupgrade
+    "COM",         # commas
+    "T",           # print / debug
+    "PTH",         # pathlib
+    "PLW",         # pylint warnings
+    "PLR",         # pylint refactor (complexity)
+    "C90",         # mccabe (cyclomatic complexity)
+    "S101",        # assert
+    "ANN",         # annotations
+    "INP001",      # implicit namespace package
+]
+
+per-file-ignores = { "tests/**" = ["S101", "ANN", "PLR2004", "T201"] }
+
+[lint.pylint]
+max-statements = 10
