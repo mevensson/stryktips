@@ -25,9 +25,6 @@ pick up the change.
 - **Testing**: Use `pytest` for all tests.
   - **Unit Tests**: Located in `tests/unit/` — run `pytest tests/unit`
   - **End-to-End Tests**: Located in `tests/e2e/` — run `pytest tests/e2e`
-  - **Test style**: Load the `unit-test-design` skill before writing or reviewing tests.
-    Follow its checklist: AAA structure with blank-line separation, When/Then naming,
-    one behaviour per test, builder factories, real objects over mocks.
 - **Formatting & Linting**: Use `ruff` for both code formatting and static code analysis.
   - Format check: `ruff format --check .`
   - Lint: `ruff check .`
