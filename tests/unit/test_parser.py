@@ -1,4 +1,5 @@
 import argparse
+
 import pytest
 
 from stryktips import create_parser

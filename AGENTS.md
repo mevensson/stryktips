@@ -21,12 +21,15 @@ pick up the change.
 
 ## Python Development Standards
 
+- **Code organization**: Order functions top-down — public/high-level functions first, helpers they call below. This lets the reader trace the flow from top to bottom.
 - **Testing**: Use `pytest` for all tests.
   - **Unit Tests**: Located in `tests/unit/` — run `pytest tests/unit`
   - **End-to-End Tests**: Located in `tests/e2e/` — run `pytest tests/e2e`
 - **Formatting & Linting**: Use `ruff` for both code formatting and static code analysis.
   - Format check: `ruff format --check .`
   - Lint: `ruff check .`
+  - **Suppressions**: Use `# noqa: CODE` inline comments to suppress a rule on a single line when
+    following it would make the code worse (e.g., `print("debug")  # noqa: T201`).
 - **Type Checking**: Use `mypy` to ensure type safety. Run `mypy .`
 
 ## Development Workflow

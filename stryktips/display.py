@@ -12,26 +12,33 @@ def format_matches(matches: list[Match]) -> list[str]:
     Returns:
         List of formatted match strings.
     """
-    result = []
-    for match in matches:
-        if match.home_score is not None and match.away_score is not None:
-            if match.home_score > match.away_score:
-                outcome = "1"
-            elif match.home_score < match.away_score:
-                outcome = "2"
-            else:
-                outcome = "X"
-        else:
-            outcome = "?"
+    return [_format_match(m) for m in matches]
 
-        if match.svenska_folket:
-            one = match.svenska_folket.one
-            x = match.svenska_folket.x
-            two = match.svenska_folket.two
-        else:
-            one = x = two = "0"
 
-        formatted = f"{match.event_number}. {match.home_team} - {match.away_team} | {outcome} | {one}% - {x}% - {two}%"
-        result.append(formatted)
+def _format_match(match: Match) -> str:
+    outcome = _outcome(match)
+    one, x, two = _percentages(match)
+    return (
+        f"{match.event_number}. {match.home_team} - {match.away_team}"
+        f" | {outcome} | {one}% - {x}% - {two}%"
+    )
 
-    return result
+
+def _outcome(match: Match) -> str:
+    if match.home_score is not None and match.away_score is not None:
+        if match.home_score > match.away_score:
+            return "1"
+        if match.home_score < match.away_score:
+            return "2"
+        return "X"
+    return "?"
+
+
+def _percentages(match: Match) -> tuple[str, str, str]:
+    if match.svenska_folket:
+        return (
+            match.svenska_folket.one,
+            match.svenska_folket.x,
+            match.svenska_folket.two,
+        )
+    return ("0", "0", "0")
