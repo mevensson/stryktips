@@ -31,6 +31,8 @@ pick up the change.
   - **Suppressions**: Use `# noqa: CODE` inline comments to suppress a rule on a single line when
     following it would make the code worse (e.g., `print("debug")  # noqa: T201`).
 - **Type Checking**: Use `mypy` to ensure type safety. Run `mypy .`
+  - Mypy runs with `strict = True` (configured in `mypy.ini`).
+  - Test files are exempt from `disallow_untyped_defs` so test functions don't require `-> None` annotations.
 
 ## Development Workflow
 
