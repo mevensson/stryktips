@@ -8,6 +8,10 @@ You are an AI assistant helping develop and maintain the `stryktips` codebase.
 Dependencies and tooling are managed via Nix. Enter the dev shell with
 `nix develop` (or use `direnv` — `.envrc` handles it automatically).
 The shell provides Python 3.14, pytest, ruff, mypy, and gh.
+All Python dependencies (including test libraries) must be added to
+`flake.nix` — do not use `pip install`.
+After adding a dependency, run `nix develop` (or restart `direnv`) to
+pick up the change.
 
 ## Core Principles
 - Focus on concise, readable code and stable logic
