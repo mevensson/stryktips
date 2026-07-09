@@ -53,3 +53,4 @@ Single-context layout — one `CONTEXT.md` and `docs/adr/` at the repo root. See
 ## Pull Requests
 
 All changes are submitted via GitHub PRs. Use the `gh` CLI for PR operations.
+- Do not amend or force-push commits in an open PR; add new commits instead.
