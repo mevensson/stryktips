@@ -33,7 +33,7 @@ def test_fetch_week_returns_draw_with_13_matches(mock_api_response):
     assert draw.draw_number == 4900
 
 
-def test_parsed_odds_from_start_odds(mock_api_response):
+def test_parsed_odds_from_start_odds(mock_api_response):  # noqa: PLR0915
     """Test that startOdds are parsed into Odds objects."""
     mock_response = flexmock(status_code=200)
     mock_response.should_receive("json").and_return(mock_api_response)

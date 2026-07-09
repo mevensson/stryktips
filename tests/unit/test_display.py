@@ -1,7 +1,9 @@
 """Unit tests for display module."""
 
+from decimal import Decimal
+
 from stryktips.display import format_matches
-from stryktips.models import Match, SvenskaFolket
+from stryktips.models import Match, Odds, SvenskaFolket
 
 
 def sample_match() -> Match:
@@ -80,3 +82,35 @@ def test_format_matches_draw():
     lines = format_matches([match])
 
     assert "| X |" in lines[0]
+
+
+def test_format_matches_shows_odds():
+    """Test that odds are displayed when present."""
+    odds = Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80"))
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        odds=odds,
+    )
+    lines = format_matches([match])
+
+    assert "2.50 - 3.70 - 2.80" in lines[0]
+
+
+def test_format_matches_without_odds():
+    """Test that display works when odds are absent."""
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+    )
+    lines = format_matches([match])
+
+    assert "2.50" not in lines[0]

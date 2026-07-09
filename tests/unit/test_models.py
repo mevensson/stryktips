@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from stryktips.models import Match, Odds, SvenskaFolket
+from stryktips.models import Match, Odds
 
 
 def test_odds_dataclass():
