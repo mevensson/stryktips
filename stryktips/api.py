@@ -1,5 +1,7 @@
 """API client for fetching Stryktipset data."""
 
+from typing import Any
+
 import requests
 
 from stryktips.models import Draw, Match, SvenskaFolket
@@ -29,7 +31,7 @@ def fetch_week(week_num: int) -> Draw:
     return Draw(draw_number=draw_number, matches=matches)
 
 
-def _parse_match(event: dict) -> Match:
+def _parse_match(event: dict[str, Any]) -> Match:
     match = event["match"]
     home_score, away_score = _parse_scores(match)
     svenska_folket = _parse_svenska_folket(event)
@@ -44,14 +46,14 @@ def _parse_match(event: dict) -> Match:
     )
 
 
-def _parse_scores(match: dict) -> tuple[int | None, int | None]:
+def _parse_scores(match: dict[str, Any]) -> tuple[int | None, int | None]:
     for r in match["result"]:
         if r["type"] == _RESULT_TYPE_FULLTIME:
             return int(r["home"]), int(r["away"])
     return None, None
 
 
-def _parse_svenska_folket(event: dict) -> SvenskaFolket | None:
+def _parse_svenska_folket(event: dict[str, Any]) -> SvenskaFolket | None:
     sf = event.get("svenskaFolket")
     if sf:
         return SvenskaFolket(

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 import requests
-from flexmock import flexmock  # type: ignore[import-not-found]
+from flexmock import flexmock
 
 from stryktips.api import fetch_week
 
