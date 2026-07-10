@@ -1,10 +1,11 @@
 """API client for fetching Stryktipset data."""
 
+from decimal import Decimal
 from typing import Any
 
 import requests
 
-from stryktips.models import Draw, Match, SvenskaFolket
+from stryktips.models import Draw, Match, Odds, SvenskaFolket
 
 _RESULT_TYPE_FULLTIME = 2
 
@@ -35,6 +36,7 @@ def _parse_match(event: dict[str, Any]) -> Match:
     match = event["match"]
     home_score, away_score = _parse_scores(match)
     svenska_folket = _parse_svenska_folket(event)
+    odds = _parse_odds(event)
 
     return Match(
         event_number=event["eventNumber"],
@@ -43,6 +45,7 @@ def _parse_match(event: dict[str, Any]) -> Match:
         home_score=home_score,
         away_score=away_score,
         svenska_folket=svenska_folket,
+        odds=odds,
     )
 
 
@@ -62,3 +65,18 @@ def _parse_svenska_folket(event: dict[str, Any]) -> SvenskaFolket | None:
             two=sf.get("two", "0"),
         )
     return None
+
+
+def _parse_odds(event: dict[str, Any]) -> Odds | None:
+    start_odds = event.get("startOdds")
+    if start_odds:
+        return Odds(
+            home=_parse_swedish_decimal(start_odds["one"]),
+            draw=_parse_swedish_decimal(start_odds["x"]),
+            away=_parse_swedish_decimal(start_odds["two"]),
+        )
+    return None
+
+
+def _parse_swedish_decimal(value: str) -> Decimal:
+    return Decimal(value.replace(",", "."))

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass
@@ -9,6 +10,13 @@ class SvenskaFolket:
 
 
 @dataclass
+class Odds:
+    home: Decimal
+    draw: Decimal
+    away: Decimal
+
+
+@dataclass
 class Match:
     event_number: int
     home_team: str
@@ -16,6 +24,7 @@ class Match:
     home_score: int | None
     away_score: int | None
     svenska_folket: SvenskaFolket | None
+    odds: Odds | None = None
 
 
 @dataclass

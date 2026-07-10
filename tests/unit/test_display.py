@@ -1,7 +1,9 @@
 """Unit tests for display module."""
 
+from decimal import Decimal
+
 from stryktips.display import format_matches
-from stryktips.models import Match, SvenskaFolket
+from stryktips.models import Match, Odds, SvenskaFolket
 
 
 def sample_match() -> Match:
@@ -17,43 +19,54 @@ def sample_match() -> Match:
 
 
 def test_format_matches_returns_correct_count():
-    """Test that format_matches processes all matches."""
+    """Formatting one match yields one output line."""
+    # Act
     lines = format_matches([sample_match()])
 
+    # Assert
     assert len(lines) == 1
 
 
 def test_format_matches_contains_team_names():
-    """Test that team names appear in output."""
+    """Both team names appear in the output."""
+    # Act
     lines = format_matches([sample_match()])
 
+    # Assert
     assert "Bournemou" in lines[0]
     assert "Aston V" in lines[0]
 
 
 def test_format_matches_extracts_result():
-    """Test that result (2 = away win) is correctly extracted."""
+    """Away win shows as '2'."""
+    # Act
     lines = format_matches([sample_match()])
 
+    # Assert
     assert "| 2 |" in lines[0]
 
 
 def test_format_matches_extracts_percentages():
-    """Test that svenska folket percentages are formatted."""
+    """Svenska folket percentages are formatted."""
+    # Act
     lines = format_matches([sample_match()])
 
+    # Assert
     assert "35% - 24% - 41%" in lines[0]
 
 
-def test_format_matches_empty_list():
-    """Test that empty input returns empty list."""
+def test_format_matches_empty_list_returns_empty():
+    """Empty input yields empty output list."""
+    # Act
     result = format_matches([])
 
+    # Assert
     assert result == []
 
 
-def test_format_matches_home_win():
-    """Test home win result."""
+def test_format_matches_shows_home_win():
+    """Home win result shows as '1'."""
+    # Arrange
     match = Match(
         event_number=1,
         home_team="Home",
@@ -62,13 +75,17 @@ def test_format_matches_home_win():
         away_score=1,
         svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
     )
+
+    # Act
     lines = format_matches([match])
 
+    # Assert
     assert "| 1 |" in lines[0]
 
 
-def test_format_matches_draw():
-    """Test draw result."""
+def test_format_matches_shows_draw():
+    """Draw result shows as 'X'."""
+    # Arrange
     match = Match(
         event_number=1,
         home_team="Home",
@@ -77,6 +94,49 @@ def test_format_matches_draw():
         away_score=1,
         svenska_folket=SvenskaFolket(one="30", x="40", two="30"),
     )
+
+    # Act
     lines = format_matches([match])
 
+    # Assert
     assert "| X |" in lines[0]
+
+
+def test_format_matches_shows_odds_when_present():
+    """Odds are included in the output when the match carries them."""
+    # Arrange
+    odds = Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80"))
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        odds=odds,
+    )
+
+    # Act
+    lines = format_matches([match])
+
+    # Assert
+    assert "2.50 - 3.70 - 2.80" in lines[0]
+
+
+def test_format_matches_omits_odds_when_absent():
+    """No odds shown when the match has none."""
+    # Arrange
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+    )
+
+    # Act
+    lines = format_matches([match])
+
+    # Assert
+    assert "2.50" not in lines[0]

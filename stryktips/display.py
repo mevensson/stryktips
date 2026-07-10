@@ -18,10 +18,17 @@ def format_matches(matches: list[Match]) -> list[str]:
 def _format_match(match: Match) -> str:
     outcome = _outcome(match)
     one, x, two = _percentages(match)
+    odds_str = _format_odds(match)
     return (
         f"{match.event_number}. {match.home_team} - {match.away_team}"
-        f" | {outcome} | {one}% - {x}% - {two}%"
+        f" | {outcome} | {one}% - {x}% - {two}%{odds_str}"
     )
+
+
+def _format_odds(match: Match) -> str:
+    if match.odds is None:
+        return ""
+    return f" | {match.odds.home:.2f} - {match.odds.draw:.2f} - {match.odds.away:.2f}"
 
 
 def _outcome(match: Match) -> str:

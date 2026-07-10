@@ -1,9 +1,8 @@
 ---
 name: unit-test-design
 description: >-
-  A checklist for writing tight unit tests. Use when writing or reviewing unit
-  tests. Also use when the user asks about unit test structure, naming,
-  determinism, or design.
+  Tight unit test checklist. Use when writing or reviewing tests, or when
+  discussing test structure, naming, or determinism.
 ---
 
 # Unit Test Design
