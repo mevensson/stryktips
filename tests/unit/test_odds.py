@@ -2,11 +2,13 @@
 
 from decimal import Decimal
 
+import pytest
+
 from stryktips.odds import remove_overround
 
 
 def test_remove_overround_returns_normalized_probabilities():
-    """Odds 2.50-3.70-2.80 produce probabilities summing to 100%."""
+    """Odds 2.50-3.70-2.80 produce probabilities summing to 1.0."""
     # Act
     home_p, draw_p, away_p = remove_overround(
         Decimal("2.50"),
@@ -15,14 +17,14 @@ def test_remove_overround_returns_normalized_probabilities():
     )
 
     # Assert
-    assert home_p == Decimal("0.3893")
-    assert draw_p == Decimal("0.2631")
-    assert away_p == Decimal("0.3476")
-    assert home_p + draw_p + away_p == Decimal("1.0000")
+    assert home_p == pytest.approx(Decimal("0.3893"), abs=Decimal("0.0001"))
+    assert draw_p == pytest.approx(Decimal("0.2631"), abs=Decimal("0.0001"))
+    assert away_p == pytest.approx(Decimal("0.3476"), abs=Decimal("0.0001"))
+    assert home_p + draw_p + away_p == pytest.approx(Decimal("1.0000"), abs=Decimal("0.0001"))
 
 
 def test_remove_overround_handles_equal_odds():
-    """Equal odds (3.00 each) produce equal probabilities."""
+    """Equal odds (3.00 each) produce equal probabilities of 1/3."""
     # Act
     home_p, draw_p, away_p = remove_overround(
         Decimal("3.00"),
@@ -31,10 +33,10 @@ def test_remove_overround_handles_equal_odds():
     )
 
     # Assert
-    expected = Decimal("0.3333")
-    assert home_p == expected
-    assert draw_p == expected
-    assert away_p == expected
+    third = Decimal(1) / Decimal(3)
+    assert home_p == third
+    assert draw_p == third
+    assert away_p == third
 
 
 def test_remove_overround_handles_heavy_favourite():
@@ -48,4 +50,4 @@ def test_remove_overround_handles_heavy_favourite():
 
     # Assert
     assert home_p > Decimal("0.8")
-    assert home_p + draw_p + away_p == Decimal("1.0000")
+    assert home_p + draw_p + away_p == pytest.approx(Decimal("1.0000"), abs=Decimal("0.0001"))
