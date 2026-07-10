@@ -140,3 +140,43 @@ def test_format_matches_omits_odds_when_absent():
 
     # Assert
     assert "2.50" not in lines[0]
+
+
+def test_format_matches_shows_outcome_probabilities_when_odds_present():
+    """Rounded outcome probabilities are shown when the match has odds."""
+    # Arrange
+    odds = Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80"))
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        odds=odds,
+    )
+
+    # Act
+    lines = format_matches([match])
+
+    # Assert
+    assert "39% - 26% - 35%" in lines[0]
+
+
+def test_format_matches_omits_outcome_probabilities_when_odds_absent():
+    """No outcome probabilities shown when the match has no odds."""
+    # Arrange
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+    )
+
+    # Act
+    lines = format_matches([match])
+
+    # Assert
+    assert "39%" not in lines[0]
