@@ -36,7 +36,15 @@ pick up the change.
 
 ## Development Workflow
 
-Follow the `tdd-workflow` skill for all implementation and bug-fix work.
+The standard feature workflow is:
+
+1. `/grill-with-docs` — sharpen the plan, build glossary and ADRs
+2. `/to-spec` — synthesize the session into a spec on GitHub Issues
+3. `/to-tickets <issue-number>` — break the spec into vertical-slice subissues
+4. `/implement-workflow <ticket-number>` — build one ticket using `tdd-workflow`
+5. `/code-review main` — two-axis review before human QA
+
+For bug fixes, use `tdd-workflow` directly.
 
 ## Agent skills
 
@@ -51,6 +59,13 @@ All five canonical labels use their default names: `needs-triage`, `needs-info`,
 ### Domain docs
 
 Single-context layout — one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Feature workflow
+
+- `/to-spec` — synthesize the current conversation into a spec issue. Pure synthesis, no interview.
+- `/to-tickets <issue-number>` — read a spec issue and break it into vertical-slice subissues with blocking edges.
+- `/implement-workflow <ticket-number>` — implement one ticket using `tdd-workflow`, then verify and ask the user to run `/code-review main`.
+- `/code-review [ref]` — two-axis review (standards + spec) of the diff against the given ref (default: `main`).
 
 ## Pull Requests
 
