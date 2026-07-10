@@ -26,13 +26,13 @@ Explore the codebase to understand the current state. Use the project's domain g
 
 ### 4. Implement with tdd-workflow
 
-Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD):
+Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD). Include the ticket number in every commit message so downstream skills can trace back to the spec:
 
-1. Write a failing end-to-end test → commit `Red (e2e): <feature description>`
+1. Write a failing end-to-end test → commit `Red (e2e): <description> (#<ticket>)`
 2. Inner loop — repeat until the e2e test passes:
-   1. Write a failing unit test → commit `Red (unit): <sub-component description>`
-   2. Add the minimal code to make it pass → commit `Green: <sub-component description>`
-   3. Refactor → commit `Refactor: <sub-component description>`
+   1. Write a failing unit test → commit `Red (unit): <description> (#<ticket>)`
+   2. Add the minimal code to make it pass → commit `Green: <description> (#<ticket>)`
+   3. Refactor → commit `Refactor: <description> (#<ticket>)`
 3. If the e2e test hasn't turned green after 3 inner cycles, flag to the user and ask for guidance.
 
 ### 5. Verify
