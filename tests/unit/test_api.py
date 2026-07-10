@@ -65,8 +65,37 @@ def test_fetch_week_parses_start_odds_for_first_match(mock_api_response):
     assert match1.odds.away == Decimal("2.80")
 
 
+def test_fetch_week_parses_outcome_probabilities(mock_api_response):
+    """First match's outcome probability is computed from startOdds."""
+    # Arrange
+    mock = _mock_requests_get(mock_api_response)
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4900",
+        timeout=30,
+    ).and_return(mock)
+
+    # Act
+    draw = fetch_week(4900)
+
+    # Assert
+    match1 = draw.matches[0]
+    assert match1.outcome_probability is not None
+    assert match1.outcome_probability.home == pytest.approx(
+        Decimal("0.3893"),
+        abs=Decimal("0.0001"),
+    )
+    assert match1.outcome_probability.draw == pytest.approx(
+        Decimal("0.2631"),
+        abs=Decimal("0.0001"),
+    )
+    assert match1.outcome_probability.away == pytest.approx(
+        Decimal("0.3476"),
+        abs=Decimal("0.0001"),
+    )
+
+
 def test_fetch_week_parses_odds_for_all_matches(mock_api_response):
-    """Every match in the draw has parsed odds."""
+    """Every match in the draw has parsed odds and outcome probabilities."""
     # Arrange
     mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
@@ -80,6 +109,9 @@ def test_fetch_week_parses_odds_for_all_matches(mock_api_response):
     # Assert
     for match in draw.matches:
         assert match.odds is not None, f"Match {match.event_number} has no odds"
+        assert match.outcome_probability is not None, (
+            f"Match {match.event_number} has no outcome probability"
+        )
 
 
 def test_fetch_week_handles_empty_response():

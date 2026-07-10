@@ -17,6 +17,13 @@ class Odds:
 
 
 @dataclass
+class OutcomeProbability:
+    home: Decimal
+    draw: Decimal
+    away: Decimal
+
+
+@dataclass
 class Match:
     event_number: int
     home_team: str
@@ -25,6 +32,7 @@ class Match:
     away_score: int | None
     svenska_folket: SvenskaFolket | None
     odds: Odds | None = None
+    outcome_probability: OutcomeProbability | None = None
 
 
 @dataclass

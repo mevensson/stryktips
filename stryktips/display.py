@@ -1,7 +1,6 @@
 """Display formatting for Stryktipset matches."""
 
 from stryktips.models import Match
-from stryktips.odds import remove_overround
 
 
 def format_matches(matches: list[Match]) -> list[str]:
@@ -34,16 +33,12 @@ def _format_odds(match: Match) -> str:
 
 
 def _format_outcome_probabilities(match: Match) -> str:
-    if match.odds is None:
+    if match.outcome_probability is None:
         return ""
-    home_p, draw_p, away_p = remove_overround(
-        match.odds.home,
-        match.odds.draw,
-        match.odds.away,
-    )
-    home_pct = int(round(home_p * 100))
-    draw_pct = int(round(draw_p * 100))
-    away_pct = int(round(away_p * 100))
+    p = match.outcome_probability
+    home_pct = int(round(p.home * 100))
+    draw_pct = int(round(p.draw * 100))
+    away_pct = int(round(p.away * 100))
     return f" | {home_pct}% - {draw_pct}% - {away_pct}%"
 
 

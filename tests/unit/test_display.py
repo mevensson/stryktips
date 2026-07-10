@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 from stryktips.display import format_matches
-from stryktips.models import Match, Odds, SvenskaFolket
+from stryktips.models import Match, Odds, OutcomeProbability, SvenskaFolket
 
 
 def sample_match() -> Match:
@@ -145,7 +145,11 @@ def test_format_matches_omits_odds_when_absent():
 def test_format_matches_shows_outcome_probabilities_when_odds_present():
     """Rounded outcome probabilities are shown when the match has odds."""
     # Arrange
-    odds = Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80"))
+    probs = OutcomeProbability(
+        home=Decimal("0.3893"),
+        draw=Decimal("0.2631"),
+        away=Decimal("0.3476"),
+    )
     match = Match(
         event_number=1,
         home_team="Home",
@@ -153,7 +157,8 @@ def test_format_matches_shows_outcome_probabilities_when_odds_present():
         home_score=1,
         away_score=0,
         svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
-        odds=odds,
+        odds=Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80")),
+        outcome_probability=probs,
     )
 
     # Act
