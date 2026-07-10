@@ -22,7 +22,7 @@ Flag all problems at once, then wait for the user's decision. Do not proceed if 
 
 ### 3. Explore
 
-Explore the codebase to understand the current state. Use the project's domain glossary vocabulary. Identify where the changes will go.
+Identify where the changes will go. Use the project's domain glossary vocabulary.
 
 ### 4. Implement with tdd-workflow
 

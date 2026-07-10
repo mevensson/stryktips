@@ -13,7 +13,7 @@ The argument is the GitHub issue number or URL. Fetch its full body. If the spec
 
 ### 2. Explore the codebase
 
-If you haven't already, explore the current state of the code. Use the project's domain glossary vocabulary throughout, and respect ADRs in the area you're touching.
+Explore the current state of the code. Use the project's domain glossary vocabulary throughout, and respect ADRs in the area you're touching.
 
 Look for opportunities to **prefactor** — make the change easy before making the easy change.
 
@@ -67,4 +67,4 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 </issue-template>
 
-Do NOT close or modify the parent issue.
+Create subissues only; the parent issue is read-only.

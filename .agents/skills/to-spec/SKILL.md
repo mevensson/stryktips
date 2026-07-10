@@ -9,7 +9,7 @@ Synthesize the current conversation into a spec and publish it to the GitHub iss
 
 1. **Explore the codebase** to understand the current state. Respect any ADRs in the area you're touching.
 
-2. **Sketch test seams** at which the feature will be tested. Prefer existing seams over new ones; use the highest seam possible. The fewer seams the better — ideally one. Check with the user that the seams match their expectations.
+2. **Sketch test seams** at which the feature will be tested. Prefer existing seams over new ones; use the highest seam possible. The fewer seams the better — ideally one. Check with the user that the seams match their expectations. Iterate until the user approves.
 
 3. **Write the spec** using the template below.
 
@@ -42,7 +42,7 @@ Be extensive — cover all aspects of the feature.
 - API contracts
 - Specific interactions
 
-Do NOT include specific file paths or code snippets (they go stale fast). Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note it came from a prototype.
+Name modules and interfaces, not file paths — paths go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note it came from a prototype.
 
 ## Testing Decisions
 

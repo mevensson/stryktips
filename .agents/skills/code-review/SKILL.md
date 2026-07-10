@@ -69,6 +69,6 @@ If the spec is missing, skip the Spec sub-agent and note it in the report.
 
 ### 5. Aggregate
 
-Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Do not merge or rerank.
+Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Each axis stands alone — do not merge or rerank findings across axes.
 
 End with a one-line summary: total findings per axis and the worst issue within each axis.
