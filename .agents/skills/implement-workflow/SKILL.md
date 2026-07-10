@@ -9,7 +9,7 @@ Implement a single ticket using the `tdd-workflow` skill.
 
 ### 1. Gather context
 
-The argument is the GitHub issue number. Fetch its body, acceptance criteria, labels, and blocking edges.
+The argument is the GitHub issue number. Fetch its body, acceptance criteria, labels, and blocking edges. Derive a short slug from the issue title for the branch name.
 
 ### 2. Sanity-check the ticket
 
@@ -20,11 +20,17 @@ Before starting, verify two things:
 
 Flag all problems at once, then wait for the user's decision. Do not proceed if blockers remain unresolved unless the user explicitly confirms.
 
-### 3. Explore
+### 3. Branch from latest main
+
+Create a feature branch: `git checkout -b <slug>-<ticket>`. The slug is a short kebab-case descriptor from the issue title.
+
+Push the branch to origin so the PR targets main.
+
+### 4. Explore
 
 Identify where the changes will go. Use the project's domain glossary vocabulary.
 
-### 4. Implement with tdd-workflow
+### 5. Implement with tdd-workflow
 
 Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD). Include the ticket number in every commit message so downstream skills can trace back to the spec:
 
@@ -35,10 +41,14 @@ Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD). Inclu
    3. Refactor → commit `Refactor: <description> (#<ticket>)`
 3. If the e2e test hasn't turned green after 3 inner cycles, flag to the user and ask for guidance.
 
-### 5. Verify
+### 6. Verify
 
 Run `ruff format --check .` and `ruff check .` and `mypy .` and `pytest`. Fix any issues.
 
-### 6. Tell the user
+### 7. Push and create a PR
 
-Say the work is complete and ready for review. Tell them to run `/code-review main` to review the changes in a clean context.
+Push the branch and create a draft PR targeting main. The PR description must reference the issue (e.g. `Closes #<ticket>` or `Implements #<ticket>`). Include a brief summary of the changes.
+
+### 8. Tell the user
+
+Say the PR is ready for review. Provide the PR URL. Tell them to run `/code-review main` in a clean context on this branch to review the changes.
