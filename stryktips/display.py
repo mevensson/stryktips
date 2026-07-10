@@ -36,7 +36,9 @@ def _format_odds(match: Match) -> str:
 def _format_outcome_probabilities(match: Match) -> str:
     if match.odds is None:
         return ""
-    home_p, draw_p, away_p = remove_overround(match.odds.home, match.odds.draw, match.odds.away)
+    home_p, draw_p, away_p = remove_overround(
+        match.odds.home, match.odds.draw, match.odds.away,
+    )
     home_pct = int(round(home_p * 100))
     draw_pct = int(round(draw_p * 100))
     away_pct = int(round(away_p * 100))

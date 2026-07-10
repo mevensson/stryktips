@@ -20,7 +20,9 @@ def test_remove_overround_returns_normalized_probabilities():
     assert home_p == pytest.approx(Decimal("0.3893"), abs=Decimal("0.0001"))
     assert draw_p == pytest.approx(Decimal("0.2631"), abs=Decimal("0.0001"))
     assert away_p == pytest.approx(Decimal("0.3476"), abs=Decimal("0.0001"))
-    assert home_p + draw_p + away_p == pytest.approx(Decimal("1.0000"), abs=Decimal("0.0001"))
+    assert home_p + draw_p + away_p == pytest.approx(
+        Decimal("1.0000"), abs=Decimal("0.0001"),
+    )
 
 
 def test_remove_overround_handles_equal_odds():
@@ -50,4 +52,6 @@ def test_remove_overround_handles_heavy_favourite():
 
     # Assert
     assert home_p > Decimal("0.8")
-    assert home_p + draw_p + away_p == pytest.approx(Decimal("1.0000"), abs=Decimal("0.0001"))
+    assert home_p + draw_p + away_p == pytest.approx(
+        Decimal("1.0000"), abs=Decimal("0.0001"),
+    )
