@@ -19,9 +19,10 @@ def _format_match(match: Match) -> str:
     outcome = _outcome(match)
     one, x, two = _percentages(match)
     odds_str = _format_odds(match)
+    probs_str = _format_outcome_probabilities(match)
     return (
         f"{match.event_number}. {match.home_team} - {match.away_team}"
-        f" | {outcome} | {one}% - {x}% - {two}%{odds_str}"
+        f" | {outcome} | {one}% - {x}% - {two}%{odds_str}{probs_str}"
     )
 
 
@@ -29,6 +30,16 @@ def _format_odds(match: Match) -> str:
     if match.odds is None:
         return ""
     return f" | {match.odds.home:.2f} - {match.odds.draw:.2f} - {match.odds.away:.2f}"
+
+
+def _format_outcome_probabilities(match: Match) -> str:
+    if match.outcome_probability is None:
+        return ""
+    p = match.outcome_probability
+    home_pct = int(round(p.home * 100))
+    draw_pct = int(round(p.draw * 100))
+    away_pct = int(round(p.away * 100))
+    return f" | {home_pct}% - {draw_pct}% - {away_pct}%"
 
 
 def _outcome(match: Match) -> str:

@@ -14,7 +14,7 @@ def test_week_argument_required():
     assert "--week" in result.stdout or "--week" in result.stderr
 
 
-def test_week_4900_displays_13_matches():
+def test_week_4900_displays_13_matches():  # noqa: PLR0915
     result = subprocess.run(
         [sys.executable, "stryktips.py", "--week", "4900"],
         capture_output=True,
@@ -33,6 +33,7 @@ def test_week_4900_displays_13_matches():
     assert "2.50" in result.stdout
     assert "3.70" in result.stdout
     assert "2.80" in result.stdout
+    assert "39% - 26% - 35%" in result.stdout
 
 
 def test_invalid_week_number_catches_error():

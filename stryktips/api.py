@@ -5,7 +5,8 @@ from typing import Any
 
 import requests
 
-from stryktips.models import Draw, Match, Odds, SvenskaFolket
+from stryktips.models import Draw, Match, Odds, OutcomeProbability, SvenskaFolket
+from stryktips.odds import remove_overround
 
 _RESULT_TYPE_FULLTIME = 2
 
@@ -37,6 +38,7 @@ def _parse_match(event: dict[str, Any]) -> Match:
     home_score, away_score = _parse_scores(match)
     svenska_folket = _parse_svenska_folket(event)
     odds = _parse_odds(event)
+    outcome_probability = _compute_outcome_probability(odds)
 
     return Match(
         event_number=event["eventNumber"],
@@ -46,7 +48,15 @@ def _parse_match(event: dict[str, Any]) -> Match:
         away_score=away_score,
         svenska_folket=svenska_folket,
         odds=odds,
+        outcome_probability=outcome_probability,
     )
+
+
+def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None:
+    if odds is None:
+        return None
+    home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
+    return OutcomeProbability(home=home_p, draw=draw_p, away=away_p)
 
 
 def _parse_scores(match: dict[str, Any]) -> tuple[int | None, int | None]:
