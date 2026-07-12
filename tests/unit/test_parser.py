@@ -35,3 +35,18 @@ def test_create_parser_accepts_integer_draw():
 
     assert args.draw == 4900
     assert isinstance(args.draw, int)
+
+
+def test_create_parser_has_date_argument():
+    parser = create_parser()
+
+    args = parser.parse_args(["--date", "2025-05-10"])
+
+    assert args.date == "2025-05-10"
+
+
+def test_create_parser_date_and_draw_are_mutually_exclusive():
+    parser = create_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--draw", "4900", "--date", "2025-05-10"])
