@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 
@@ -42,3 +42,9 @@ class Draw:
     matches: list[Match]
     draw_comment: str | None = None
     reg_close_time: datetime | None = None
+
+
+@dataclass
+class DatepickerEntry:
+    date: date
+    draw_number: int
