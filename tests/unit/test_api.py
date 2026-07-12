@@ -9,7 +9,7 @@ import pytest
 import requests
 from flexmock import flexmock
 
-from stryktips.api import fetch_week
+from stryktips.api import fetch_draw
 
 _API_URL = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/"
 
@@ -28,7 +28,7 @@ def _mock_requests_get(data: dict[str, Any]) -> Any:
     return mock
 
 
-def test_fetch_week_returns_draw_with_13_matches(mock_api_response):
+def test_fetch_draw_returns_draw_with_13_matches(mock_api_response):
     """Fetching week 4900 returns a draw with 13 matches."""
     # Arrange
     mock = _mock_requests_get(mock_api_response)
@@ -38,14 +38,14 @@ def test_fetch_week_returns_draw_with_13_matches(mock_api_response):
     ).and_return(mock)
 
     # Act
-    draw = fetch_week(4900)
+    draw = fetch_draw(4900)
 
     # Assert
     assert len(draw.matches) == 13
     assert draw.draw_number == 4900
 
 
-def test_fetch_week_parses_start_odds_for_first_match(mock_api_response):
+def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response):
     """First match's startOdds are parsed into an Odds object."""
     # Arrange
     mock = _mock_requests_get(mock_api_response)
@@ -55,7 +55,7 @@ def test_fetch_week_parses_start_odds_for_first_match(mock_api_response):
     ).and_return(mock)
 
     # Act
-    draw = fetch_week(4900)
+    draw = fetch_draw(4900)
 
     # Assert
     match1 = draw.matches[0]
@@ -65,7 +65,7 @@ def test_fetch_week_parses_start_odds_for_first_match(mock_api_response):
     assert match1.odds.away == Decimal("2.80")
 
 
-def test_fetch_week_parses_outcome_probabilities(mock_api_response):
+def test_fetch_draw_parses_outcome_probabilities(mock_api_response):
     """First match's outcome probability is computed from startOdds."""
     # Arrange
     mock = _mock_requests_get(mock_api_response)
@@ -75,7 +75,7 @@ def test_fetch_week_parses_outcome_probabilities(mock_api_response):
     ).and_return(mock)
 
     # Act
-    draw = fetch_week(4900)
+    draw = fetch_draw(4900)
 
     # Assert
     match1 = draw.matches[0]
@@ -94,7 +94,7 @@ def test_fetch_week_parses_outcome_probabilities(mock_api_response):
     )
 
 
-def test_fetch_week_parses_odds_for_all_matches(mock_api_response):
+def test_fetch_draw_parses_odds_for_all_matches(mock_api_response):
     """Every match in the draw has parsed odds and outcome probabilities."""
     # Arrange
     mock = _mock_requests_get(mock_api_response)
@@ -104,7 +104,7 @@ def test_fetch_week_parses_odds_for_all_matches(mock_api_response):
     ).and_return(mock)
 
     # Act
-    draw = fetch_week(4900)
+    draw = fetch_draw(4900)
 
     # Assert
     for match in draw.matches:
@@ -114,7 +114,7 @@ def test_fetch_week_parses_odds_for_all_matches(mock_api_response):
         )
 
 
-def test_fetch_week_handles_empty_response():
+def test_fetch_draw_handles_empty_response():
     """Empty events list yields a draw with zero matches."""
     # Arrange
     empty: dict[str, Any] = {"draw": {"drawEvents": []}}
@@ -125,7 +125,7 @@ def test_fetch_week_handles_empty_response():
     ).and_return(mock)
 
     # Act
-    draw = fetch_week(99999)
+    draw = fetch_draw(99999)
 
     # Assert
     assert len(draw.matches) == 0

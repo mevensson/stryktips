@@ -11,16 +11,16 @@ from stryktips.odds import remove_overround
 _RESULT_TYPE_FULLTIME = 2
 
 
-def fetch_week(week_num: int) -> Draw:
-    """Fetch Stryktipset draw data for a specific week.
+def fetch_draw(draw_number: int) -> Draw:
+    """Fetch Stryktipset draw data for a specific draw.
 
     Args:
-        week_num: The week number to fetch.
+        draw_number: The draw number to fetch.
 
     Returns:
         A Draw containing parsed match data.
     """
-    url = f"https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{week_num}"
+    url = f"https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{draw_number}"
     response = requests.get(url, timeout=30)
     response.raise_for_status()
 
