@@ -46,29 +46,24 @@ def test_fetch_draw_returns_draw_with_13_matches(mock_api_response):
     assert draw.draw_number == 4900
 
 
-def test_fetch_draw_parses_draw_comment(mock_api_response):
-    """drawComment from the API response is stored in Draw.draw_comment."""
+def _mock_fetch_draw_4900(mock_api_response: dict[str, Any]) -> Any:
     mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
     ).and_return(mock)
+    return fetch_draw(4900)
 
-    draw = fetch_draw(4900)
 
+def test_fetch_draw_parses_draw_comment(mock_api_response):
+    """drawComment from the API response is stored in Draw.draw_comment."""
+    draw = _mock_fetch_draw_4900(mock_api_response)
     assert draw.draw_comment == "Stryktipset v. 2025-19"
 
 
 def test_fetch_draw_parses_reg_close_time(mock_api_response):
     """regCloseTime from the API response is stored as a datetime."""
-    mock = _mock_requests_get(mock_api_response)
-    flexmock(requests).should_receive("get").with_args(
-        f"{_API_URL}4900",
-        timeout=30,
-    ).and_return(mock)
-
-    draw = fetch_draw(4900)
-
+    draw = _mock_fetch_draw_4900(mock_api_response)
     assert isinstance(draw.reg_close_time, datetime)
     assert draw.reg_close_time.isoformat() == "2025-05-10T15:59:00+02:00"
 
