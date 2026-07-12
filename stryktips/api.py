@@ -38,6 +38,12 @@ def fetch_draw(draw_number: int) -> Draw:
     )
 
 
+def _parse_datetime(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    return datetime.fromisoformat(value)
+
+
 def _parse_match(event: dict[str, Any]) -> Match:
     match = event["match"]
     home_score, away_score = _parse_scores(match)
@@ -95,9 +101,3 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
 
 def _parse_swedish_decimal(value: str) -> Decimal:
     return Decimal(value.replace(",", "."))
-
-
-def _parse_datetime(value: str | None) -> datetime | None:
-    if value is None:
-        return None
-    return datetime.fromisoformat(value)
