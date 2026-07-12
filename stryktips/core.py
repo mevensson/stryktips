@@ -2,8 +2,8 @@ import argparse
 from datetime import date
 
 from stryktips.api import fetch_draw, fetch_draws_by_month
-from stryktips.models import Draw
 from stryktips.display import format_header, format_matches
+from stryktips.models import Draw
 from stryktips.resolver import resolve_draw_number
 
 

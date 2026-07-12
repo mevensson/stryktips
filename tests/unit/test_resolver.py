@@ -20,9 +20,8 @@ def test_resolve_result_is_named_tuple():
 
 def test_resolve_draw_number_finds_exact_date_match():
     """When the target date matches a datepicker entry exactly, return it."""
-    from stryktips.resolver import ResolveResult, resolve_draw_number
-
     from stryktips.models import DatepickerEntry
+    from stryktips.resolver import ResolveResult, resolve_draw_number
 
     entries = [
         DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
@@ -38,9 +37,8 @@ def test_resolve_draw_number_finds_exact_date_match():
 
 def test_resolve_draw_number_finds_next_available_draw():
     """When no entry matches the target date exactly, return the next available."""
-    from stryktips.resolver import ResolveResult, resolve_draw_number
-
     from stryktips.models import DatepickerEntry
+    from stryktips.resolver import ResolveResult, resolve_draw_number
 
     entries = [
         DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
@@ -56,9 +54,8 @@ def test_resolve_draw_number_finds_next_available_draw():
 
 def test_resolve_draw_number_returns_zero_when_no_match():
     """When no entry has date >= target, return draw_number=0 and match_date=None."""
-    from stryktips.resolver import ResolveResult, resolve_draw_number
-
     from stryktips.models import DatepickerEntry
+    from stryktips.resolver import ResolveResult, resolve_draw_number
 
     entries = [
         DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
@@ -80,9 +77,8 @@ def test_resolve_draw_number_returns_zero_for_empty_data():
 
 def test_resolve_draw_number_raises_on_invalid_date_string():
     """An unparseable date string raises ValueError."""
-    from stryktips.resolver import resolve_draw_number
-
     from stryktips.models import DatepickerEntry
+    from stryktips.resolver import resolve_draw_number
 
     entries = [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]
 
