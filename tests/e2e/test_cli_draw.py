@@ -2,7 +2,7 @@ import subprocess
 import sys
 
 
-def test_week_argument_required():
+def test_draw_argument_required():
     result = subprocess.run(
         [sys.executable, "stryktips.py"],
         capture_output=True,
@@ -11,12 +11,12 @@ def test_week_argument_required():
     )
 
     assert result.returncode != 0
-    assert "--week" in result.stdout or "--week" in result.stderr
+    assert "--draw" in result.stdout or "--draw" in result.stderr
 
 
-def test_week_4900_displays_13_matches():  # noqa: PLR0915
+def test_draw_4900_displays_13_matches():  # noqa: PLR0915
     result = subprocess.run(
-        [sys.executable, "stryktips.py", "--week", "4900"],
+        [sys.executable, "stryktips.py", "--draw", "4900"],
         capture_output=True,
         text=True,
         check=True,
@@ -36,9 +36,9 @@ def test_week_4900_displays_13_matches():  # noqa: PLR0915
     assert "39% - 26% - 35%" in result.stdout
 
 
-def test_invalid_week_number_catches_error():
+def test_invalid_draw_number_catches_error():
     result = subprocess.run(
-        [sys.executable, "stryktips.py", "--week", "invalid"],
+        [sys.executable, "stryktips.py", "--draw", "invalid"],
         capture_output=True,
         text=True,
         check=False,
@@ -48,7 +48,7 @@ def test_invalid_week_number_catches_error():
     assert "invalid" in result.stderr or "invalid" in result.stdout
 
 
-def test_help_shows_week_usage():
+def test_help_shows_draw_usage():
     result = subprocess.run(
         [sys.executable, "stryktips.py", "--help"],
         capture_output=True,
@@ -57,4 +57,4 @@ def test_help_shows_week_usage():
     )
 
     assert result.returncode == 0
-    assert "--week" in result.stdout
+    assert "--draw" in result.stdout
