@@ -39,11 +39,10 @@ Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD). Inclu
    1. Write a failing unit test → commit `Red (unit): <description> (#<ticket>)`
    2. Add the minimal code to make it pass → commit `Green: <description> (#<ticket>)`
    3. Refactor → commit `Refactor: <description> (#<ticket>)`
-3. If the e2e test hasn't turned green after 3 inner cycles, flag to the user and ask for guidance.
 
-### 6. Verify
+### 6. Final verification
 
-Run `ruff format --check .` and `ruff check .` and `mypy .` and `pytest`. Fix any issues.
+Run `ruff format --check .` and `ruff check .` and `mypy .` and `pytest` one last time as a safety net. Fix any issues.
 
 ### 7. Push and create a PR
 
