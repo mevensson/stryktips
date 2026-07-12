@@ -1,5 +1,6 @@
 """API client for fetching Stryktipset data."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -26,11 +27,21 @@ def fetch_draw(draw_number: int) -> Draw:
 
     data = response.json()
     draw_data = data.get("draw", {})
-    draw_number = draw_data.get("drawNumber", 0)
     events = draw_data.get("drawEvents", [])
     matches = [_parse_match(event) for event in events]
 
-    return Draw(draw_number=draw_number, matches=matches)
+    return Draw(
+        draw_number=draw_data.get("drawNumber", 0),
+        matches=matches,
+        draw_comment=draw_data.get("drawComment"),
+        reg_close_time=_parse_datetime(draw_data.get("regCloseTime")),
+    )
+
+
+def _parse_datetime(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    return datetime.fromisoformat(value)
 
 
 def _parse_match(event: dict[str, Any]) -> Match:

@@ -1,6 +1,20 @@
 """Display formatting for Stryktipset matches."""
 
-from stryktips.models import Match
+from stryktips.models import Draw, Match
+
+
+def format_header(draw: Draw) -> str:
+    """Format the draw header line.
+
+    Args:
+        draw: The draw domain model.
+
+    Returns:
+        A header string like "Stryktipset v. 2025-19 (draw 4900)".
+    """
+    if draw.draw_comment:
+        return f"{draw.draw_comment} (draw {draw.draw_number})"
+    return f"Stryktipset Draw {draw.draw_number}"
 
 
 def format_matches(matches: list[Match]) -> list[str]:

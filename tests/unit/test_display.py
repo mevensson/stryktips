@@ -2,8 +2,8 @@
 
 from decimal import Decimal
 
-from stryktips.display import format_matches
-from stryktips.models import Match, Odds, OutcomeProbability, SvenskaFolket
+from stryktips.display import format_header, format_matches
+from stryktips.models import Draw, Match, Odds, OutcomeProbability, SvenskaFolket
 
 
 def sample_match() -> Match:
@@ -16,6 +16,34 @@ def sample_match() -> Match:
         away_score=1,
         svenska_folket=SvenskaFolket(one="35", x="24", two="41"),
     )
+
+
+def test_format_header_with_draw_comment():
+    """Header includes draw_comment and draw_number."""
+    # Arrange
+    draw = Draw(
+        draw_number=4900,
+        matches=[],
+        draw_comment="Stryktipset v. 2025-19",
+    )
+
+    # Act
+    header = format_header(draw)
+
+    # Assert
+    assert header == "Stryktipset v. 2025-19 (draw 4900)"
+
+
+def test_format_header_without_draw_comment():
+    """Header falls back when draw_comment is None."""
+    # Arrange
+    draw = Draw(draw_number=4900, matches=[])
+
+    # Act
+    header = format_header(draw)
+
+    # Assert
+    assert header == "Stryktipset Draw 4900"
 
 
 def test_format_matches_returns_correct_count():

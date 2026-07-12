@@ -23,7 +23,7 @@ def test_draw_4900_displays_13_matches():  # noqa: PLR0915
     )
 
     assert result.returncode == 0
-    assert "4900" in result.stdout
+    assert "Stryktipset v. 2025-19 (draw 4900)" in result.stdout
     matches = result.stdout.strip().split("\n")
     assert len(matches) == 14, (
         f"Expected 14 lines (header + 13 matches), got {len(matches)}"

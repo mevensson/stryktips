@@ -33,6 +33,8 @@ Look for the originating spec, in this order:
 
 Anything in the repo that documents how code should be written — `AGENTS.md`, `CONTRIBUTING.md`, etc.
 
+Also scan `.agents/skills/` for skills whose domain overlaps with the diff (e.g. `unit-test-design` if tests are touched; `writing-great-skills` if skills are touched). Read the matching `SKILL.md` and include its rules as additional standards.
+
 On top of documented standards, carry the **smell baseline** below. Two rules:
 - **The repo overrides.** A documented standard always wins; where it endorses something the baseline would flag, suppress the smell.
 - **Always a judgement call.** Each smell is a labelled heuristic, never a hard violation. Skip anything tooling already enforces.
@@ -58,6 +60,7 @@ Use a single message with two sub-agent calls.
 **Standards sub-agent prompt** — include:
 - The full diff command and commit list.
 - The standards-source files found in step 3, **plus the smell baseline from step 3** pasted in full.
+- Any matching skills from `.agents/skills/` found in step 3, with their rules quoted.
 - Brief: "Report — per file/hunk — (a) every violation of a documented standard (cite the rule); (b) any baseline smell (name it and quote the hunk). Distinguish hard violations from judgement calls. Skip anything tooling enforces. Under 400 words."
 
 **Spec sub-agent prompt** — include:
