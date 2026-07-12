@@ -28,9 +28,13 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def _resolve_draw_by_date(date_str: str) -> Draw:
-    target = date.fromisoformat(date_str)
+    try:
+        target = date.fromisoformat(date_str)
+    except ValueError:
+        msg = f"Invalid date: {date_str}"
+        raise ValueError(msg) from None
     entries = fetch_draws_by_month(target.year, target.month)
-    result = resolve_draw_number(date_str, "date", entries)
+    result = resolve_draw_number(target, "date", entries)
     if result.draw_number == 0:
         msg = f"No draw found for {date_str}"
         raise ValueError(msg)

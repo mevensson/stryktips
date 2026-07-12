@@ -13,7 +13,7 @@ class ResolveResult(NamedTuple):
 
 
 def resolve_draw_number(
-    value: str | int,
+    value: str | int | date,
     arg_type: str,
     datepicker_data: list[DatepickerEntry],
 ) -> ResolveResult:
@@ -31,18 +31,23 @@ def resolve_draw_number(
         ValueError: If the value cannot be parsed for the given arg_type.
     """
     if arg_type == "date":
-        return _resolve_by_date(str(value), datepicker_data)
+        target = _parse_date_value(value)
+        return _resolve_by_date(target, datepicker_data)
     msg = f"Unknown arg_type: {arg_type}"
     raise ValueError(msg)
 
 
-def _resolve_by_date(value: str, entries: list[DatepickerEntry]) -> ResolveResult:
+def _parse_date_value(value: str | int | date) -> date:
+    if isinstance(value, date):
+        return value
     try:
-        target = date.fromisoformat(value)
+        return date.fromisoformat(str(value))
     except ValueError:
         msg = f"Invalid date: {value}"
         raise ValueError(msg) from None
 
+
+def _resolve_by_date(target: date, entries: list[DatepickerEntry]) -> ResolveResult:
     for entry in entries:
         if entry.date >= target:
             return ResolveResult(
