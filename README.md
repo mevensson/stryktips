@@ -14,21 +14,21 @@ With Nix/direnv:
 
 ```bash
 direnv allow   # or: nix develop
-python stryktips.py --week <number>
+python stryktips.py --draw <number>
 ```
 
 Without Nix:
 
 ```bash
 pip install requests
-python stryktips.py --week <number>
+python stryktips.py --draw <number>
 ```
 
 ## Arguments
 
 | Argument   | Required | Type | Description                          |
 | ---------- | -------- | ---- | ------------------------------------ |
-| `--week`   | Yes      | int  | Week number for Stryktipset data     |
+| `--draw`   | Yes      | int  | Draw number for Stryktipset data     |
 
 ## Output
 
