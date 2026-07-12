@@ -1,4 +1,5 @@
 [lint]
+ignore = ["COM812"]
 select = [
     "E", "F",      # pycodestyle + pyflakes (defaults)
     "I",           # isort
