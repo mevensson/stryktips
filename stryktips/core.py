@@ -1,7 +1,7 @@
 import argparse
 
 from stryktips.api import fetch_draw
-from stryktips.display import format_matches
+from stryktips.display import format_header, format_matches
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -27,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     draw = fetch_draw(args.draw)
     lines = format_matches(draw.matches)
 
-    print(f"Stryktipset Draw {draw.draw_number}")  # noqa: T201
+    print(format_header(draw))  # noqa: T201
     for line in lines:
         print(line)  # noqa: T201
 
