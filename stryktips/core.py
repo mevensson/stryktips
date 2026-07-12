@@ -7,6 +7,21 @@ from stryktips.models import Draw
 from stryktips.resolver import resolve_draw_number
 
 
+def main(argv: list[str] | None = None) -> int:
+    """Main entry point for the CLI."""
+    parser = create_parser()
+    args = parser.parse_args(argv)
+
+    try:
+        draw = _fetch_draw_from_args(args)
+    except ValueError as e:
+        print(e)  # noqa: T201
+        return 1
+
+    _display(draw)
+    return 0
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create and return the argument parser for the stryktips CLI."""
     parser = argparse.ArgumentParser(
@@ -27,6 +42,19 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
+    if args.date is not None:
+        return _resolve_draw_by_date(args.date)
+    return fetch_draw(args.draw)
+
+
+def _display(draw: Draw) -> None:
+    header = format_header(draw)
+    lines = format_matches(draw.matches)
+    joined = "\n".join([header, *lines])
+    print(joined)  # noqa: T201
+
+
 def _resolve_draw_by_date(date_str: str) -> Draw:
     try:
         target = date.fromisoformat(date_str)
@@ -39,31 +67,3 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
         msg = f"No draw found for {date_str}"
         raise ValueError(msg)
     return fetch_draw(result.draw_number)
-
-
-def _display(draw: Draw) -> None:
-    header = format_header(draw)
-    lines = format_matches(draw.matches)
-    joined = "\n".join([header, *lines])
-    print(joined)  # noqa: T201
-
-
-def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
-    if args.date is not None:
-        return _resolve_draw_by_date(args.date)
-    return fetch_draw(args.draw)
-
-
-def main(argv: list[str] | None = None) -> int:
-    """Main entry point for the CLI."""
-    parser = create_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        draw = _fetch_draw_from_args(args)
-    except ValueError as e:
-        print(e)  # noqa: T201
-        return 1
-
-    _display(draw)
-    return 0
