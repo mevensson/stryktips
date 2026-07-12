@@ -156,3 +156,35 @@ def test_fetch_draw_handles_empty_response():
 
     # Assert
     assert len(draw.matches) == 0
+
+
+def test_fetch_draws_by_month_returns_parsed_entries():
+    """fetch_draws_by_month returns DatepickerEntry list from the API."""
+    from datetime import date
+
+    from stryktips.api import fetch_draws_by_month
+    from stryktips.models import DatepickerEntry
+
+    # Arrange
+    api_response = {
+        "datepicker": [
+            {"date": "2025-05-05", "drawNumber": 4898},
+            {"date": "2025-05-10", "drawNumber": 4900},
+        ]
+    }
+    mock = _mock_requests_get(api_response)
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock)
+
+    # Act
+    entries = fetch_draws_by_month(2025, 5)
+
+    # Assert
+    assert len(entries) == 2
+    assert entries == [
+        DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
+        DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+    ]

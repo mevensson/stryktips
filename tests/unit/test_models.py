@@ -106,3 +106,17 @@ def test_match_defaults_outcome_probability_to_none():
 
     # Assert
     assert match.outcome_probability is None
+
+
+def test_datepicker_entry_stores_date_and_draw_number():
+    """DatepickerEntry stores a date and a draw number."""
+    from datetime import date
+
+    from stryktips.models import DatepickerEntry
+
+    # Act
+    entry = DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+
+    # Assert
+    assert entry.date == date(2025, 5, 10)
+    assert entry.draw_number == 4900
