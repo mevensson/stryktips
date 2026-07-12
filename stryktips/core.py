@@ -11,10 +11,10 @@ def create_parser() -> argparse.ArgumentParser:
         description="Stryktips command line interface.",
     )
     parser.add_argument(
-        "--week",
+        "--draw",
         type=int,
         required=True,
-        help="Week number for Stryktipset data",
+        help="Draw number for Stryktipset data",
     )
     return parser
 
@@ -24,7 +24,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     args = parser.parse_args(argv)
 
-    draw = fetch_week(args.week)
+    draw = fetch_draw(args.draw)
     lines = format_matches(draw.matches)
 
     print(f"Stryktipset Draw {draw.draw_number}")  # noqa: T201
