@@ -47,7 +47,7 @@ Run `ruff format --check .` and `ruff check .` and `mypy .` and `pytest`. Fix an
 
 ### 7. Push and create a PR
 
-Push the branch and create a draft PR targeting main. The PR description must reference the issue (e.g. `Closes #<ticket>` or `Implements #<ticket>`). Include a brief summary of the changes.
+Push the branch and create a PR targeting main. The PR description must reference the issue (e.g. `Closes #<ticket>` or `Implements #<ticket>`). Include a brief summary of the changes.
 
 ### 8. Tell the user
 
