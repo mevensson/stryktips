@@ -1,6 +1,6 @@
 import argparse
 
-from stryktips.api import fetch_week
+from stryktips.api import fetch_draw
 from stryktips.display import format_matches
 
 
