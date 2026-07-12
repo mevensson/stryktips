@@ -1,12 +1,19 @@
 """API client for fetching Stryktipset data."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 import requests
 
-from stryktips.models import Draw, Match, Odds, OutcomeProbability, SvenskaFolket
+from stryktips.models import (
+    DatepickerEntry,
+    Draw,
+    Match,
+    Odds,
+    OutcomeProbability,
+    SvenskaFolket,
+)
 from stryktips.odds import remove_overround
 
 _RESULT_TYPE_FULLTIME = 2
@@ -35,6 +42,35 @@ def fetch_draw(draw_number: int) -> Draw:
         matches=matches,
         draw_comment=draw_data.get("drawComment"),
         reg_close_time=_parse_datetime(draw_data.get("regCloseTime")),
+    )
+
+
+def fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+    """Fetch datepicker entries for a given month.
+
+    Args:
+        year: The year to query.
+        month: The month to query (1-12).
+
+    Returns:
+        A list of DatepickerEntry for draws in that month.
+    """
+    url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        f"?product=stryktipset&year={year}&month={month}"
+    )
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+
+    data = response.json()
+    entries = data.get("datepicker", [])
+    return [_parse_datepicker_entry(e) for e in entries]
+
+
+def _parse_datepicker_entry(entry: dict[str, Any]) -> DatepickerEntry:
+    return DatepickerEntry(
+        date=date.fromisoformat(entry["date"]),
+        draw_number=entry["drawNumber"],
     )
 
 
