@@ -1,7 +1,6 @@
 """Unit tests for stryktipset API client."""
 
 import json
-from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -57,14 +56,19 @@ def _mock_fetch_draw_4900(mock_api_response: dict[str, Any]) -> Any:
 
 def test_fetch_draw_parses_draw_comment(mock_api_response):
     """drawComment from the API response is stored in Draw.draw_comment."""
+    # Act
     draw = _mock_fetch_draw_4900(mock_api_response)
+
+    # Assert
     assert draw.draw_comment == "Stryktipset v. 2025-19"
 
 
 def test_fetch_draw_parses_reg_close_time(mock_api_response):
     """regCloseTime from the API response is stored as a datetime."""
+    # Act
     draw = _mock_fetch_draw_4900(mock_api_response)
-    assert isinstance(draw.reg_close_time, datetime)
+
+    # Assert
     assert draw.reg_close_time.isoformat() == "2025-05-10T15:59:00+02:00"
 
 
