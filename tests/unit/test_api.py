@@ -1,6 +1,7 @@
 """Unit tests for stryktipset API client."""
 
 import json
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -43,6 +44,33 @@ def test_fetch_draw_returns_draw_with_13_matches(mock_api_response):
     # Assert
     assert len(draw.matches) == 13
     assert draw.draw_number == 4900
+
+
+def test_fetch_draw_parses_draw_comment(mock_api_response):
+    """drawComment from the API response is stored in Draw.draw_comment."""
+    mock = _mock_requests_get(mock_api_response)
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4900",
+        timeout=30,
+    ).and_return(mock)
+
+    draw = fetch_draw(4900)
+
+    assert draw.draw_comment == "Stryktipset v. 2025-19"
+
+
+def test_fetch_draw_parses_reg_close_time(mock_api_response):
+    """regCloseTime from the API response is stored as a datetime."""
+    mock = _mock_requests_get(mock_api_response)
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4900",
+        timeout=30,
+    ).and_return(mock)
+
+    draw = fetch_draw(4900)
+
+    assert isinstance(draw.reg_close_time, datetime)
+    assert draw.reg_close_time.isoformat() == "2025-05-10T15:59:00+02:00"
 
 
 def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response):
