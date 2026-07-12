@@ -39,6 +39,31 @@ def test_date_2025_05_10_finds_draw_4900(capsys):
     assert "Bournemou" in captured.out
 
 
+def test_date_invalid_date_returns_exit_code_1(capsys):
+    """--date with an unparseable string exits with 1."""
+    exit_code = main(["--date", "not-a-date"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Invalid date" in captured.out
+
+
+def test_date_no_match_returns_exit_code_1(capsys):
+    """--date for a month with no matching draw exits with 1."""
+    datepicker_data: dict[str, list[Any]] = {"datepicker": []}
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2099&month=1",
+        timeout=30,
+    ).and_return(_mock_response(datepicker_data))
+
+    exit_code = main(["--date", "2099-01-01"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "No draw found" in captured.out
+
+
 def _mock_response(data: Any, status_code: int = 200) -> Any:
     mock = flexmock(status_code=status_code)
     mock.should_receive("json").and_return(data)
