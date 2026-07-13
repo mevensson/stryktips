@@ -84,3 +84,5 @@ After updating upstream skills (via `npx skills add ...`), review
 
 All changes are submitted via GitHub PRs. Use the `gh` CLI for PR operations.
 - Do not amend or force-push commits in an open PR; add new commits instead.
+- Every feature PR must update user-facing documentation (README.md, CONTEXT.md)
+  when interfaces change. Include which docs were updated in the PR description.
