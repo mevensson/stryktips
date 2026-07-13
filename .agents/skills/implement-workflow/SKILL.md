@@ -44,7 +44,11 @@ Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD). Inclu
 
 Run `ruff format --check .` and `ruff check .` and `mypy .` and `pytest` one last time as a safety net. Fix any issues.
 
-### 7. Push and create a PR
+### 7. Audit documentation
+
+Check README.md, CONTEXT.md, and any other user-facing docs for references to interfaces this ticket changed. Update them if stale.
+
+### 8. Push and create a PR
 
 Push the branch and create a PR targeting main. The PR description must reference the issue (e.g. `Closes #<ticket>` or `Implements #<ticket>`). Include a brief summary of the changes.
 

@@ -15,6 +15,7 @@ With Nix/direnv:
 ```bash
 direnv allow   # or: nix develop
 python stryktips.py --draw <number>
+python stryktips.py --date 2025-05-10
 ```
 
 Without Nix:
@@ -22,13 +23,17 @@ Without Nix:
 ```bash
 pip install requests
 python stryktips.py --draw <number>
+python stryktips.py --date 2025-05-10
 ```
 
 ## Arguments
 
-| Argument   | Required | Type | Description                          |
-| ---------- | -------- | ---- | ------------------------------------ |
-| `--draw`   | Yes      | int  | Draw number for Stryktipset data     |
+| Argument   | Required | Type | Description                              |
+| ---------- | -------- | ---- | ---------------------------------------- |
+| `--draw`   | Yes*     | int  | Draw number for Stryktipset data         |
+| `--date`   | Yes*     | str  | Calendar date (YYYY-MM-DD) for draw month |
+
+*Exactly one of `--draw` or `--date` is required.
 
 ## Output
 

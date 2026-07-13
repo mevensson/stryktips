@@ -67,7 +67,22 @@ Single-context layout — one `CONTEXT.md` and `docs/adr/` at the repo root. See
 - `/implement-workflow <ticket-number>` — implement one ticket using `tdd-workflow`, then verify and ask the user to run `/code-review main`.
 - `/code-review [ref]` — two-axis review (standards + spec) of the diff against the given ref (default: `main`).
 
+### Skill management
+
+Skills live in `.agents/skills/`. `skills-lock.json` is the upstream manifest
+(managed by the `npx skills` CLI). Skills listed there come from a registry
+source (e.g. `mattpocock/skills`) and should not be modified locally.
+
+Skills **not** in `skills-lock.json` are local customizations — they can be
+freely adapted. Current local skills: `implement-workflow`, `tdd-workflow`,
+`unit-test-design`.
+
+After updating upstream skills (via `npx skills add ...`), review
+`skills-lock.json` for hash changes before committing.
+
 ## Pull Requests
 
 All changes are submitted via GitHub PRs. Use the `gh` CLI for PR operations.
 - Do not amend or force-push commits in an open PR; add new commits instead.
+- Every feature PR must update user-facing documentation (README.md, CONTEXT.md)
+  when interfaces change. Include which docs were updated in the PR description.
