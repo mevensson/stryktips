@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 import requests
 from flexmock import flexmock
 
@@ -73,8 +74,6 @@ def test_date_2020_04_01_forward_scans_to_june(capsys):  # noqa: PLR0915
 
 def test_date_2000_01_01_no_draw_12_months(capsys):
     """--date 2000-01-01 with no draws in 12 months exits with 1 and stderr."""
-    import pytest
-
     empty_data: dict[str, list[Any]] = {"resultDates": []}
     for month in range(1, 13):
         flexmock(requests).should_receive("get").with_args(
@@ -102,8 +101,6 @@ def test_date_invalid_date_returns_exit_code_1(capsys):
 
 def test_date_no_match_returns_exit_code_1(capsys):
     """--date for 12 months with no matching draw exits with SystemExit(1)."""
-    import pytest
-
     datepicker_data: dict[str, list[Any]] = {"resultDates": []}
     for month in range(1, 13):
         flexmock(requests).should_receive("get").with_args(

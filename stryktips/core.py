@@ -57,17 +57,14 @@ def _display(draw: Draw) -> None:
 
 
 MAX_SCAN_MONTHS = 12
-
-
-def _parse_date(date_str: str) -> date:
-    try:
-        return date.fromisoformat(date_str)
-    except ValueError:
-        raise ValueError(f"Invalid date: {date_str}") from None
+MONTHS_IN_YEAR = 12
 
 
 def _resolve_draw_by_date(date_str: str) -> Draw:  # noqa: PLR0915
-    target = _parse_date(date_str)
+    try:
+        target = date.fromisoformat(date_str)
+    except ValueError:
+        raise ValueError(f"Invalid date: {date_str}") from None
 
     all_entries: list[DatepickerEntry] = []
     year, month = target.year, target.month
@@ -84,7 +81,7 @@ def _resolve_draw_by_date(date_str: str) -> Draw:  # noqa: PLR0915
                 )
             return fetch_draw(result.draw_number)
         month += 1
-        if month > MAX_SCAN_MONTHS:
+        if month > MONTHS_IN_YEAR:
             month = 1
             year += 1
 
