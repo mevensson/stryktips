@@ -75,7 +75,7 @@ def test_date_2020_04_01_forward_scans_to_june(capsys):  # noqa: PLR0915
         "Note: No draw found for 2020-04-01, using 2020-06-20 (draw 4642)"
         in captured.err
     )
-    assert "Stryktipset" in captured.out
+    assert "Stryktips v. 2020-25 (draw 4642)" in captured.out
 
 
 def test_date_invalid_date_returns_exit_code_1(capsys):

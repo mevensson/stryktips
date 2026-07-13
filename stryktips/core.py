@@ -1,9 +1,10 @@
 import argparse
+import sys
 from datetime import date
 
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
-from stryktips.models import Draw
+from stryktips.models import DatepickerEntry, Draw
 from stryktips.resolver import resolve_draw_number
 
 
@@ -55,15 +56,35 @@ def _display(draw: Draw) -> None:
     print(joined)  # noqa: T201
 
 
-def _resolve_draw_by_date(date_str: str) -> Draw:
+MAX_SCAN_MONTHS = 12
+
+
+def _parse_date(date_str: str) -> date:
     try:
-        target = date.fromisoformat(date_str)
+        return date.fromisoformat(date_str)
     except ValueError:
-        msg = f"Invalid date: {date_str}"
-        raise ValueError(msg) from None
-    entries = fetch_draws_by_month(target.year, target.month)
-    result = resolve_draw_number(target, "date", entries)
-    if result.draw_number == 0:
-        msg = f"No draw found for {date_str}"
-        raise ValueError(msg)
-    return fetch_draw(result.draw_number)
+        raise ValueError(f"Invalid date: {date_str}") from None
+
+
+def _resolve_draw_by_date(date_str: str) -> Draw:  # noqa: PLR0915
+    target = _parse_date(date_str)
+
+    all_entries: list[DatepickerEntry] = []
+    year, month = target.year, target.month
+
+    for _ in range(MAX_SCAN_MONTHS):
+        all_entries.extend(fetch_draws_by_month(year, month))
+        result = resolve_draw_number(target, "date", all_entries)
+        if result.draw_number != 0:
+            print(  # noqa: T201
+                f"Note: No draw found for {date_str},"
+                f" using {result.match_date} (draw {result.draw_number})",
+                file=sys.stderr,
+            )
+            return fetch_draw(result.draw_number)
+        month += 1
+        if month > MAX_SCAN_MONTHS:
+            month = 1
+            year += 1
+
+    raise ValueError(f"No draw found for {date_str}")
