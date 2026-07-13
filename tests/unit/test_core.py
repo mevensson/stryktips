@@ -2,6 +2,7 @@
 
 from datetime import date
 
+import pytest
 from flexmock import flexmock
 
 from stryktips.models import DatepickerEntry, Draw
@@ -35,3 +36,20 @@ def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: 
         "Note: No draw found for 2020-04-01, using 2020-05-02 (draw 4701)"
         in captured.err
     )
+
+
+def test_resolve_draw_by_date_exits_after_12_empty_months(capsys):
+    """When 12 months have no entries, print stderr and sys.exit(1)."""
+    import stryktips.core
+
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core._resolve_draw_by_date("2000-01-01")
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 1
+    assert "No draw found within 12 months of 2000-01-01" in captured.err

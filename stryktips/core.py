@@ -88,4 +88,5 @@ def _resolve_draw_by_date(date_str: str) -> Draw:  # noqa: PLR0915
             month = 1
             year += 1
 
-    raise ValueError(f"No draw found for {date_str}")
+    print(f"No draw found within 12 months of {date_str}", file=sys.stderr)  # noqa: T201
+    sys.exit(1)
