@@ -17,6 +17,7 @@ from stryktips.models import (
 from stryktips.odds import remove_overround
 
 _RESULT_TYPE_FULLTIME = 2
+_NOT_FOUND = 404
 
 
 def fetch_draw(draw_number: int) -> Draw:
@@ -60,16 +61,21 @@ def fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
         f"?product=stryktipset&year={year}&month={month}"
     )
     response = requests.get(url, timeout=30)
+    if response.status_code == _NOT_FOUND:
+        return []
     response.raise_for_status()
 
     data = response.json()
-    entries = data.get("datepicker", [])
+    entries = data.get("resultDates") or data.get("datepicker") or []
     return [_parse_datepicker_entry(e) for e in entries]
 
 
 def _parse_datepicker_entry(entry: dict[str, Any]) -> DatepickerEntry:
+    raw_date = entry["date"]
+    if "T" in raw_date:
+        raw_date = raw_date.split("T")[0]
     return DatepickerEntry(
-        date=date.fromisoformat(entry["date"]),
+        date=date.fromisoformat(raw_date),
         draw_number=entry["drawNumber"],
     )
 

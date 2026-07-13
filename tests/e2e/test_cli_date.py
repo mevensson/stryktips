@@ -4,20 +4,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 import requests
 from flexmock import flexmock
 
 from stryktips import main
 
 
-def test_date_2025_05_10_finds_draw_4900(capsys):
+def test_date_2025_05_10_finds_draw_4900(capsys):  # noqa: PLR0915
     """--date 2025-05-10 finds draw 4900 and displays it."""
-    datepicker_data = {
-        "datepicker": [
-            {"date": "2025-05-05", "drawNumber": 4898},
-            {"date": "2025-05-10", "drawNumber": 4900},
-        ]
-    }
+    datepicker_data = json.loads(
+        Path("tests/fixtures/datepicker_2025_05.json").read_text()
+    )
     draw_data = json.loads(Path("tests/fixtures/week_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
@@ -37,6 +35,59 @@ def test_date_2025_05_10_finds_draw_4900(capsys):
     assert exit_code == 0
     assert "Stryktipset v. 2025-19 (draw 4900)" in captured.out
     assert "Bournemou" in captured.out
+    assert captured.err == ""
+
+
+def test_date_2020_04_01_forward_scans_to_june(capsys):  # noqa: PLR0915
+    """--date 2020-04-01 forward-scans through empty months to find draw 4642."""
+    empty_data: dict[str, list[Any]] = {"resultDates": []}
+    for month in [4, 5]:
+        flexmock(requests).should_receive("get").with_args(
+            "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+            f"?product=stryktipset&year=2020&month={month}",
+            timeout=30,
+        ).and_return(_mock_response(empty_data))
+
+    june_data = json.loads(Path("tests/fixtures/datepicker_2020_06.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2020&month=6",
+        timeout=30,
+    ).and_return(_mock_response(june_data))
+
+    draw_data = json.loads(Path("tests/fixtures/draw_4642.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
+        timeout=30,
+    ).and_return(_mock_response(draw_data))
+
+    exit_code = main(["--date", "2020-04-01"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert (
+        "Note: No draw found for 2020-04-01, using 2020-06-20 (draw 4642)"
+        in captured.err
+    )
+    assert "Stryktips v. 2020-25 (draw 4642)" in captured.out
+
+
+def test_date_2000_01_01_no_draw_12_months(capsys):
+    """--date 2000-01-01 with no draws in 12 months exits with 1 and stderr."""
+    empty_data: dict[str, list[Any]] = {"resultDates": []}
+    for month in range(1, 13):
+        flexmock(requests).should_receive("get").with_args(
+            "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+            f"?product=stryktipset&year=2000&month={month}",
+            timeout=30,
+        ).and_return(_mock_response(empty_data))
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--date", "2000-01-01"])
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 1
+    assert "No draw found within 12 months of 2000-01-01" in captured.err
 
 
 def test_date_invalid_date_returns_exit_code_1(capsys):
@@ -49,19 +100,21 @@ def test_date_invalid_date_returns_exit_code_1(capsys):
 
 
 def test_date_no_match_returns_exit_code_1(capsys):
-    """--date for a month with no matching draw exits with 1."""
-    datepicker_data: dict[str, list[Any]] = {"datepicker": []}
-    flexmock(requests).should_receive("get").with_args(
-        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
-        "?product=stryktipset&year=2099&month=1",
-        timeout=30,
-    ).and_return(_mock_response(datepicker_data))
+    """--date for 12 months with no matching draw exits with SystemExit(1)."""
+    datepicker_data: dict[str, list[Any]] = {"resultDates": []}
+    for month in range(1, 13):
+        flexmock(requests).should_receive("get").with_args(
+            "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+            f"?product=stryktipset&year=2099&month={month}",
+            timeout=30,
+        ).and_return(_mock_response(datepicker_data))
 
-    exit_code = main(["--date", "2099-01-01"])
+    with pytest.raises(SystemExit) as exc:
+        main(["--date", "2099-01-01"])
     captured = capsys.readouterr()
 
-    assert exit_code == 1
-    assert "No draw found" in captured.out
+    assert exc.value.code == 1
+    assert "No draw found within 12 months of 2099-01-01" in captured.err
 
 
 def _mock_response(data: Any, status_code: int = 200) -> Any:
