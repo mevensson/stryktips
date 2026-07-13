@@ -30,28 +30,35 @@ Push the branch to origin so the PR targets main.
 
 Identify where the changes will go. Use the project's domain glossary vocabulary.
 
-### 5. Implement with tdd-workflow
+### 5. Decompose into e2e scenarios
 
-Drive the `tdd-workflow` skill. This is a **new feature** (two-level TDD). Include the ticket number in every commit message so downstream skills can trace back to the spec:
+From the ticket, enumerate the distinct end-to-end behaviors (scenarios) you need. Each scenario is one vertical slice.
 
-1. Write a failing end-to-end test → commit `Red (e2e): <description> (#<ticket>)`
-2. Inner loop — repeat until the e2e test passes:
-   1. Write a failing unit test → commit `Red (unit): <description> (#<ticket>)`
-   2. Add the minimal code to make it pass → commit `Green: <description> (#<ticket>)`
-   3. Refactor → commit `Refactor: <description> (#<ticket>)`
+### 6. Implement each scenario via sub-agent
 
-### 6. Final verification
+For each scenario, spawn a sub-agent that runs two-level TDD for one scenario only.
+
+Spawn sub-agents **sequentially** — each subsequent scenario builds on the previous implementation.
+
+**Sub-agent prompt** — include:
+- The scenario description (from the ticket)
+- The current codebase state
+- The ticket number for commit messages
+- The pre-commit checks from the `tdd-workflow` skill
+- Brief: "Implement this one scenario using two-level TDD: write a failing e2e test → commit `Red (e2e): <description> (#<ticket>)`. Then run the inner loop (Red unit → Green → Refactor) until the e2e test passes, delegating each inner-loop iteration to a sub-agent. Do not add any other scenarios."
+
+### 7. Final verification
 
 Run `ruff format --check .` and `ruff check .` and `mypy .` and `pytest` one last time as a safety net. Fix any issues.
 
-### 7. Audit documentation
+### 8. Audit documentation
 
 Check README.md, CONTEXT.md, and any other user-facing docs for references to interfaces this ticket changed. Update them if stale.
 
-### 8. Push and create a PR
+### 9. Push and create a PR
 
 Push the branch and create a PR targeting main. The PR description must reference the issue (e.g. `Closes #<ticket>` or `Implements #<ticket>`). Include a brief summary of the changes.
 
-### 8. Tell the user
+### 10. Tell the user
 
 Say the PR is ready for review. Provide the PR URL. Tell them to run `/code-review main` in a clean context on this branch to review the changes.

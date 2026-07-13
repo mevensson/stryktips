@@ -35,9 +35,16 @@ flag the user.
 3. **New Feature (Two-Level TDD):**
    1. Write a failing end-to-end test → commit `Red (e2e): <feature description>`
    2. Inner loop — repeat until the e2e test passes:
-      1. Write a failing unit test → commit `Red (unit): <sub-component description>`
-      2. Add the minimal code to make it pass → commit `Green: <sub-component description>`
-      3. Refactor → commit `Refactor: <sub-component description>`
+      1. Analyze the gap between current state and the failing e2e test. Identify one seam — one unit-level behavior that's missing.
+      2. Delegate to a sub-agent for exactly one tight TDD cycle, so it has no visibility of subsequent iterations:
+
+         **Sub-agent prompt** — include:
+         - The behavior to implement (the seam from step 2.1)
+         - The ticket number for commit messages
+         - The pre-commit checks from this skill
+         - Brief: "Write a failing unit test → commit `Red (unit): <description>`. Add minimal implementation to pass → commit `Green: <description>`. Refactor → commit `Refactor: <description>`. Run the pre-commit checks before every commit. Do not add features beyond this one behavior."
+
+      3. Run the e2e test. If it passes → exit the inner loop. If not → go to step 2.1.
 
 4. **Bug Fix (One-Level TDD):**
    1. Write a failing unit test that reproduces the bug → commit `Red: <bug description>`
