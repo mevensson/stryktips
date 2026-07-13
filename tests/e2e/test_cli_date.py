@@ -10,7 +10,7 @@ from flexmock import flexmock
 from stryktips import main
 
 
-def test_date_2025_05_10_finds_draw_4900(capsys):
+def test_date_2025_05_10_finds_draw_4900(capsys):  # noqa: PLR0915
     """--date 2025-05-10 finds draw 4900 and displays it."""
     datepicker_data = {
         "datepicker": [
@@ -37,6 +37,7 @@ def test_date_2025_05_10_finds_draw_4900(capsys):
     assert exit_code == 0
     assert "Stryktipset v. 2025-19 (draw 4900)" in captured.out
     assert "Bournemou" in captured.out
+    assert captured.err == ""
 
 
 def test_date_2020_04_01_forward_scans_to_june(capsys):  # noqa: PLR0915

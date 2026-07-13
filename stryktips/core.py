@@ -76,11 +76,12 @@ def _resolve_draw_by_date(date_str: str) -> Draw:  # noqa: PLR0915
         all_entries.extend(fetch_draws_by_month(year, month))
         result = resolve_draw_number(target, "date", all_entries)
         if result.draw_number != 0:
-            print(  # noqa: T201
-                f"Note: No draw found for {date_str},"
-                f" using {result.match_date} (draw {result.draw_number})",
-                file=sys.stderr,
-            )
+            if not result.exact_match:
+                print(  # noqa: T201
+                    f"Note: No draw found for {date_str},"
+                    f" using {result.match_date} (draw {result.draw_number})",
+                    file=sys.stderr,
+                )
             return fetch_draw(result.draw_number)
         month += 1
         if month > MAX_SCAN_MONTHS:
