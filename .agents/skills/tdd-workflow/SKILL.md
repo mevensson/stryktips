@@ -7,6 +7,8 @@ description: >-
 
 # tdd-workflow
 
+Consult `/tdd` for TDD reference on good test practices, anti-patterns, and seam selection during the loop.
+
 **Before every commit**, run the following checks. Fix issues automatically where
 possible; otherwise fix them manually. If you are unable to resolve an issue,
 flag the user.
