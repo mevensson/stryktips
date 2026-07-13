@@ -12,12 +12,9 @@ from stryktips import main
 
 def test_date_2025_05_10_finds_draw_4900(capsys):  # noqa: PLR0915
     """--date 2025-05-10 finds draw 4900 and displays it."""
-    datepicker_data = {
-        "datepicker": [
-            {"date": "2025-05-05", "drawNumber": 4898},
-            {"date": "2025-05-10", "drawNumber": 4900},
-        ]
-    }
+    datepicker_data = json.loads(
+        Path("tests/fixtures/datepicker_2025_05.json").read_text()
+    )
     draw_data = json.loads(Path("tests/fixtures/week_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
@@ -42,7 +39,7 @@ def test_date_2025_05_10_finds_draw_4900(capsys):  # noqa: PLR0915
 
 def test_date_2020_04_01_forward_scans_to_june(capsys):  # noqa: PLR0915
     """--date 2020-04-01 forward-scans through empty months to find draw 4642."""
-    empty_data: dict[str, list[Any]] = {"datepicker": []}
+    empty_data: dict[str, list[Any]] = {"resultDates": []}
     for month in [4, 5]:
         flexmock(requests).should_receive("get").with_args(
             "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -50,12 +47,7 @@ def test_date_2020_04_01_forward_scans_to_june(capsys):  # noqa: PLR0915
             timeout=30,
         ).and_return(_mock_response(empty_data))
 
-    june_data = {
-        "datepicker": [
-            {"date": "2020-06-20", "drawNumber": 4642},
-            {"date": "2020-06-27", "drawNumber": 4643},
-        ]
-    }
+    june_data = json.loads(Path("tests/fixtures/datepicker_2020_06.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
         "?product=stryktipset&year=2020&month=6",
@@ -83,7 +75,7 @@ def test_date_2000_01_01_no_draw_12_months(capsys):
     """--date 2000-01-01 with no draws in 12 months exits with 1 and stderr."""
     import pytest
 
-    empty_data: dict[str, list[Any]] = {"datepicker": []}
+    empty_data: dict[str, list[Any]] = {"resultDates": []}
     for month in range(1, 13):
         flexmock(requests).should_receive("get").with_args(
             "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -112,7 +104,7 @@ def test_date_no_match_returns_exit_code_1(capsys):
     """--date for 12 months with no matching draw exits with SystemExit(1)."""
     import pytest
 
-    datepicker_data: dict[str, list[Any]] = {"datepicker": []}
+    datepicker_data: dict[str, list[Any]] = {"resultDates": []}
     for month in range(1, 13):
         flexmock(requests).should_receive("get").with_args(
             "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
