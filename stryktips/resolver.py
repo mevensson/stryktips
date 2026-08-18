@@ -33,6 +33,9 @@ def resolve_draw_number(
     if arg_type == "date":
         target = _parse_date_value(value)
         return _resolve_by_date(target, datepicker_data)
+    if arg_type == "week":
+        year, week = _parse_week_value(value)
+        return _resolve_by_week(year, week, datepicker_data)
     msg = f"Unknown arg_type: {arg_type}"
     raise ValueError(msg)
 
@@ -57,3 +60,34 @@ def _resolve_by_date(target: date, entries: list[DatepickerEntry]) -> ResolveRes
             )
 
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+
+
+def _parse_week_value(value: str | int | date) -> tuple[int, int]:
+    parts = str(value).split(".")
+    if len(parts) != 2 or not all(part.isdigit() for part in parts):  # noqa: PLR2004
+        msg = f"Invalid week: {value}"
+        raise ValueError(msg)
+    year = int(parts[0])
+    week = int(parts[1])
+    if not 1 <= week <= 53:  # noqa: PLR2004
+        msg = f"Invalid week: {value}"
+        raise ValueError(msg)
+    return year, week
+
+
+def _resolve_by_week(
+    year: int, week: int, entries: list[DatepickerEntry]
+) -> ResolveResult:
+    monday = date.fromisocalendar(year, week, 1)
+    sunday = date.fromisocalendar(year, week, 7)
+    match: DatepickerEntry | None = None
+    for entry in entries:
+        if monday <= entry.date <= sunday:
+            if match is None or entry.date > match.date:
+                match = entry
+
+    if match is None:
+        return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    return ResolveResult(
+        draw_number=match.draw_number, exact_match=True, match_date=match.date
+    )
