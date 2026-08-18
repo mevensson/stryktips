@@ -5,7 +5,7 @@ from datetime import date
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
-from stryktips.resolver import _parse_week_value, resolve_draw_number
+from stryktips.resolver import parse_week_value, resolve_draw_number
 
 MAX_SCAN_MONTHS = 12
 
@@ -76,7 +76,7 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
 
 def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW)."""
-    year, week = _parse_week_value(week_str)
+    year, week = parse_week_value(week_str)
     monday = date.fromisocalendar(year, week, 1)
     return _forward_scan(monday, "week", week_str)
 
