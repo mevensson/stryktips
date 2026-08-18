@@ -65,7 +65,7 @@ def _resolve_by_date(target: date, entries: list[DatepickerEntry]) -> ResolveRes
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
 
 
-def _parse_week_value(value: str | int | date) -> tuple[int, int]:
+def parse_week_value(value: str | int | date) -> tuple[int, int]:
     parts = str(value).split(".")
     if len(parts) != 2 or not all(part.isdigit() for part in parts):  # noqa: PLR2004
         msg = f"Invalid week: {value}"
@@ -81,7 +81,7 @@ def _parse_week_value(value: str | int | date) -> tuple[int, int]:
 def _week_monday(value: str | int | date) -> date:
     if isinstance(value, date):
         return value
-    return date.fromisocalendar(*_parse_week_value(value), 1)
+    return date.fromisocalendar(*parse_week_value(value), 1)
 
 
 def _resolve_by_week(monday: date, entries: list[DatepickerEntry]) -> ResolveResult:
@@ -91,6 +91,14 @@ def _resolve_by_week(monday: date, entries: list[DatepickerEntry]) -> ResolveRes
             return ResolveResult(
                 draw_number=entry.draw_number,
                 exact_match=True,
+                match_date=entry.date,
+            )
+
+    for entry in entries:
+        if entry.date >= monday:
+            return ResolveResult(
+                draw_number=entry.draw_number,
+                exact_match=False,
                 match_date=entry.date,
             )
 

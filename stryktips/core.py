@@ -5,10 +5,9 @@ from datetime import date
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
-from stryktips.resolver import _parse_week_value, resolve_draw_number
+from stryktips.resolver import parse_week_value, resolve_draw_number
 
 MAX_SCAN_MONTHS = 12
-MONTHS_IN_YEAR = 12
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,28 +71,27 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
     except ValueError:
         raise ValueError(f"Invalid date: {date_str}") from None
 
-    return _forward_scan(target, target, "date", date_str)
+    return _forward_scan(target, "date", date_str)
 
 
 def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW)."""
-    year, week = _parse_week_value(week_str)
+    year, week = parse_week_value(week_str)
     monday = date.fromisocalendar(year, week, 1)
-    return _forward_scan(monday, monday, "week", week_str)
+    return _forward_scan(monday, "week", week_str)
 
 
 def _forward_scan(  # noqa: PLR0915
-    anchor_date: date,
-    value: str | int | date,
+    anchor: date,
     arg_type: str,
     display_str: str,
 ) -> Draw:
     all_entries: list[DatepickerEntry] = []
-    year, month = anchor_date.year, anchor_date.month
+    year, month = anchor.year, anchor.month
 
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(year, month))
-        result = resolve_draw_number(value, arg_type, all_entries)
+        result = resolve_draw_number(anchor, arg_type, all_entries)
         if result.draw_number != 0:
             if not result.exact_match:
                 print(  # noqa: T201
@@ -103,7 +101,7 @@ def _forward_scan(  # noqa: PLR0915
                 )
             return fetch_draw(result.draw_number)
         month += 1
-        if month > MONTHS_IN_YEAR:
+        if month > MAX_SCAN_MONTHS:
             month = 1
             year += 1
 
