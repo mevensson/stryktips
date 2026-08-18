@@ -20,15 +20,19 @@ def resolve_draw_number(
     """Resolve a CLI argument value to a draw number.
 
     Args:
-        value: The argument value (string for ``"date"``, int for ``"draw"``).
-        arg_type: The type of resolution (``"date"`` or ``"draw"``).
+        value: The argument value to resolve. A date string (``YYYY-MM-DD``)
+            or ``date`` object for ``"date"``; an ISO week string (``YYYY.WW``)
+            for ``"week"``.
+        arg_type: The type of resolution (``"date"`` or ``"week"``).
         datepicker_data: List of available datepicker entries.
 
     Returns:
         A ResolveResult with the resolved draw number and match metadata.
 
     Raises:
-        ValueError: If the value cannot be parsed for the given arg_type.
+        ValueError: If the value cannot be parsed for the given arg_type,
+            including ISO week numbers that are outside a valid range for
+            their year (1-52, or 53 for years that have an ISO 53rd week).
     """
     if arg_type == "date":
         target = _parse_date_value(value)
