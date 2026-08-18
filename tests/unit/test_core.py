@@ -6,13 +6,12 @@ from datetime import date
 import pytest
 from flexmock import flexmock
 
+import stryktips.core
 from stryktips.models import DatepickerEntry, Draw
 
 
 def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: PLR0915
     """When anchor month has no entries, advance month-by-month until a match."""
-    import stryktips.core
-
     may_entries = [DatepickerEntry(date=date(2020, 5, 2), draw_number=4701)]
     calls: list[tuple[int, int]] = []
 
@@ -41,8 +40,6 @@ def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: 
 
 def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
     """Draw whose date falls inside the ISO week resolves as an exact match."""
-    import stryktips.core
-
     calls: list[tuple[int, int]] = []
 
     def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
@@ -65,8 +62,6 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
 
 def test_fetch_draw_from_args_routes_week():
     """A --week argument routes through _resolve_draw_by_week."""
-    import stryktips.core
-
     flexmock(
         stryktips.core,
         _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[]),
@@ -82,8 +77,6 @@ def test_fetch_draw_from_args_routes_week():
 
 def test_resolve_draw_by_date_exits_after_12_empty_months(capsys):
     """When 12 months have no entries, print stderr and sys.exit(1)."""
-    import stryktips.core
-
     flexmock(
         stryktips.core,
         fetch_draws_by_month=lambda y, m: [],
