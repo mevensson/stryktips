@@ -1,5 +1,6 @@
 """Unit tests for stryktips.core orchestration logic."""
 
+import argparse
 from datetime import date
 
 import pytest
@@ -60,6 +61,23 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
     assert draw.draw_number == 4900
     assert calls == [(2025, 5)]
     assert captured.err == ""
+
+
+def test_fetch_draw_from_args_routes_week():
+    """A --week argument routes through _resolve_draw_by_week."""
+    import stryktips.core
+
+    flexmock(
+        stryktips.core,
+        _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[]),
+    )
+    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=1234, matches=[]))
+
+    args = argparse.Namespace(date=None, week="2025.19", draw=None)
+
+    draw = stryktips.core._fetch_draw_from_args(args)
+
+    assert draw.draw_number == 4900
 
 
 def test_resolve_draw_by_date_exits_after_12_empty_months(capsys):
