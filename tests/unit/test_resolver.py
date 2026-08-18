@@ -76,12 +76,12 @@ def test_resolve_draw_number_returns_zero_for_empty_data():
 
 
 def test_resolve_draw_number_week_finds_draw_in_iso_week():
-    """A week arg resolves to the draw whose date falls inside that ISO week."""
+    """A week arg resolves to the first draw dated inside that ISO week."""
     from stryktips.models import DatepickerEntry
     from stryktips.resolver import ResolveResult, resolve_draw_number
 
     entries = [
-        DatepickerEntry(date=date(2025, 5, 5), draw_number=4899),
+        DatepickerEntry(date=date(2025, 5, 3), draw_number=4899),
         DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
     ]
 

@@ -80,14 +80,12 @@ def _resolve_by_week(
 ) -> ResolveResult:
     monday = date.fromisocalendar(year, week, 1)
     sunday = date.fromisocalendar(year, week, 7)
-    match: DatepickerEntry | None = None
     for entry in entries:
         if monday <= entry.date <= sunday:
-            if match is None or entry.date > match.date:
-                match = entry
+            return ResolveResult(
+                draw_number=entry.draw_number,
+                exact_match=True,
+                match_date=entry.date,
+            )
 
-    if match is None:
-        return ResolveResult(draw_number=0, exact_match=False, match_date=None)
-    return ResolveResult(
-        draw_number=match.draw_number, exact_match=True, match_date=match.date
-    )
+    return ResolveResult(draw_number=0, exact_match=False, match_date=None)
