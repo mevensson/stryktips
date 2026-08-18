@@ -51,6 +51,8 @@ def create_parser() -> argparse.ArgumentParser:
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
         return _resolve_draw_by_date(args.date)
+    if args.week is not None:
+        return _resolve_draw_by_week(args.week)
     return fetch_draw(args.draw)
 
 
