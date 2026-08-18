@@ -75,6 +75,23 @@ def test_resolve_draw_number_returns_zero_for_empty_data():
     assert result == ResolveResult(draw_number=0, exact_match=False, match_date=None)
 
 
+def test_resolve_draw_number_week_finds_draw_in_iso_week():
+    """A week arg resolves to the draw whose date falls inside that ISO week."""
+    from stryktips.models import DatepickerEntry
+    from stryktips.resolver import ResolveResult, resolve_draw_number
+
+    entries = [
+        DatepickerEntry(date=date(2025, 5, 5), draw_number=4899),
+        DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+    ]
+
+    result = resolve_draw_number("2025.19", "week", entries)
+
+    assert result == ResolveResult(
+        draw_number=4900, exact_match=True, match_date=date(2025, 5, 10)
+    )
+
+
 def test_resolve_draw_number_raises_on_invalid_date_string():
     """An unparseable date string raises ValueError."""
     from stryktips.models import DatepickerEntry
