@@ -8,7 +8,6 @@ from stryktips.models import DatepickerEntry, Draw
 from stryktips.resolver import _parse_week_value, resolve_draw_number
 
 MAX_SCAN_MONTHS = 12
-MONTHS_IN_YEAR = 12
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -103,7 +102,7 @@ def _forward_scan(  # noqa: PLR0915
                 )
             return fetch_draw(result.draw_number)
         month += 1
-        if month > MONTHS_IN_YEAR:
+        if month > MAX_SCAN_MONTHS:
             month = 1
             year += 1
 
