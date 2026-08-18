@@ -7,6 +7,9 @@ from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
 from stryktips.resolver import _parse_week_value, resolve_draw_number
 
+MAX_SCAN_MONTHS = 12
+MONTHS_IN_YEAR = 12
+
 
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
@@ -63,10 +66,6 @@ def _display(draw: Draw) -> None:
     print(joined)  # noqa: T201
 
 
-MAX_SCAN_MONTHS = 12
-MONTHS_IN_YEAR = 12
-
-
 def _resolve_draw_by_date(date_str: str) -> Draw:
     try:
         target = date.fromisoformat(date_str)
@@ -109,7 +108,7 @@ def _forward_scan(  # noqa: PLR0915
             year += 1
 
     print(  # noqa: T201
-        f"No draw found within 12 months of {display_str}",
+        f"No draw found within {MAX_SCAN_MONTHS} months of {display_str}",
         file=sys.stderr,
     )
     sys.exit(1)
