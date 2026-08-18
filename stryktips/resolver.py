@@ -1,6 +1,6 @@
 """Draw number resolution from CLI arguments."""
 
-from datetime import date
+from datetime import date, timedelta
 from typing import NamedTuple
 
 from stryktips.models import DatepickerEntry
@@ -34,8 +34,7 @@ def resolve_draw_number(
         target = _parse_date_value(value)
         return _resolve_by_date(target, datepicker_data)
     if arg_type == "week":
-        year, week = _parse_week_value(value)
-        return _resolve_by_week(year, week, datepicker_data)
+        return _resolve_by_week(_week_monday(value), datepicker_data)
     msg = f"Unknown arg_type: {arg_type}"
     raise ValueError(msg)
 
@@ -75,11 +74,14 @@ def _parse_week_value(value: str | int | date) -> tuple[int, int]:
     return year, week
 
 
-def _resolve_by_week(
-    year: int, week: int, entries: list[DatepickerEntry]
-) -> ResolveResult:
-    monday = date.fromisocalendar(year, week, 1)
-    sunday = date.fromisocalendar(year, week, 7)
+def _week_monday(value: str | int | date) -> date:
+    if isinstance(value, date):
+        return value
+    return date.fromisocalendar(*_parse_week_value(value), 1)
+
+
+def _resolve_by_week(monday: date, entries: list[DatepickerEntry]) -> ResolveResult:
+    sunday = monday + timedelta(days=6)
     for entry in entries:
         if monday <= entry.date <= sunday:
             return ResolveResult(

@@ -80,7 +80,7 @@ def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW)."""
     year, week = _parse_week_value(week_str)
     monday = date.fromisocalendar(year, week, 1)
-    return _forward_scan(monday, week_str, "week", week_str)
+    return _forward_scan(monday, monday, "week", week_str)
 
 
 def _forward_scan(  # noqa: PLR0915
