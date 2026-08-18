@@ -38,6 +38,30 @@ def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: 
     )
 
 
+def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
+    """Draw whose date falls inside the ISO week resolves as an exact match."""
+    import stryktips.core
+
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        return [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
+    )
+
+    draw = stryktips.core._resolve_draw_by_week("2025.19")  # type: ignore[attr-defined]  # noqa: PGH003
+    captured = capsys.readouterr()
+
+    assert draw.draw_number == 4900
+    assert calls == [(2025, 5)]
+    assert captured.err == ""
+
+
 def test_resolve_draw_by_date_exits_after_12_empty_months(capsys):
     """When 12 months have no entries, print stderr and sys.exit(1)."""
     import stryktips.core
