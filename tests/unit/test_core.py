@@ -54,7 +54,7 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
         fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
     )
 
-    draw = stryktips.core._resolve_draw_by_week("2025.19")  # type: ignore[attr-defined]  # noqa: PGH003
+    draw = stryktips.core._resolve_draw_by_week("2025.19")
     captured = capsys.readouterr()
 
     assert draw.draw_number == 4900
