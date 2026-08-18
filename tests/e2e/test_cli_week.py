@@ -65,8 +65,7 @@ def test_week_2020_15_forward_scans_to_june(capsys):  # noqa: PLR0915
 
     assert exit_code == 0
     assert (
-        "Note: No draw found for 2020.15, using 2020-06-20 (draw 4642)"
-        in captured.err
+        "Note: No draw found for 2020.15, using 2020-06-20 (draw 4642)" in captured.err
     )
     assert "Stryktips v. 2020-25 (draw 4642)" in captured.out
 
