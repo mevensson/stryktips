@@ -40,6 +40,11 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         help="Calendar date (YYYY-MM-DD) of the draw",
     )
+    group.add_argument(
+        "--week",
+        type=str,
+        help="ISO week (YYYY.WW) of the draw",
+    )
     return parser
 
 
