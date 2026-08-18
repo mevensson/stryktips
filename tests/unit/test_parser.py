@@ -45,6 +45,14 @@ def test_create_parser_has_date_argument():
     assert args.date == "2025-05-10"
 
 
+def test_create_parser_has_week_argument():
+    parser = create_parser()
+
+    args = parser.parse_args(["--week", "2025.19"])
+
+    assert args.week == "2025.19"
+
+
 def test_create_parser_date_and_draw_are_mutually_exclusive():
     parser = create_parser()
 
