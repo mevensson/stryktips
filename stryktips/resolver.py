@@ -66,11 +66,11 @@ def _parse_week_value(value: str | int | date) -> tuple[int, int]:
     if len(parts) != 2 or not all(part.isdigit() for part in parts):  # noqa: PLR2004
         msg = f"Invalid week: {value}"
         raise ValueError(msg)
-    year = int(parts[0])
-    week = int(parts[1])
-    if not 1 <= week <= 53:  # noqa: PLR2004
-        msg = f"Invalid week: {value}"
-        raise ValueError(msg)
+    year, week = (int(part) for part in parts)
+    try:
+        date.fromisocalendar(year, week, 1)
+    except ValueError:
+        raise ValueError(f"Invalid week: {value}") from None
     return year, week
 
 
