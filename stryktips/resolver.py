@@ -94,4 +94,12 @@ def _resolve_by_week(monday: date, entries: list[DatepickerEntry]) -> ResolveRes
                 match_date=entry.date,
             )
 
+    for entry in entries:
+        if entry.date >= monday:
+            return ResolveResult(
+                draw_number=entry.draw_number,
+                exact_match=False,
+                match_date=entry.date,
+            )
+
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
