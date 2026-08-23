@@ -55,8 +55,8 @@ order = OrderBuilder().with_items(0).build()
 In languages with keyword/default arguments (Python, Kotlin), constructor-based builders are acceptable:
 
 ```python
-User(name="edge case")
-Order(items=[])
+user = User(name="edge case")
+order = Order(items=[])
 ```
 
 ## Test the contract, not the implementation
