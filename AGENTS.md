@@ -74,8 +74,8 @@ Skills live in `.agents/skills/`. `skills-lock.json` is the upstream manifest
 source (e.g. `mattpocock/skills`) and should not be modified locally.
 
 Skills **not** in `skills-lock.json` are local customizations — they can be
-freely adapted. Current local skills: `implement-workflow`, `tdd-workflow`,
-`unit-test-design`.
+freely adapted. Current local skills: `code-design`, `implement-workflow`,
+`tdd-workflow`, `unit-test-design`.
 
 After updating upstream skills (via `npx skills add ...`), review
 `skills-lock.json` for hash changes before committing.
