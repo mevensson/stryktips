@@ -1,5 +1,7 @@
 """Display formatting for Stryktipset matches."""
 
+from decimal import Decimal
+
 from stryktips.models import Draw, Match
 
 
@@ -68,9 +70,14 @@ def _outcome(match: Match) -> str:
 
 def _percentages(match: Match) -> tuple[str, str, str]:
     if match.svenska_folket:
+        sf = match.svenska_folket
         return (
-            match.svenska_folket.one,
-            match.svenska_folket.x,
-            match.svenska_folket.two,
+            _format_percentage(sf.one),
+            _format_percentage(sf.x),
+            _format_percentage(sf.two),
         )
     return ("0", "0", "0")
+
+
+def _format_percentage(value: Decimal) -> str:
+    return str(value)
