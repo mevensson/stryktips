@@ -14,7 +14,9 @@ def sample_match() -> Match:
         away_team="Aston V",
         home_score=0,
         away_score=1,
-        svenska_folket=SvenskaFolket(one="35", x="24", two="41"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("35"), x=Decimal("24"), two=Decimal("41")
+        ),
     )
 
 
@@ -101,7 +103,9 @@ def test_format_matches_shows_home_win():
         away_team="Away",
         home_score=2,
         away_score=1,
-        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
+        ),
     )
 
     # Act
@@ -120,7 +124,9 @@ def test_format_matches_shows_draw():
         away_team="Away",
         home_score=1,
         away_score=1,
-        svenska_folket=SvenskaFolket(one="30", x="40", two="30"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("30"), x=Decimal("40"), two=Decimal("30")
+        ),
     )
 
     # Act
@@ -140,7 +146,9 @@ def test_format_matches_shows_odds_when_present():
         away_team="Away",
         home_score=1,
         away_score=0,
-        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
+        ),
         odds=odds,
     )
 
@@ -160,7 +168,9 @@ def test_format_matches_omits_odds_when_absent():
         away_team="Away",
         home_score=1,
         away_score=0,
-        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
+        ),
     )
 
     # Act
@@ -184,7 +194,9 @@ def test_format_matches_shows_outcome_probabilities_when_odds_present():
         away_team="Away",
         home_score=1,
         away_score=0,
-        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
+        ),
         odds=Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80")),
         outcome_probability=probs,
     )
@@ -205,7 +217,9 @@ def test_format_matches_omits_outcome_probabilities_when_odds_absent():
         away_team="Away",
         home_score=1,
         away_score=0,
-        svenska_folket=SvenskaFolket(one="50", x="20", two="30"),
+        svenska_folket=SvenskaFolket(
+            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
+        ),
     )
 
     # Act

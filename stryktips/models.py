@@ -5,9 +5,9 @@ from decimal import Decimal
 
 @dataclass
 class SvenskaFolket:
-    one: str
-    x: str
-    two: str
+    one: Decimal
+    x: Decimal
+    two: Decimal
 
 
 @dataclass

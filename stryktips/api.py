@@ -18,6 +18,9 @@ from stryktips.odds import remove_overround
 
 _RESULT_TYPE_FULLTIME = 2
 _NOT_FOUND = 404
+_MIN_PARTICIPANTS = 2
+_API_DRAWS = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws"
+_API_DATEPICKER = "https://api.spela.svenskaspel.se/draw/1/results/datepicker"
 
 
 def fetch_draw(draw_number: int) -> Draw:
@@ -29,7 +32,7 @@ def fetch_draw(draw_number: int) -> Draw:
     Returns:
         A Draw containing parsed match data.
     """
-    url = f"https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{draw_number}"
+    url = f"{_API_DRAWS}/{draw_number}"
     response = requests.get(url, timeout=30)
     response.raise_for_status()
 
@@ -56,10 +59,7 @@ def fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
     Returns:
         A list of DatepickerEntry for draws in that month.
     """
-    url = (
-        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
-        f"?product=stryktipset&year={year}&month={month}"
-    )
+    url = f"{_API_DATEPICKER}/?product=stryktipset&year={year}&month={month}"
     response = requests.get(url, timeout=30)
     if response.status_code == _NOT_FOUND:
         return []
@@ -88,6 +88,7 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 def _parse_match(event: dict[str, Any]) -> Match:
     match = event["match"]
+    home_team, away_team = _parse_participants(match)
     home_score, away_score = _parse_scores(match)
     svenska_folket = _parse_svenska_folket(event)
     odds = _parse_odds(event)
@@ -95,14 +96,22 @@ def _parse_match(event: dict[str, Any]) -> Match:
 
     return Match(
         event_number=event["eventNumber"],
-        home_team=match["participants"][0]["mediumName"],
-        away_team=match["participants"][1]["mediumName"],
+        home_team=home_team,
+        away_team=away_team,
         home_score=home_score,
         away_score=away_score,
         svenska_folket=svenska_folket,
         odds=odds,
         outcome_probability=outcome_probability,
     )
+
+
+def _parse_participants(match: dict[str, Any]) -> tuple[str, str]:
+    participants = match.get("participants") or []
+    if len(participants) < _MIN_PARTICIPANTS:
+        msg = "Match is missing home/away participants"
+        raise ValueError(msg)
+    return participants[0]["mediumName"], participants[1]["mediumName"]
 
 
 def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None:
@@ -123,9 +132,9 @@ def _parse_svenska_folket(event: dict[str, Any]) -> SvenskaFolket | None:
     sf = event.get("svenskaFolket")
     if sf:
         return SvenskaFolket(
-            one=sf.get("one", "0"),
-            x=sf.get("x", "0"),
-            two=sf.get("two", "0"),
+            one=_parse_swedish_decimal(sf.get("one", "0")),
+            x=_parse_swedish_decimal(sf.get("x", "0")),
+            two=_parse_swedish_decimal(sf.get("two", "0")),
         )
     return None
 

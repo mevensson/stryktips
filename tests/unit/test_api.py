@@ -158,6 +158,45 @@ def test_fetch_draw_handles_empty_response():
     assert len(draw.matches) == 0
 
 
+def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response):
+    """svenskaFolket percentages are parsed into Decimal values."""
+    from stryktips.models import SvenskaFolket
+
+    mock = _mock_requests_get(mock_api_response)
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4900",
+        timeout=30,
+    ).and_return(mock)
+
+    draw = fetch_draw(4900)
+
+    match1 = draw.matches[0]
+    assert match1.svenska_folket == SvenskaFolket(
+        one=Decimal("35"),
+        x=Decimal("24"),
+        two=Decimal("41"),
+    )
+
+
+def test_fetch_draw_raises_on_missing_participants():
+    """A match without home/away participants raises ValueError."""
+    bad_event: dict[str, Any] = {
+        "draw": {
+            "drawEvents": [
+                {"eventNumber": 1, "match": {"participants": []}},
+            ]
+        }
+    }
+    mock = _mock_requests_get(bad_event)
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}5000",
+        timeout=30,
+    ).and_return(mock)
+
+    with pytest.raises(ValueError, match="participants"):
+        fetch_draw(5000)
+
+
 def test_fetch_draws_by_month_returns_parsed_entries():
     """fetch_draws_by_month returns DatepickerEntry list from the API."""
     from datetime import date
