@@ -75,19 +75,36 @@ def test_fetch_draw_from_args_routes_week():
     assert draw.draw_number == 4900
 
 
-def test_resolve_draw_by_date_exits_after_12_empty_months(capsys):
-    """When 12 months have no entries, print stderr and sys.exit(1)."""
+def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
+    """When 12 months have no entries, raise DrawNotFound."""
+    from stryktips.resolver import DrawNotFound
+
     flexmock(
         stryktips.core,
         fetch_draws_by_month=lambda y, m: [],
     )
 
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(DrawNotFound) as exc:
         stryktips.core._resolve_draw_by_date("2000-01-01")
+
+    assert exc.value.value == "2000-01-01"
+
+
+def test_main_reports_draw_not_found(capsys):
+    """main maps DrawNotFound to exit 1 with a stderr message."""
+    from stryktips.resolver import DrawNotFound
+
+    def raise_not_found(_args: argparse.Namespace) -> Draw:
+        raise DrawNotFound("2000-01-01")
+
+    flexmock(stryktips.core, _fetch_draw_from_args=raise_not_found)
+
+    exit_code = stryktips.core.main(["--date", "2000-01-01"])
     captured = capsys.readouterr()
 
-    assert exc.value.code == 1
+    assert exit_code == 1
     assert "No draw found within 12 months of 2000-01-01" in captured.err
+    assert captured.out == ""
 
 
 def test_main_returns_network_error_to_stderr(capsys):

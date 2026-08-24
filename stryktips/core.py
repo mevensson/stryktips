@@ -1,5 +1,6 @@
 import argparse
 import sys
+from collections.abc import Callable
 from datetime import date
 
 from requests import RequestException
@@ -7,7 +8,13 @@ from requests import RequestException
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
-from stryktips.resolver import parse_week_value, resolve_draw_number
+from stryktips.resolver import (
+    DrawNotFound,
+    ResolveResult,
+    resolve_draw_by_date,
+    resolve_draw_by_week,
+    week_monday,
+)
 
 MAX_SCAN_MONTHS = 12
 
@@ -19,12 +26,26 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         draw = _fetch_draw_from_args(args)
+    except DrawNotFound as e:
+        return _report_draw_not_found(e)
     except (ValueError, RequestException) as e:
-        print(e, file=sys.stderr)  # noqa: T201
-        return 1
+        return _report_error(e)
 
     _display(draw)
     return 0
+
+
+def _report_draw_not_found(exc: DrawNotFound) -> int:
+    print(  # noqa: T201
+        f"No draw found within {MAX_SCAN_MONTHS} months of {exc.value}",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def _report_error(error: Exception) -> int:
+    print(error, file=sys.stderr)  # noqa: T201
+    return 1
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -73,19 +94,26 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
     except ValueError:
         raise ValueError(f"Invalid date: {date_str}") from None
 
-    return _forward_scan(target, "date", date_str)
+    return _forward_scan(
+        target,
+        lambda entries: resolve_draw_by_date(target, entries),
+        date_str,
+    )
 
 
 def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW)."""
-    year, week = parse_week_value(week_str)
-    monday = date.fromisocalendar(year, week, 1)
-    return _forward_scan(monday, "week", week_str)
+    monday = week_monday(week_str)
+    return _forward_scan(
+        monday,
+        lambda entries: resolve_draw_by_week(monday, entries),
+        week_str,
+    )
 
 
 def _forward_scan(  # noqa: PLR0915
     anchor: date,
-    arg_type: str,
+    resolve: Callable[[list[DatepickerEntry]], ResolveResult],
     display_str: str,
 ) -> Draw:
     all_entries: list[DatepickerEntry] = []
@@ -93,7 +121,7 @@ def _forward_scan(  # noqa: PLR0915
 
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(year, month))
-        result = resolve_draw_number(anchor, arg_type, all_entries)
+        result = resolve(all_entries)
         if result.draw_number != 0:
             if not result.exact_match:
                 print(  # noqa: T201
@@ -107,8 +135,4 @@ def _forward_scan(  # noqa: PLR0915
             month = 1
             year += 1
 
-    print(  # noqa: T201
-        f"No draw found within {MAX_SCAN_MONTHS} months of {display_str}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+    raise DrawNotFound(display_str)

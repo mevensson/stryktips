@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pytest
 import requests
 from flexmock import flexmock
 
@@ -82,11 +81,10 @@ def test_date_2000_01_01_no_draw_12_months(capsys):
             timeout=30,
         ).and_return(_mock_response(empty_data))
 
-    with pytest.raises(SystemExit) as exc:
-        main(["--date", "2000-01-01"])
+    exit_code = main(["--date", "2000-01-01"])
     captured = capsys.readouterr()
 
-    assert exc.value.code == 1
+    assert exit_code == 1
     assert "No draw found within 12 months of 2000-01-01" in captured.err
 
 
@@ -109,11 +107,10 @@ def test_date_no_match_returns_exit_code_1(capsys):
             timeout=30,
         ).and_return(_mock_response(datepicker_data))
 
-    with pytest.raises(SystemExit) as exc:
-        main(["--date", "2099-01-01"])
+    exit_code = main(["--date", "2099-01-01"])
     captured = capsys.readouterr()
 
-    assert exc.value.code == 1
+    assert exit_code == 1
     assert "No draw found within 12 months of 2099-01-01" in captured.err
 
 
