@@ -96,7 +96,7 @@ def test_date_invalid_date_returns_exit_code_1(capsys):
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "Invalid date" in captured.out
+    assert "Invalid date" in captured.err
 
 
 def test_date_no_match_returns_exit_code_1(capsys):

@@ -2,6 +2,8 @@ import argparse
 import sys
 from datetime import date
 
+from requests import RequestException
+
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
@@ -17,8 +19,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         draw = _fetch_draw_from_args(args)
-    except ValueError as e:
-        print(e)  # noqa: T201
+    except (ValueError, RequestException) as e:
+        print(e, file=sys.stderr)  # noqa: T201
         return 1
 
     _display(draw)

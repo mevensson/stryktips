@@ -88,3 +88,20 @@ def test_resolve_draw_by_date_exits_after_12_empty_months(capsys):
 
     assert exc.value.code == 1
     assert "No draw found within 12 months of 2000-01-01" in captured.err
+
+
+def test_main_returns_network_error_to_stderr(capsys):
+    """A requests failure in the fetch path exits 1 and prints to stderr."""
+    from requests import RequestException
+
+    def raise_network(_args: argparse.Namespace) -> Draw:
+        raise RequestException("connection refused")
+
+    flexmock(stryktips.core, _fetch_draw_from_args=raise_network)
+
+    exit_code = stryktips.core.main(["--draw", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "connection refused" in captured.err
+    assert captured.out == ""
