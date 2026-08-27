@@ -40,6 +40,8 @@ def resolve_draw_by_week(
     monday: date, entries: list[DatepickerEntry], n: int = 1
 ) -> ResolveResult:
     """Resolve the N-th draw dated inside the ISO week, else the next after Monday."""
+    if n < 1:
+        raise ValueError("Draw number must be a positive integer")
     sunday = monday + timedelta(days=6)
     in_week = sorted(
         (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date

@@ -99,6 +99,16 @@ def test_resolve_draw_by_week_selects_nth_draw():
     )
 
 
+def test_resolve_draw_by_week_raises_on_non_positive_n():
+    """A non-positive n argument raises ValueError."""
+    entries = [
+        DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+    ]
+
+    with pytest.raises(ValueError, match="Draw number must be a positive integer"):
+        resolve_draw_by_week(date(2025, 5, 5), entries, n=0)
+
+
 def test_resolve_draw_by_week_finds_next_draw_when_week_is_empty():
     """When no entry is inside the ISO week, return the first entry after Monday."""
     entries = [
