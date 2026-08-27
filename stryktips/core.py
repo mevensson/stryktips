@@ -17,6 +17,7 @@ from stryktips.resolver import (
 )
 
 MAX_SCAN_MONTHS = 12
+MONTHS_IN_YEAR = 12
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -139,7 +140,7 @@ def _forward_scan(  # noqa: PLR0915
                 )
             return fetch_draw(result.draw_number)
         month += 1
-        if month > MAX_SCAN_MONTHS:
+        if month > MONTHS_IN_YEAR:
             month = 1
             year += 1
 
