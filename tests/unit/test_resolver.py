@@ -10,6 +10,7 @@ from stryktips.resolver import (
     parse_week_value,
     resolve_draw_by_date,
     resolve_draw_by_week,
+    week_draw_index,
     week_monday,
 )
 
@@ -158,3 +159,13 @@ def test_parse_week_value_raises_on_invalid():
 def test_week_monday_returns_iso_monday():
     """week_monday returns the Monday of the given ISO week."""
     assert week_monday("2025.19") == date(2025, 5, 5)
+
+
+def test_week_draw_index_defaults_to_one():
+    """A week string without a .N suffix resolves to index 1."""
+    assert week_draw_index("2024.52") == 1
+
+
+def test_week_draw_index_parses_n_suffix():
+    """A YYYY.WW.N string resolves to index N."""
+    assert week_draw_index("2024.52.2") == 2
