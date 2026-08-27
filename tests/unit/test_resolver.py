@@ -104,6 +104,11 @@ def test_parse_week_value_returns_year_and_week():
     assert parse_week_value("2025.19") == (2025, 19)
 
 
+def test_parse_week_value_accepts_optional_draw_suffix():
+    """A YYYY.WW.N string parses to year and week numbers."""
+    assert parse_week_value("2024.52.2") == (2024, 52)
+
+
 def test_parse_week_value_raises_on_invalid():
     """An unparseable or out-of-range week string raises ValueError."""
     with pytest.raises(ValueError, match="Invalid week"):
