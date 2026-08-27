@@ -1,6 +1,8 @@
 """End-to-end tests for the --week CLI flag."""
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +10,19 @@ import requests
 from flexmock import flexmock
 
 from stryktips import main
+
+
+def test_invalid_week_is_rejected_by_argparse():
+    result = subprocess.run(
+        [sys.executable, "stryktips.py", "--week", "abc"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "usage:" in result.stderr.lower()
+    assert "--week" in result.stderr
 
 
 def test_week_2025_19_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
