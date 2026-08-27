@@ -1,5 +1,6 @@
 ---
 name: implement-workflow
+description: Implement something using TDD.
 disable-model-invocation: true
 ---
 
