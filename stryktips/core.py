@@ -67,10 +67,18 @@ def create_parser() -> argparse.ArgumentParser:
     )
     group.add_argument(
         "--week",
-        type=str,
+        type=_parse_week,
         help="ISO week (YYYY.WW) of the draw",
     )
     return parser
+
+
+def _parse_week(value: str) -> str:
+    try:
+        week_monday(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from None
+    return value
 
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
