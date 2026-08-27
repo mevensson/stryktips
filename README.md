@@ -34,7 +34,7 @@ python stryktips.py --week 2025.19
 | ---------- | -------- | ---- | -------------------------------------------------- |
 | `--draw`   | Yes*     | int  | Draw number for Stryktipset data                   |
 | `--date`   | Yes*     | str  | Calendar date (YYYY-MM-DD) to find the draw on or after |
-| `--week`   | Yes*     | str  | ISO week (YYYY.WW) to find the draw on or after its Monday |
+| `--week`   | Yes*     | str  | ISO week (YYYY.WW[.N]) to find the draw on or after its Monday; `.N` selects the N-th draw dated within that week (1-indexed) |
 
 *Exactly one of `--draw`, `--date`, or `--week` is required.
 
@@ -43,10 +43,11 @@ python stryktips.py --week 2025.19
 - `--date` resolves the closest draw on or after the given date. The anchor
   month is searched first; if no match is found, the search advances
   month-by-month for up to 12 months.
-- `--week` resolves the draw in the given ISO week: the week's Monday is used
-  as the anchor and the draw dated within that ISO week (Monday-Sunday) is
-  returned. The same month-by-month forward scan applies when no entry is
-  found in the anchor month.
+- `--week` resolves the draw in the given ISO week (YYYY.WW[.N]): the week's
+  Monday is used as the anchor and the draw dated within that ISO week
+  (Monday-Sunday) is returned. An optional `.N` suffix selects the N-th draw
+  dated within that week (1-indexed). The same month-by-month forward scan
+  applies when no entry is found in the anchor month.
 - When the match is inexact (no draw on the exact date), a note is printed
   to stderr: `Note: No draw found for 2025-01-01, using 2025-01-04 (draw 4882)`.
 - When no draw is found within 12 months, the program exits with code 1 and
