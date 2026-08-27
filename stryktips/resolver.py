@@ -47,7 +47,9 @@ def resolve_draw_by_week(
         (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
     )
     if in_week:
-        nth = in_week[min(n, len(in_week)) - 1]
+        if n > len(in_week):
+            raise index_exceeds_count_error(monday, in_week)
+        nth = in_week[n - 1]
         return ResolveResult(
             draw_number=nth.draw_number,
             exact_match=True,
@@ -61,6 +63,21 @@ def resolve_draw_by_week(
                 match_date=entry.date,
             )
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+
+
+def index_exceeds_count_error(
+    monday: date, in_week: list[DatepickerEntry]
+) -> ValueError:
+    """Describe an n that exceeds the number of draws inside an ISO week."""
+    iso = monday.isocalendar()
+    dates = ", ".join(e.date.isoformat() for e in in_week)
+    options = " or ".join(
+        f"--week {iso.year}.{iso.week}.{i}" for i in range(1, len(in_week) + 1)
+    )
+    return ValueError(
+        f"Error: Week {iso.year}.{iso.week} has {len(in_week)} draws "
+        f"(dates: {dates}). Use {options}."
+    )
 
 
 def week_monday(week_str: str) -> date:
