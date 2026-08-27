@@ -10,6 +10,7 @@ from stryktips.resolver import (
     parse_week_value,
     resolve_draw_by_date,
     resolve_draw_by_week,
+    week_draw_index,
     week_monday,
 )
 
@@ -85,6 +86,44 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week():
     )
 
 
+def test_resolve_draw_by_week_selects_nth_draw():
+    """An n arg returns the N-th draw dated inside that ISO week."""
+    entries = [
+        DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
+        DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
+    ]
+
+    result = resolve_draw_by_week(date(2024, 12, 23), entries, n=2)
+
+    assert result == ResolveResult(
+        draw_number=4881, exact_match=True, match_date=date(2024, 12, 29)
+    )
+
+
+def test_resolve_draw_by_week_raises_when_n_exceeds_in_week_draws():
+    """When n exceeds the number of in-week draws, raise a descriptive ValueError."""
+    entries = [
+        DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
+        DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="Error: Week 2024.52 has 2 draws",
+    ):
+        resolve_draw_by_week(date(2024, 12, 23), entries, n=3)
+
+
+def test_resolve_draw_by_week_raises_on_non_positive_n():
+    """A non-positive n argument raises ValueError."""
+    entries = [
+        DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+    ]
+
+    with pytest.raises(ValueError, match="Draw number must be a positive integer"):
+        resolve_draw_by_week(date(2025, 5, 5), entries, n=0)
+
+
 def test_resolve_draw_by_week_finds_next_draw_when_week_is_empty():
     """When no entry is inside the ISO week, return the first entry after Monday."""
     entries = [
@@ -104,6 +143,11 @@ def test_parse_week_value_returns_year_and_week():
     assert parse_week_value("2025.19") == (2025, 19)
 
 
+def test_parse_week_value_accepts_optional_draw_suffix():
+    """A YYYY.WW.N string parses to year and week numbers."""
+    assert parse_week_value("2024.52.2") == (2024, 52)
+
+
 def test_parse_week_value_raises_on_invalid():
     """An unparseable or out-of-range week string raises ValueError."""
     with pytest.raises(ValueError, match="Invalid week"):
@@ -115,3 +159,13 @@ def test_parse_week_value_raises_on_invalid():
 def test_week_monday_returns_iso_monday():
     """week_monday returns the Monday of the given ISO week."""
     assert week_monday("2025.19") == date(2025, 5, 5)
+
+
+def test_week_draw_index_defaults_to_one():
+    """A week string without a .N suffix resolves to index 1."""
+    assert week_draw_index("2024.52") == 1
+
+
+def test_week_draw_index_parses_n_suffix():
+    """A YYYY.WW.N string resolves to index N."""
+    assert week_draw_index("2024.52.2") == 2

@@ -36,16 +36,25 @@ def resolve_draw_by_date(target: date, entries: list[DatepickerEntry]) -> Resolv
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
 
 
-def resolve_draw_by_week(monday: date, entries: list[DatepickerEntry]) -> ResolveResult:
-    """Resolve a draw dated inside the ISO week, else the next entry after Monday."""
+def resolve_draw_by_week(
+    monday: date, entries: list[DatepickerEntry], n: int = 1
+) -> ResolveResult:
+    """Resolve the N-th draw dated inside the ISO week, else the next after Monday."""
+    if n < 1:
+        raise ValueError("Draw number must be a positive integer")
     sunday = monday + timedelta(days=6)
-    for entry in entries:
-        if monday <= entry.date <= sunday:
-            return ResolveResult(
-                draw_number=entry.draw_number,
-                exact_match=True,
-                match_date=entry.date,
-            )
+    in_week = sorted(
+        (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
+    )
+    if in_week:
+        if n > len(in_week):
+            raise index_exceeds_count_error(monday, in_week)
+        nth = in_week[n - 1]
+        return ResolveResult(
+            draw_number=nth.draw_number,
+            exact_match=True,
+            match_date=nth.date,
+        )
     for entry in entries:
         if entry.date >= monday:
             return ResolveResult(
@@ -56,18 +65,46 @@ def resolve_draw_by_week(monday: date, entries: list[DatepickerEntry]) -> Resolv
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
 
 
+def index_exceeds_count_error(
+    monday: date, in_week: list[DatepickerEntry]
+) -> ValueError:
+    """Describe an n that exceeds the number of draws inside an ISO week."""
+    iso = monday.isocalendar()
+    dates = ", ".join(e.date.isoformat() for e in in_week)
+    options = " or ".join(
+        f"--week {iso.year}.{iso.week}.{i}" for i in range(1, len(in_week) + 1)
+    )
+    return ValueError(
+        f"Error: Week {iso.year}.{iso.week} has {len(in_week)} draws "
+        f"(dates: {dates}). Use {options}."
+    )
+
+
 def week_monday(week_str: str) -> date:
     """Return the Monday of the ISO week described by ``week_str`` (YYYY.WW)."""
     year, week = parse_week_value(week_str)
     return date.fromisocalendar(year, week, 1)
 
 
+def week_draw_index(week_str: str) -> int:
+    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1.
+
+    ``parse_week_value`` has already validated that any trailing ``.N`` suffix
+    is a positive integer, so its presence can be relied on here.
+    """
+    parts = week_str.split(".")
+    if len(parts) == 3:  # noqa: PLR2004
+        return int(parts[2])
+    return 1
+
+
 def parse_week_value(value: str) -> tuple[int, int]:
     parts = value.split(".")
-    if len(parts) != 2 or not all(part.isdigit() for part in parts):  # noqa: PLR2004
-        msg = f"Invalid week: {value}"
-        raise ValueError(msg)
-    year, week = (int(part) for part in parts)
+    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):  # noqa: PLR2004
+        raise ValueError(f"Invalid week: {value}")
+    year, week, *draw = (int(p) for p in parts)
+    if draw and draw[0] < 1:
+        raise ValueError(f"Invalid week: {value}")
     try:
         date.fromisocalendar(year, week, 1)
     except ValueError:

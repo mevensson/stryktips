@@ -13,10 +13,12 @@ from stryktips.resolver import (
     ResolveResult,
     resolve_draw_by_date,
     resolve_draw_by_week,
+    week_draw_index,
     week_monday,
 )
 
 MAX_SCAN_MONTHS = 12
+MONTHS_IN_YEAR = 12
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -68,7 +70,7 @@ def create_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--week",
         type=_parse_week,
-        help="ISO week (YYYY.WW) of the draw",
+        help="ISO week (YYYY.WW[.N]) of the draw",
     )
     return parser
 
@@ -110,11 +112,12 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
 
 
 def _resolve_draw_by_week(week_str: str) -> Draw:
-    """Resolve a draw from an ISO week string (YYYY.WW)."""
+    """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     monday = week_monday(week_str)
+    n = week_draw_index(week_str)
     return _forward_scan(
         monday,
-        lambda entries: resolve_draw_by_week(monday, entries),
+        lambda entries: resolve_draw_by_week(monday, entries, n),
         week_str,
     )
 
@@ -139,7 +142,7 @@ def _forward_scan(  # noqa: PLR0915
                 )
             return fetch_draw(result.draw_number)
         month += 1
-        if month > MAX_SCAN_MONTHS:
+        if month > MONTHS_IN_YEAR:
             month = 1
             year += 1
 

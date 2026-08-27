@@ -60,6 +60,31 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
     assert captured.err == ""
 
 
+def test_resolve_draw_by_week_uses_n_suffix_index(capsys):  # noqa: PLR0915
+    """A .N suffix selects the N-th draw within the ISO week."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        return [
+            DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
+            DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
+        ]
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
+    )
+
+    draw = stryktips.core._resolve_draw_by_week("2024.52.2")
+    captured = capsys.readouterr()
+
+    assert draw.draw_number == 4881
+    assert calls == [(2024, 12)]
+    assert captured.err == ""
+
+
 def test_fetch_draw_from_args_routes_week():
     """A --week argument routes through _resolve_draw_by_week."""
     flexmock(
