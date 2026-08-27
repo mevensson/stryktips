@@ -64,10 +64,11 @@ def week_monday(week_str: str) -> date:
 
 def parse_week_value(value: str) -> tuple[int, int]:
     parts = value.split(".")
-    if len(parts) != 2 or not all(part.isdigit() for part in parts):  # noqa: PLR2004
-        msg = f"Invalid week: {value}"
-        raise ValueError(msg)
-    year, week = (int(part) for part in parts)
+    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):  # noqa: PLR2004
+        raise ValueError(f"Invalid week: {value}")
+    year, week, *draw = (int(p) for p in parts)
+    if draw and draw[0] < 1:
+        raise ValueError(f"Invalid week: {value}")
     try:
         date.fromisocalendar(year, week, 1)
     except ValueError:
