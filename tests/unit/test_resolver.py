@@ -99,6 +99,20 @@ def test_resolve_draw_by_week_selects_nth_draw():
     )
 
 
+def test_resolve_draw_by_week_raises_when_n_exceeds_in_week_draws():
+    """When n exceeds the number of in-week draws, raise a descriptive ValueError."""
+    entries = [
+        DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
+        DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="Error: Week 2024.52 has 2 draws",
+    ):
+        resolve_draw_by_week(date(2024, 12, 23), entries, n=3)
+
+
 def test_resolve_draw_by_week_raises_on_non_positive_n():
     """A non-positive n argument raises ValueError."""
     entries = [
