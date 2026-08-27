@@ -39,3 +39,11 @@ _Avoid_: Public distribution, folkets rad
 **Outcome Probability**:
 The estimated true probability of a Match finishing as 1, X, or 2, derived from Odds by removing the Overround.
 _Avoid_: Odds probability
+
+**Prediction Quality**:
+How well a set of predicted probabilities matches the observed outcome frequencies.
+_Avoid_: Calibration, accuracy, reliability
+
+**Period**:
+A contiguous span of Draws (a start Draw to an end Draw) treated as a single statistical sample.
+_Avoid_: Backtest, window, range
