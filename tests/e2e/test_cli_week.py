@@ -52,6 +52,33 @@ def test_week_2025_19_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
     assert captured.err == ""
 
 
+def test_week_2024_52_2_selects_second_draw(mock_response, capsys):  # noqa: PLR0915
+    """--week 2024.52.2 resolves to the second draw of ISO week 52 of 2024."""
+    datepicker_data = json.loads(
+        Path("tests/fixtures/datepicker_2024_12.json").read_text()
+    )
+    draw_data = json.loads(Path("tests/fixtures/week_4881.json").read_text())
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2024&month=12",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4881",
+        timeout=30,
+    ).and_return(mock_response(draw_data))
+
+    exit_code = main(["--week", "2024.52.2"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Stryktips v. 2024-52 (draw 4881)" in captured.out
+    assert "West Ham" in captured.out
+    assert captured.err == ""
+
+
 def test_week_2020_15_forward_scans_to_june(mock_response, capsys):  # noqa: PLR0915
     """--week 2020.15 with no draw that week forward-scans from Monday."""
     empty_data: dict[str, list[Any]] = {"resultDates": []}
