@@ -85,6 +85,20 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week():
     )
 
 
+def test_resolve_draw_by_week_selects_nth_draw():
+    """An n arg returns the N-th draw dated inside that ISO week."""
+    entries = [
+        DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
+        DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
+    ]
+
+    result = resolve_draw_by_week(date(2024, 12, 23), entries, n=2)
+
+    assert result == ResolveResult(
+        draw_number=4881, exact_match=True, match_date=date(2024, 12, 29)
+    )
+
+
 def test_resolve_draw_by_week_finds_next_draw_when_week_is_empty():
     """When no entry is inside the ISO week, return the first entry after Monday."""
     entries = [
