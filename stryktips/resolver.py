@@ -69,6 +69,18 @@ def week_monday(week_str: str) -> date:
     return date.fromisocalendar(year, week, 1)
 
 
+def week_draw_index(week_str: str) -> int:
+    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1.
+
+    ``parse_week_value`` has already validated that any trailing ``.N`` suffix
+    is a positive integer, so its presence can be relied on here.
+    """
+    parts = week_str.split(".")
+    if len(parts) == 3:  # noqa: PLR2004
+        return int(parts[2])
+    return 1
+
+
 def parse_week_value(value: str) -> tuple[int, int]:
     parts = value.split(".")
     if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):  # noqa: PLR2004

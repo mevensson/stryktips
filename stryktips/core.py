@@ -13,6 +13,7 @@ from stryktips.resolver import (
     ResolveResult,
     resolve_draw_by_date,
     resolve_draw_by_week,
+    week_draw_index,
     week_monday,
 )
 
@@ -111,11 +112,12 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
 
 
 def _resolve_draw_by_week(week_str: str) -> Draw:
-    """Resolve a draw from an ISO week string (YYYY.WW)."""
+    """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     monday = week_monday(week_str)
+    n = week_draw_index(week_str)
     return _forward_scan(
         monday,
-        lambda entries: resolve_draw_by_week(monday, entries),
+        lambda entries: resolve_draw_by_week(monday, entries, n),
         week_str,
     )
 
