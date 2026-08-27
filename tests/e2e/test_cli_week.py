@@ -74,7 +74,7 @@ def test_week_2024_52_2_selects_second_draw(mock_response, capsys):  # noqa: PLR
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Stryktips v. 2024-52 (draw 4881)" in captured.out
+    assert "Stryktipset v. 2024-52 (draw 4881)" in captured.out
     assert "West Ham" in captured.out
     assert captured.err == ""
 

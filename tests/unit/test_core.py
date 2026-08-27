@@ -60,7 +60,7 @@ def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
     assert captured.err == ""
 
 
-def test_resolve_draw_by_week_uses_n_suffix_index(capsys):
+def test_resolve_draw_by_week_uses_n_suffix_index(capsys):  # noqa: PLR0915
     """A .N suffix selects the N-th draw within the ISO week."""
     calls: list[tuple[int, int]] = []
 
