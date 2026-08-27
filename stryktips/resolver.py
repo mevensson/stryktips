@@ -36,16 +36,21 @@ def resolve_draw_by_date(target: date, entries: list[DatepickerEntry]) -> Resolv
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
 
 
-def resolve_draw_by_week(monday: date, entries: list[DatepickerEntry]) -> ResolveResult:
-    """Resolve a draw dated inside the ISO week, else the next entry after Monday."""
+def resolve_draw_by_week(
+    monday: date, entries: list[DatepickerEntry], n: int = 1
+) -> ResolveResult:
+    """Resolve the N-th draw dated inside the ISO week, else the next after Monday."""
     sunday = monday + timedelta(days=6)
-    for entry in entries:
-        if monday <= entry.date <= sunday:
-            return ResolveResult(
-                draw_number=entry.draw_number,
-                exact_match=True,
-                match_date=entry.date,
-            )
+    in_week = sorted(
+        (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
+    )
+    if in_week:
+        nth = in_week[min(n, len(in_week)) - 1]
+        return ResolveResult(
+            draw_number=nth.draw_number,
+            exact_match=True,
+            match_date=nth.date,
+        )
     for entry in entries:
         if entry.date >= monday:
             return ResolveResult(
