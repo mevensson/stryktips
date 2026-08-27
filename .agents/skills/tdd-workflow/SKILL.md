@@ -29,6 +29,8 @@ Use the same strategy for each iteration.
 
 Delegate to a subagent to write a unit test for the *next step*.
 
+**Note**: this step is mandatory, and a failing end to end test is **not** a failing unit test.
+
 **Sub agent prompt**
 - Include a description of **next step**.
 - Specify that a single unit test shall be written for it using the /unit-test-design skill.
@@ -50,6 +52,8 @@ Delegate to a subagent to make the test pass.
 ## Step 4 - Refactor
 
 The purpose of this step is to keep the code clean and prevent rot and must be performed in each iteration. The reason to review all code is to see the whole picture and not just focus on the changed code.
+
+**Note**: This step is mandatory, i.e., the review needs to always be performed, however if there are no findings the commit part can be skipped.
 
 ### Review all code
 
