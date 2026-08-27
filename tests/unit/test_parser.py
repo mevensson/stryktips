@@ -53,6 +53,13 @@ def test_create_parser_has_week_argument():
     assert args.week == "2025.19"
 
 
+def test_create_parser_rejects_invalid_week():
+    parser = create_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--week", "abc"])
+
+
 def test_create_parser_date_and_draw_are_mutually_exclusive():
     parser = create_parser()
 
