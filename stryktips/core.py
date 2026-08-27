@@ -70,7 +70,7 @@ def create_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--week",
         type=_parse_week,
-        help="ISO week (YYYY.WW) of the draw",
+        help="ISO week (YYYY.WW[.N]) of the draw",
     )
     return parser
 
