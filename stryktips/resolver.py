@@ -44,7 +44,7 @@ def resolve_draw_by_week(
     )
     if in_week:
         if n > len(in_week):
-            raise index_exceeds_count_error(monday, in_week)
+            raise WeekDrawIndexError(monday, in_week)
         nth = in_week[n - 1]
         return ResolveResult(
             draw_number=nth.draw_number,
@@ -53,6 +53,23 @@ def resolve_draw_by_week(
         )
     result = _first_on_or_after(monday, entries)
     return result if result is not None else _not_found()
+
+
+class WeekDrawIndexError(ValueError):
+    """Raised when the draw index ``.N`` exceeds the draws in an ISO week.
+
+    Carries the ISO week label, draw count, and draw dates so the CLI layer
+    can format a user-facing message.
+    """
+
+    def __init__(self, monday: date, in_week: list[DatepickerEntry]) -> None:
+        iso = monday.isocalendar()
+        self.week_label = f"{iso.year}.{iso.week}"
+        self.count = len(in_week)
+        self.dates = ", ".join(e.date.isoformat() for e in in_week)
+        super().__init__(
+            f"Week {self.week_label} has {self.count} draws (dates: {self.dates})."
+        )
 
 
 def _first_on_or_after(
@@ -72,21 +89,6 @@ def _first_on_or_after(
 def _not_found() -> ResolveResult:
     """Return the ResolveResult shape used when no entry satisfies the query."""
     return ResolveResult(draw_number=None, exact_match=False, match_date=None)
-
-
-def index_exceeds_count_error(
-    monday: date, in_week: list[DatepickerEntry]
-) -> ValueError:
-    """Describe an n that exceeds the number of draws inside an ISO week."""
-    iso = monday.isocalendar()
-    dates = ", ".join(e.date.isoformat() for e in in_week)
-    options = " or ".join(
-        f"--week {iso.year}.{iso.week}.{i}" for i in range(1, len(in_week) + 1)
-    )
-    return ValueError(
-        f"Error: Week {iso.year}.{iso.week} has {len(in_week)} draws "
-        f"(dates: {dates}). Use {options}."
-    )
 
 
 def week_monday(week_str: str) -> date:

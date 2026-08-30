@@ -7,6 +7,7 @@ import pytest
 from stryktips.models import DatepickerEntry
 from stryktips.resolver import (
     ResolveResult,
+    WeekDrawIndexError,
     parse_week_value,
     resolve_draw_by_date,
     resolve_draw_by_week,
@@ -108,8 +109,8 @@ def test_resolve_draw_by_week_raises_when_n_exceeds_in_week_draws():
     ]
 
     with pytest.raises(
-        ValueError,
-        match="Error: Week 2024.52 has 2 draws",
+        WeekDrawIndexError,
+        match="Week 2024.52 has 2 draws",
     ):
         resolve_draw_by_week(date(2024, 12, 23), entries, n=3)
 

@@ -11,6 +11,7 @@ from stryktips.models import DatepickerEntry, Draw
 from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
+    WeekDrawIndexError,
     resolve_draw_by_date,
     resolve_draw_by_week,
     week_draw_index,
@@ -125,11 +126,21 @@ def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     monday = week_monday(week_str)
     n = week_draw_index(week_str)
-    return _forward_scan(
-        monday,
-        lambda entries: resolve_draw_by_week(monday, entries, n),
-        week_str,
+    try:
+        return _forward_scan(
+            monday,
+            lambda entries: resolve_draw_by_week(monday, entries, n),
+            week_str,
+        )
+    except WeekDrawIndexError as exc:
+        raise ValueError(_week_draw_index_message(exc)) from None
+
+
+def _week_draw_index_message(exc: WeekDrawIndexError) -> str:
+    options = " or ".join(
+        f"--week {exc.week_label}.{i}" for i in range(1, exc.count + 1)
     )
+    return f"Error: {exc} Use {options}."
 
 
 def _forward_scan(  # noqa: PLR0915
