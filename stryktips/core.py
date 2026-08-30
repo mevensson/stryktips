@@ -147,7 +147,7 @@ def _week_draw_index_message(exc: WeekDrawIndexError) -> str:
     return f"Error: {exc} Use {options}."
 
 
-def _forward_scan(  # noqa: PLR0915
+def _forward_scan(
     anchor: date,
     resolve: Callable[[list[DatepickerEntry]], ResolveResult],
     display_str: str,
@@ -158,18 +158,29 @@ def _forward_scan(  # noqa: PLR0915
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(year, month))
         result = resolve(all_entries)
-        draw_number = result.draw_number
-        if draw_number is not None:
-            if not result.exact_match:
-                print(  # noqa: T201
-                    f"Note: No draw found for {display_str},"
-                    f" using {result.match_date} (draw {draw_number})",
-                    file=sys.stderr,
-                )
-            return fetch_draw(draw_number)
-        month += 1
-        if month > MONTHS_IN_YEAR:
-            month = 1
-            year += 1
+        if result.draw_number is not None:
+            _print_fallback_note(result, display_str)
+            return fetch_draw(result.draw_number)
+        year, month = _advance_month(year, month)
 
     raise DrawNotFound(display_str)
+
+
+def _advance_month(year: int, month: int) -> tuple[int, int]:
+    """Advance to the next month, rolling the year over after December."""
+    month += 1
+    if month > MONTHS_IN_YEAR:
+        month = 1
+        year += 1
+    return year, month
+
+
+def _print_fallback_note(result: ResolveResult, display_str: str) -> None:
+    """Print a note to stderr when resolution fell back to the next draw."""
+    if result.exact_match:
+        return
+    print(  # noqa: T201
+        f"Note: No draw found for {display_str},"
+        f" using {result.match_date} (draw {result.draw_number})",
+        file=sys.stderr,
+    )
