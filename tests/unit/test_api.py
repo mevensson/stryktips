@@ -22,28 +22,22 @@ def mock_api_response():
     return json.loads(Path("tests/fixtures/week_4900.json").read_text())
 
 
-def test_fetch_draw_returns_draw_with_13_matches(mock_api_response, mock_response):
-    """Fetching week 4900 returns a draw with 13 matches."""
-    # Arrange
-    flexmock(requests).should_receive("get").with_args(
-        f"{_API_URL}4900",
-        timeout=30,
-    ).and_return(mock_response(mock_api_response))
-
-    # Act
-    draw = fetch_draw(4900)
-
-    # Assert
-    assert len(draw.matches) == 13
-    assert draw.draw_number == 4900
-
-
 def _mock_fetch_draw_4900(mock_api_response: dict[str, Any], mock_response: Any) -> Any:
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
     ).and_return(mock_response(mock_api_response))
     return fetch_draw(4900)
+
+
+def test_fetch_draw_returns_draw_with_13_matches(mock_api_response, mock_response):
+    """Fetching week 4900 returns a draw with 13 matches."""
+    # Act
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
+
+    # Assert
+    assert len(draw.matches) == 13
+    assert draw.draw_number == 4900
 
 
 def test_fetch_draw_parses_draw_comment(mock_api_response, mock_response):
@@ -66,14 +60,8 @@ def test_fetch_draw_parses_reg_close_time(mock_api_response, mock_response):
 
 def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response, mock_response):
     """First match's startOdds are parsed into an Odds object."""
-    # Arrange
-    flexmock(requests).should_receive("get").with_args(
-        f"{_API_URL}4900",
-        timeout=30,
-    ).and_return(mock_response(mock_api_response))
-
     # Act
-    draw = fetch_draw(4900)
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
 
     # Assert
     match1 = draw.matches[0]
@@ -85,14 +73,8 @@ def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response, mock_re
 
 def test_fetch_draw_parses_outcome_probabilities(mock_api_response, mock_response):
     """First match's outcome probability is computed from startOdds."""
-    # Arrange
-    flexmock(requests).should_receive("get").with_args(
-        f"{_API_URL}4900",
-        timeout=30,
-    ).and_return(mock_response(mock_api_response))
-
     # Act
-    draw = fetch_draw(4900)
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
 
     # Assert
     match1 = draw.matches[0]
@@ -113,14 +95,8 @@ def test_fetch_draw_parses_outcome_probabilities(mock_api_response, mock_respons
 
 def test_fetch_draw_parses_odds_for_all_matches(mock_api_response, mock_response):
     """Every match in the draw has parsed odds and outcome probabilities."""
-    # Arrange
-    flexmock(requests).should_receive("get").with_args(
-        f"{_API_URL}4900",
-        timeout=30,
-    ).and_return(mock_response(mock_api_response))
-
     # Act
-    draw = fetch_draw(4900)
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
 
     # Assert
     for match in draw.matches:
@@ -148,13 +124,10 @@ def test_fetch_draw_handles_empty_response(mock_response):
 
 def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response, mock_response):
     """svenskaFolket percentages are parsed into Decimal values."""
-    flexmock(requests).should_receive("get").with_args(
-        f"{_API_URL}4900",
-        timeout=30,
-    ).and_return(mock_response(mock_api_response))
+    # Act
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
 
-    draw = fetch_draw(4900)
-
+    # Assert
     match1 = draw.matches[0]
     assert match1.svenska_folket == SvenskaFolket(
         one=Decimal("35"),
