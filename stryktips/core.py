@@ -18,8 +18,8 @@ from stryktips.resolver import (
     week_monday,
 )
 
-MAX_SCAN_MONTHS = 12
 MONTHS_IN_YEAR = 12
+MAX_SCAN_MONTHS = MONTHS_IN_YEAR
 
 
 def main(argv: list[str] | None = None) -> int:

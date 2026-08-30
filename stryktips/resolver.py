@@ -5,6 +5,9 @@ from typing import NamedTuple
 
 from stryktips.models import DatepickerEntry
 
+_WEEK_PARTS = 2
+_WEEK_PARTS_WITH_INDEX = 3
+
 
 class ResolveResult(NamedTuple):
     draw_number: int | None
@@ -104,14 +107,16 @@ def week_draw_index(week_str: str) -> int:
     is a positive integer, so its presence can be relied on here.
     """
     parts = week_str.split(".")
-    if len(parts) == 3:  # noqa: PLR2004
+    if len(parts) == _WEEK_PARTS_WITH_INDEX:
         return int(parts[2])
     return 1
 
 
 def parse_week_value(value: str) -> tuple[int, int]:
     parts = value.split(".")
-    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):  # noqa: PLR2004
+    if len(parts) not in (_WEEK_PARTS, _WEEK_PARTS_WITH_INDEX) or not all(
+        p.isdigit() for p in parts
+    ):
         raise ValueError(f"Invalid week: {value}")
     year, week, *draw = (int(p) for p in parts)
     if draw and draw[0] < 1:
