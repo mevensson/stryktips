@@ -178,3 +178,19 @@ def test_fetch_draws_by_month_returns_parsed_entries(mock_response):
         DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
         DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
     ]
+
+
+def test_fetch_draws_by_month_returns_empty_on_404(mock_response):
+    """fetch_draws_by_month returns [] when the API answers 404."""
+    # Arrange
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response({}, status_code=404))
+
+    # Act
+    entries = fetch_draws_by_month(2025, 5)
+
+    # Assert
+    assert entries == []
