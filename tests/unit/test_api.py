@@ -1,6 +1,7 @@
 """Unit tests for stryktipset API client."""
 
 import json
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,8 @@ import pytest
 import requests
 from flexmock import flexmock
 
-from stryktips.api import fetch_draw
+from stryktips.api import fetch_draw, fetch_draws_by_month
+from stryktips.models import DatepickerEntry, SvenskaFolket
 
 _API_URL = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/"
 
@@ -146,8 +148,6 @@ def test_fetch_draw_handles_empty_response(mock_response):
 
 def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response, mock_response):
     """svenskaFolket percentages are parsed into Decimal values."""
-    from stryktips.models import SvenskaFolket
-
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
@@ -183,11 +183,6 @@ def test_fetch_draw_raises_on_missing_participants(mock_response):
 
 def test_fetch_draws_by_month_returns_parsed_entries(mock_response):
     """fetch_draws_by_month returns DatepickerEntry list from the API."""
-    from datetime import date
-
-    from stryktips.api import fetch_draws_by_month
-    from stryktips.models import DatepickerEntry
-
     # Arrange
     api_response = {
         "datepicker": [

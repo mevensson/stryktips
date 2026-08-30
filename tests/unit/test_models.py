@@ -1,8 +1,9 @@
 """Unit tests for domain models."""
 
+from datetime import date
 from decimal import Decimal
 
-from stryktips.models import Match, Odds, OutcomeProbability
+from stryktips.models import DatepickerEntry, Match, Odds, OutcomeProbability
 
 
 def test_odds_stores_home_draw_away():
@@ -110,10 +111,6 @@ def test_match_defaults_outcome_probability_to_none():
 
 def test_datepicker_entry_stores_date_and_draw_number():
     """DatepickerEntry stores a date and a draw number."""
-    from datetime import date
-
-    from stryktips.models import DatepickerEntry
-
     # Act
     entry = DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
 
