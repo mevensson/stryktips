@@ -100,6 +100,16 @@ def test_fetch_draw_from_args_routes_week():
     assert draw.draw_number == 4900
 
 
+def test_fetch_draw_from_args_rejects_unimplemented_report():
+    """--start/--end alone never reach fetch_draw; raise a clear error instead."""
+    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]))
+
+    args = argparse.Namespace(date=None, week=None, draw=None)
+
+    with pytest.raises(ValueError, match="not yet implemented"):
+        stryktips.core._fetch_draw_from_args(args)
+
+
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
     """When 12 months have no entries, raise DrawNotFound."""
     from stryktips.resolver import DrawNotFound
