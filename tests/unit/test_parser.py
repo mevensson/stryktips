@@ -1,3 +1,5 @@
+"""Unit tests for the stryktips argument parser."""
+
 import argparse
 
 import pytest
