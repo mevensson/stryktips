@@ -227,3 +227,31 @@ def test_format_matches_omits_outcome_probabilities_when_odds_absent():
 
     # Assert
     assert "39%" not in lines[0]
+
+
+def test_format_matches_shows_outcome_probabilities_without_odds():
+    """Outcome probabilities are shown even when the match carries no odds."""
+    # Arrange
+    probs = OutcomeProbability(
+        home=Decimal("0.3893"),
+        draw=Decimal("0.2631"),
+        away=Decimal("0.3476"),
+    )
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        svenska_folket=SvenskaFolket(
+            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
+        ),
+        outcome_probability=probs,
+    )
+
+    # Act
+    lines = format_matches([match])
+
+    # Assert
+    assert "39% - 26% - 35%" in lines[0]
+    assert "2.50" not in lines[0]
