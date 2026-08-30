@@ -54,22 +54,22 @@ def test_resolve_draw_by_date_finds_next_available_draw():
     )
 
 
-def test_resolve_draw_by_date_returns_zero_when_no_match():
-    """When no entry has date >= target, return draw_number=0 and match_date=None."""
+def test_resolve_draw_by_date_returns_none_when_no_match():
+    """When no entry has date >= target, return draw_number=None and match_date=None."""
     entries = [
         DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
     ]
 
     result = resolve_draw_by_date(date(2025, 6, 1), entries)
 
-    assert result == ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    assert result == ResolveResult(draw_number=None, exact_match=False, match_date=None)
 
 
-def test_resolve_draw_by_date_returns_zero_for_empty_data():
-    """An empty datepicker list returns draw_number=0."""
+def test_resolve_draw_by_date_returns_none_for_empty_data():
+    """An empty datepicker list returns draw_number=None."""
     result = resolve_draw_by_date(date(2025, 5, 10), [])
 
-    assert result == ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    assert result == ResolveResult(draw_number=None, exact_match=False, match_date=None)
 
 
 def test_resolve_draw_by_week_finds_draw_in_iso_week():

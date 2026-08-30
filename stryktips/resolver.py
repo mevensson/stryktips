@@ -7,7 +7,7 @@ from stryktips.models import DatepickerEntry
 
 
 class ResolveResult(NamedTuple):
-    draw_number: int
+    draw_number: int | None
     exact_match: bool
     match_date: date | None
 
@@ -71,7 +71,7 @@ def _first_on_or_after(
 
 def _not_found() -> ResolveResult:
     """Return the ResolveResult shape used when no entry satisfies the query."""
-    return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    return ResolveResult(draw_number=None, exact_match=False, match_date=None)
 
 
 def index_exceeds_count_error(

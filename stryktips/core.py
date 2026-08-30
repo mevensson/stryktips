@@ -143,14 +143,15 @@ def _forward_scan(  # noqa: PLR0915
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(year, month))
         result = resolve(all_entries)
-        if result.draw_number != 0:
+        draw_number = result.draw_number
+        if draw_number is not None:
             if not result.exact_match:
                 print(  # noqa: T201
                     f"Note: No draw found for {display_str},"
-                    f" using {result.match_date} (draw {result.draw_number})",
+                    f" using {result.match_date} (draw {draw_number})",
                     file=sys.stderr,
                 )
-            return fetch_draw(result.draw_number)
+            return fetch_draw(draw_number)
         month += 1
         if month > MONTHS_IN_YEAR:
             month = 1
