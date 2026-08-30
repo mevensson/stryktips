@@ -50,3 +50,23 @@ def test_start_end_mutually_exclusive(args):
     )
 
     assert result.returncode == 2
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--start", "abc"],
+        ["--start", "abc", "--end", "4900"],
+        ["--end", "abc"],
+        ["--start", "4900", "--end", "abc"],
+    ],
+)
+def test_invalid_start_or_end_rejected(args):
+    result = subprocess.run(
+        [sys.executable, "stryktips.py", *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
