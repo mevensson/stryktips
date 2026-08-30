@@ -4,8 +4,8 @@ from decimal import Decimal
 
 import pytest
 
-from stryktips.models import Match, OutcomeProbability
-from stryktips.report import bucket_index, realized_probability
+from stryktips.models import Draw, Match, Odds, OutcomeProbability
+from stryktips.report import bucket_index, format_report, realized_probability
 
 
 def make_match(
@@ -23,6 +23,11 @@ def make_match(
         away_score=away_score,
         outcome_probability=outcome_probability,
     )
+
+
+def make_draw(matches: list[Match]) -> Draw:
+    """Construct a Draw wrapping the given matches."""
+    return Draw(draw_number=1, matches=matches)
 
 
 @pytest.mark.parametrize(
@@ -126,3 +131,61 @@ def test_realized_probability_without_outcome_probability_returns_none():
 
     # Assert
     assert result is None
+
+
+def test_format_report_aggregates_eligible_and_excluded_matches():
+    """Eligible matches fill buckets and played-but-odds-less matches are excluded."""
+    # Arrange
+    home_win = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+        ),
+    )
+    away_win = Match(
+        event_number=2,
+        home_team="AIK",
+        away_team="Djurgården",
+        home_score=0,
+        away_score=2,
+        odds=Odds(home=Decimal("3.0"), draw=Decimal("3.2"), away=Decimal("2.4")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.05"), draw=Decimal("0.20"), away=Decimal("0.15")
+        ),
+    )
+    draw_match = Match(
+        event_number=3,
+        home_team="Frölunda",
+        away_team="Färjestad",
+        home_score=1,
+        away_score=1,
+        odds=Odds(home=Decimal("2.6"), draw=Decimal("3.1"), away=Decimal("2.8")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.20"), draw=Decimal("0.55"), away=Decimal("0.25")
+        ),
+    )
+    odds_less = make_match(home_score=1, away_score=0, outcome_probability=None)
+    unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
+
+    # Act
+    result = format_report(make_draw([home_win, away_win, draw_match, odds_less, unplayed]))
+
+    # Assert
+    assert result == "eligible: 3, excluded: 1\n10-20: 1\n50-60: 1\n70-80: 1"
+
+
+def test_format_report_with_only_unplayed_matches_is_empty_report():
+    """Unplayed matches are ignored, leaving a zero summary and no buckets."""
+    # Arrange
+    unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
+
+    # Act
+    result = format_report(make_draw([unplayed]))
+
+    # Assert
+    assert result == "eligible: 0, excluded: 0"

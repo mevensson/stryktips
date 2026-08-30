@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from stryktips.models import Match
+from stryktips.models import Draw, Match
 
 
 def bucket_index(probability: Decimal) -> int:
@@ -21,3 +21,8 @@ def realized_probability(match: Match) -> Decimal | None:
     if match.home_score < match.away_score:
         return match.outcome_probability.away
     return match.outcome_probability.draw
+
+
+def format_report(draws: list[Draw]) -> str:
+    """Return a bucket report of eligible and excluded matches (not implemented)."""
+    return ""
