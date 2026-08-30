@@ -11,14 +11,15 @@ from stryktips.models import DatepickerEntry, Draw
 from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
+    WeekDrawIndexError,
     resolve_draw_by_date,
     resolve_draw_by_week,
     week_draw_index,
     week_monday,
 )
 
-MAX_SCAN_MONTHS = 12
 MONTHS_IN_YEAR = 12
+MAX_SCAN_MONTHS = MONTHS_IN_YEAR
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,6 +73,16 @@ def create_parser() -> argparse.ArgumentParser:
         type=_parse_week,
         help="ISO week (YYYY.WW[.N]) of the draw",
     )
+    group.add_argument(
+        "--start",
+        type=int,
+        help="Start draw number for the prediction-quality report",
+    )
+    group.add_argument(
+        "--end",
+        type=int,
+        help="End draw number for the prediction-quality report",
+    )
     return parser
 
 
@@ -88,6 +99,10 @@ def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
         return _resolve_draw_by_date(args.date)
     if args.week is not None:
         return _resolve_draw_by_week(args.week)
+    if args.draw is None:
+        raise ValueError(
+            "The prediction-quality report (--start/--end) is not yet implemented"
+        )
     return fetch_draw(args.draw)
 
 
@@ -115,11 +130,21 @@ def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     monday = week_monday(week_str)
     n = week_draw_index(week_str)
-    return _forward_scan(
-        monday,
-        lambda entries: resolve_draw_by_week(monday, entries, n),
-        week_str,
+    try:
+        return _forward_scan(
+            monday,
+            lambda entries: resolve_draw_by_week(monday, entries, n),
+            week_str,
+        )
+    except WeekDrawIndexError as exc:
+        raise ValueError(_week_draw_index_message(exc)) from None
+
+
+def _week_draw_index_message(exc: WeekDrawIndexError) -> str:
+    options = " or ".join(
+        f"--week {exc.week_label}.{i}" for i in range(1, exc.count + 1)
     )
+    return f"Error: {exc} Use {options}."
 
 
 def _forward_scan(  # noqa: PLR0915
@@ -133,14 +158,15 @@ def _forward_scan(  # noqa: PLR0915
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(year, month))
         result = resolve(all_entries)
-        if result.draw_number != 0:
+        draw_number = result.draw_number
+        if draw_number is not None:
             if not result.exact_match:
                 print(  # noqa: T201
                     f"Note: No draw found for {display_str},"
-                    f" using {result.match_date} (draw {result.draw_number})",
+                    f" using {result.match_date} (draw {draw_number})",
                     file=sys.stderr,
                 )
-            return fetch_draw(result.draw_number)
+            return fetch_draw(draw_number)
         month += 1
         if month > MONTHS_IN_YEAR:
             month = 1

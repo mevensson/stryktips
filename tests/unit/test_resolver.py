@@ -7,6 +7,7 @@ import pytest
 from stryktips.models import DatepickerEntry
 from stryktips.resolver import (
     ResolveResult,
+    WeekDrawIndexError,
     parse_week_value,
     resolve_draw_by_date,
     resolve_draw_by_week,
@@ -54,22 +55,22 @@ def test_resolve_draw_by_date_finds_next_available_draw():
     )
 
 
-def test_resolve_draw_by_date_returns_zero_when_no_match():
-    """When no entry has date >= target, return draw_number=0 and match_date=None."""
+def test_resolve_draw_by_date_returns_none_when_no_match():
+    """When no entry has date >= target, return draw_number=None and match_date=None."""
     entries = [
         DatepickerEntry(date=date(2025, 5, 5), draw_number=4898),
     ]
 
     result = resolve_draw_by_date(date(2025, 6, 1), entries)
 
-    assert result == ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    assert result == ResolveResult(draw_number=None, exact_match=False, match_date=None)
 
 
-def test_resolve_draw_by_date_returns_zero_for_empty_data():
-    """An empty datepicker list returns draw_number=0."""
+def test_resolve_draw_by_date_returns_none_for_empty_data():
+    """An empty datepicker list returns draw_number=None."""
     result = resolve_draw_by_date(date(2025, 5, 10), [])
 
-    assert result == ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    assert result == ResolveResult(draw_number=None, exact_match=False, match_date=None)
 
 
 def test_resolve_draw_by_week_finds_draw_in_iso_week():
@@ -108,8 +109,8 @@ def test_resolve_draw_by_week_raises_when_n_exceeds_in_week_draws():
     ]
 
     with pytest.raises(
-        ValueError,
-        match="Error: Week 2024.52 has 2 draws",
+        WeekDrawIndexError,
+        match="Week 2024.52 has 2 draws",
     ):
         resolve_draw_by_week(date(2024, 12, 23), entries, n=3)
 

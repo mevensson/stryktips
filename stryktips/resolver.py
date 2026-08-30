@@ -5,9 +5,12 @@ from typing import NamedTuple
 
 from stryktips.models import DatepickerEntry
 
+_WEEK_PARTS = 2
+_WEEK_PARTS_WITH_INDEX = 3
+
 
 class ResolveResult(NamedTuple):
-    draw_number: int
+    draw_number: int | None
     exact_match: bool
     match_date: date | None
 
@@ -26,14 +29,10 @@ class DrawNotFound(Exception):
 
 def resolve_draw_by_date(target: date, entries: list[DatepickerEntry]) -> ResolveResult:
     """Resolve the first entry on or after the target date."""
-    for entry in entries:
-        if entry.date >= target:
-            return ResolveResult(
-                draw_number=entry.draw_number,
-                exact_match=(entry.date == target),
-                match_date=entry.date,
-            )
-    return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    result = _first_on_or_after(target, entries)
+    if result is None:
+        return _not_found()
+    return result
 
 
 def resolve_draw_by_week(
@@ -48,36 +47,51 @@ def resolve_draw_by_week(
     )
     if in_week:
         if n > len(in_week):
-            raise index_exceeds_count_error(monday, in_week)
+            raise WeekDrawIndexError(monday, in_week)
         nth = in_week[n - 1]
         return ResolveResult(
             draw_number=nth.draw_number,
             exact_match=True,
             match_date=nth.date,
         )
+    result = _first_on_or_after(monday, entries)
+    return result if result is not None else _not_found()
+
+
+class WeekDrawIndexError(ValueError):
+    """Raised when the draw index ``.N`` exceeds the draws in an ISO week.
+
+    Carries the ISO week label, draw count, and draw dates so the CLI layer
+    can format a user-facing message.
+    """
+
+    def __init__(self, monday: date, in_week: list[DatepickerEntry]) -> None:
+        iso = monday.isocalendar()
+        self.week_label = f"{iso.year}.{iso.week}"
+        self.count = len(in_week)
+        self.dates = ", ".join(e.date.isoformat() for e in in_week)
+        super().__init__(
+            f"Week {self.week_label} has {self.count} draws (dates: {self.dates})."
+        )
+
+
+def _first_on_or_after(
+    target: date, entries: list[DatepickerEntry]
+) -> ResolveResult | None:
+    """Return the first entry on or after ``target``, or None if there is none."""
     for entry in entries:
-        if entry.date >= monday:
+        if entry.date >= target:
             return ResolveResult(
                 draw_number=entry.draw_number,
-                exact_match=False,
+                exact_match=(entry.date == target),
                 match_date=entry.date,
             )
-    return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    return None
 
 
-def index_exceeds_count_error(
-    monday: date, in_week: list[DatepickerEntry]
-) -> ValueError:
-    """Describe an n that exceeds the number of draws inside an ISO week."""
-    iso = monday.isocalendar()
-    dates = ", ".join(e.date.isoformat() for e in in_week)
-    options = " or ".join(
-        f"--week {iso.year}.{iso.week}.{i}" for i in range(1, len(in_week) + 1)
-    )
-    return ValueError(
-        f"Error: Week {iso.year}.{iso.week} has {len(in_week)} draws "
-        f"(dates: {dates}). Use {options}."
-    )
+def _not_found() -> ResolveResult:
+    """Return the ResolveResult shape used when no entry satisfies the query."""
+    return ResolveResult(draw_number=None, exact_match=False, match_date=None)
 
 
 def week_monday(week_str: str) -> date:
@@ -93,14 +107,16 @@ def week_draw_index(week_str: str) -> int:
     is a positive integer, so its presence can be relied on here.
     """
     parts = week_str.split(".")
-    if len(parts) == 3:  # noqa: PLR2004
+    if len(parts) == _WEEK_PARTS_WITH_INDEX:
         return int(parts[2])
     return 1
 
 
 def parse_week_value(value: str) -> tuple[int, int]:
     parts = value.split(".")
-    if len(parts) not in (2, 3) or not all(p.isdigit() for p in parts):  # noqa: PLR2004
+    if len(parts) not in (_WEEK_PARTS, _WEEK_PARTS_WITH_INDEX) or not all(
+        p.isdigit() for p in parts
+    ):
         raise ValueError(f"Invalid week: {value}")
     year, week, *draw = (int(p) for p in parts)
     if draw and draw[0] < 1:

@@ -143,9 +143,9 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
     start_odds = event.get("startOdds")
     if start_odds:
         return Odds(
-            home=_parse_swedish_decimal(start_odds["one"]),
-            draw=_parse_swedish_decimal(start_odds["x"]),
-            away=_parse_swedish_decimal(start_odds["two"]),
+            home=_parse_swedish_decimal(start_odds.get("one", "0")),
+            draw=_parse_swedish_decimal(start_odds.get("x", "0")),
+            away=_parse_swedish_decimal(start_odds.get("two", "0")),
         )
     return None
 

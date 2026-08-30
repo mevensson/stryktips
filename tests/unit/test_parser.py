@@ -65,3 +65,12 @@ def test_create_parser_date_and_draw_are_mutually_exclusive():
 
     with pytest.raises(SystemExit):
         parser.parse_args(["--draw", "4900", "--date", "2025-05-10"])
+
+
+def test_create_parser_help_lists_start_and_end():
+    parser = create_parser()
+
+    help_text = parser.format_help()
+
+    assert "--start" in help_text
+    assert "--end" in help_text
