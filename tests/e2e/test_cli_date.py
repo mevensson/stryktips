@@ -54,7 +54,7 @@ def test_date_2020_04_01_forward_scans_to_june(mock_response, capsys):  # noqa: 
         timeout=30,
     ).and_return(mock_response(june_data))
 
-    draw_data = json.loads(Path("tests/fixtures/draw_4642.json").read_text())
+    draw_data = json.loads(Path("tests/fixtures/week_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,
