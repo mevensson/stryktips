@@ -20,22 +20,13 @@ def mock_api_response():
     return json.loads(Path("tests/fixtures/week_4900.json").read_text())
 
 
-def _mock_requests_get(data: dict[str, Any]) -> Any:
-    """Stub requests.get to return a given JSON payload."""
-    mock = flexmock(status_code=200)
-    mock.should_receive("json").and_return(data)
-    mock.should_receive("raise_for_status").and_return(None)
-    return mock
-
-
-def test_fetch_draw_returns_draw_with_13_matches(mock_api_response):
+def test_fetch_draw_returns_draw_with_13_matches(mock_api_response, mock_response):
     """Fetching week 4900 returns a draw with 13 matches."""
     # Arrange
-    mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(mock_api_response))
 
     # Act
     draw = fetch_draw(4900)
@@ -45,41 +36,39 @@ def test_fetch_draw_returns_draw_with_13_matches(mock_api_response):
     assert draw.draw_number == 4900
 
 
-def _mock_fetch_draw_4900(mock_api_response: dict[str, Any]) -> Any:
-    mock = _mock_requests_get(mock_api_response)
+def _mock_fetch_draw_4900(mock_api_response: dict[str, Any], mock_response: Any) -> Any:
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(mock_api_response))
     return fetch_draw(4900)
 
 
-def test_fetch_draw_parses_draw_comment(mock_api_response):
+def test_fetch_draw_parses_draw_comment(mock_api_response, mock_response):
     """drawComment from the API response is stored in Draw.draw_comment."""
     # Act
-    draw = _mock_fetch_draw_4900(mock_api_response)
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
 
     # Assert
     assert draw.draw_comment == "Stryktipset v. 2025-19"
 
 
-def test_fetch_draw_parses_reg_close_time(mock_api_response):
+def test_fetch_draw_parses_reg_close_time(mock_api_response, mock_response):
     """regCloseTime from the API response is stored as a datetime."""
     # Act
-    draw = _mock_fetch_draw_4900(mock_api_response)
+    draw = _mock_fetch_draw_4900(mock_api_response, mock_response)
 
     # Assert
     assert draw.reg_close_time.isoformat() == "2025-05-10T15:59:00+02:00"
 
 
-def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response):
+def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response, mock_response):
     """First match's startOdds are parsed into an Odds object."""
     # Arrange
-    mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(mock_api_response))
 
     # Act
     draw = fetch_draw(4900)
@@ -92,14 +81,13 @@ def test_fetch_draw_parses_start_odds_for_first_match(mock_api_response):
     assert match1.odds.away == Decimal("2.80")
 
 
-def test_fetch_draw_parses_outcome_probabilities(mock_api_response):
+def test_fetch_draw_parses_outcome_probabilities(mock_api_response, mock_response):
     """First match's outcome probability is computed from startOdds."""
     # Arrange
-    mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(mock_api_response))
 
     # Act
     draw = fetch_draw(4900)
@@ -121,14 +109,13 @@ def test_fetch_draw_parses_outcome_probabilities(mock_api_response):
     )
 
 
-def test_fetch_draw_parses_odds_for_all_matches(mock_api_response):
+def test_fetch_draw_parses_odds_for_all_matches(mock_api_response, mock_response):
     """Every match in the draw has parsed odds and outcome probabilities."""
     # Arrange
-    mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(mock_api_response))
 
     # Act
     draw = fetch_draw(4900)
@@ -141,15 +128,14 @@ def test_fetch_draw_parses_odds_for_all_matches(mock_api_response):
         )
 
 
-def test_fetch_draw_handles_empty_response():
+def test_fetch_draw_handles_empty_response(mock_response):
     """Empty events list yields a draw with zero matches."""
     # Arrange
     empty: dict[str, Any] = {"draw": {"drawEvents": []}}
-    mock = _mock_requests_get(empty)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}99999",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(empty))
 
     # Act
     draw = fetch_draw(99999)
@@ -158,15 +144,14 @@ def test_fetch_draw_handles_empty_response():
     assert len(draw.matches) == 0
 
 
-def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response):
+def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response, mock_response):
     """svenskaFolket percentages are parsed into Decimal values."""
     from stryktips.models import SvenskaFolket
 
-    mock = _mock_requests_get(mock_api_response)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(mock_api_response))
 
     draw = fetch_draw(4900)
 
@@ -178,7 +163,7 @@ def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response):
     )
 
 
-def test_fetch_draw_raises_on_missing_participants():
+def test_fetch_draw_raises_on_missing_participants(mock_response):
     """A match without home/away participants raises ValueError."""
     bad_event: dict[str, Any] = {
         "draw": {
@@ -187,17 +172,16 @@ def test_fetch_draw_raises_on_missing_participants():
             ]
         }
     }
-    mock = _mock_requests_get(bad_event)
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}5000",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(bad_event))
 
     with pytest.raises(ValueError, match="participants"):
         fetch_draw(5000)
 
 
-def test_fetch_draws_by_month_returns_parsed_entries():
+def test_fetch_draws_by_month_returns_parsed_entries(mock_response):
     """fetch_draws_by_month returns DatepickerEntry list from the API."""
     from datetime import date
 
@@ -211,12 +195,11 @@ def test_fetch_draws_by_month_returns_parsed_entries():
             {"date": "2025-05-10", "drawNumber": 4900},
         ]
     }
-    mock = _mock_requests_get(api_response)
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
         "?product=stryktipset&year=2025&month=5",
         timeout=30,
-    ).and_return(mock)
+    ).and_return(mock_response(api_response))
 
     # Act
     entries = fetch_draws_by_month(2025, 5)
