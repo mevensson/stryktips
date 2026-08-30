@@ -72,6 +72,16 @@ def create_parser() -> argparse.ArgumentParser:
         type=_parse_week,
         help="ISO week (YYYY.WW[.N]) of the draw",
     )
+    group.add_argument(
+        "--start",
+        type=int,
+        help="Start draw number for the prediction-quality report",
+    )
+    group.add_argument(
+        "--end",
+        type=int,
+        help="End draw number for the prediction-quality report",
+    )
     return parser
 
 
