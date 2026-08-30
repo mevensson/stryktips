@@ -26,14 +26,10 @@ class DrawNotFound(Exception):
 
 def resolve_draw_by_date(target: date, entries: list[DatepickerEntry]) -> ResolveResult:
     """Resolve the first entry on or after the target date."""
-    for entry in entries:
-        if entry.date >= target:
-            return ResolveResult(
-                draw_number=entry.draw_number,
-                exact_match=(entry.date == target),
-                match_date=entry.date,
-            )
-    return ResolveResult(draw_number=0, exact_match=False, match_date=None)
+    result = _first_on_or_after(target, entries)
+    if result is None:
+        return _not_found()
+    return result
 
 
 def resolve_draw_by_week(
@@ -55,13 +51,26 @@ def resolve_draw_by_week(
             exact_match=True,
             match_date=nth.date,
         )
+    result = _first_on_or_after(monday, entries)
+    return result if result is not None else _not_found()
+
+
+def _first_on_or_after(
+    target: date, entries: list[DatepickerEntry]
+) -> ResolveResult | None:
+    """Return the first entry on or after ``target``, or None if there is none."""
     for entry in entries:
-        if entry.date >= monday:
+        if entry.date >= target:
             return ResolveResult(
                 draw_number=entry.draw_number,
-                exact_match=False,
+                exact_match=(entry.date == target),
                 match_date=entry.date,
             )
+    return None
+
+
+def _not_found() -> ResolveResult:
+    """Return the ResolveResult shape used when no entry satisfies the query."""
     return ResolveResult(draw_number=0, exact_match=False, match_date=None)
 
 
