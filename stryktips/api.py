@@ -150,5 +150,7 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
     return None
 
 
-def _parse_swedish_decimal(value: str) -> Decimal:
-    return Decimal(value.replace(",", "."))
+def _parse_swedish_decimal(value: object) -> Decimal:
+    if value is None:
+        return Decimal(0)
+    return Decimal(str(value).replace(",", "."))
