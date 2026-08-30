@@ -31,7 +31,7 @@ class Match:
     away_team: str
     home_score: int | None
     away_score: int | None
-    svenska_folket: SvenskaFolket | None
+    svenska_folket: SvenskaFolket | None = None
     odds: Odds | None = None
     outcome_probability: OutcomeProbability | None = None
 
