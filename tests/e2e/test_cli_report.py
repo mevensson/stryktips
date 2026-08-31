@@ -100,3 +100,22 @@ def test_start_end_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
     assert "30-40: 3" in lines
     assert "40-50: 1" in lines
     assert "50-60: 3" in lines
+
+
+def test_start_end_excludes_played_without_odds(mock_response, capsys):
+    """--start 4642 --end 4642 counts played-but-odds-less matches as excluded."""
+    draw_data: dict[str, Any] = json.loads(
+        Path("tests/fixtures/week_4642.json").read_text()
+    )
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
+        timeout=30,
+    ).and_return(mock_response(draw_data))
+
+    exit_code = main(["--start", "4642", "--end", "4642"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    lines = captured.out.strip().split("\n")
+    assert "eligible: 0, excluded: 13" in lines[0]
+    assert len(lines) == 1  # no bucket rows for an all-excluded draw

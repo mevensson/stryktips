@@ -35,8 +35,12 @@ python stryktips.py --week 2025.19
 | `--draw`   | Yes*     | int  | Draw number for Stryktipset data                   |
 | `--date`   | Yes*     | str  | Calendar date (YYYY-MM-DD) to find the draw on or after |
 | `--week`   | Yes*     | str  | ISO week (YYYY.WW[.N]) to find the draw on or after its Monday; `.N` selects the N-th draw dated within that week (1-indexed) |
+| `--start`  | Yes*     | int  | Start draw number for the prediction-quality report |
+| `--end`    | Yes*     | int  | End draw number for the prediction-quality report |
 
-*Exactly one of `--draw`, `--date`, or `--week` is required.
+*Exactly one of `--draw`, `--date`, `--week`, or the `--start`/`--end` pair is
+required. `--start` requires `--end` and vice versa; the pair is mutually
+exclusive with the other selectors.
 
 ## Behavior
 
@@ -52,6 +56,11 @@ python stryktips.py --week 2025.19
   to stderr: `Note: No draw found for 2025-01-01, using 2025-01-04 (draw 4882)`.
 - When no draw is found within 12 months, the program exits with code 1 and
   prints a message to stderr.
+- `--start`/`--end` print a prediction-quality report to stdout: a summary line
+  with the eligible/excluded match counts, then one row per 10%-wide bucket of
+  the predicted probability of the outcome that actually happened. A match is
+  eligible iff it has a final score and `startOdds`; played-but-odds-less
+  matches count toward the excluded total, and unplayed matches are ignored.
 
 ## Output
 
@@ -74,6 +83,21 @@ The pipe-separated fields are:
 3. Svenska Folket public betting percentages (1 - X - 2)
 4. Decimal odds (1 - X - 2) — omitted when unavailable
 5. Estimated true probabilities (1 - X - 2) — derived by removing overround; omitted when unavailable
+
+### Prediction-quality report
+
+`--start`/`--end` print one report per draw, e.g. for `--start 4900 --end 4900`:
+
+```
+eligible: 13, excluded: 0
+10-20: 1
+20-30: 5
+30-40: 3
+40-50: 1
+50-60: 3
+```
+
+Buckets with a zero count are omitted.
 
 ## Development
 
