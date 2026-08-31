@@ -115,13 +115,6 @@ def _parse_participants(match: dict[str, Any]) -> tuple[str, str]:
     return participants[0]["mediumName"], participants[1]["mediumName"]
 
 
-def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None:
-    if odds is None:
-        return None
-    home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
-    return OutcomeProbability(home=home_p, draw=draw_p, away=away_p)
-
-
 def _parse_scores(match: dict[str, Any]) -> tuple[int | None, int | None]:
     for r in match.get("result", []):
         if r["type"] == _RESULT_TYPE_FULLTIME:
@@ -143,6 +136,13 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
         home, draw, away = _parse_three_decimal(start_odds)
         return Odds(home=home, draw=draw, away=away)
     return None
+
+
+def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None:
+    if odds is None:
+        return None
+    home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
+    return OutcomeProbability(home=home_p, draw=draw_p, away=away_p)
 
 
 def _parse_three_decimal(source: Mapping[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
