@@ -140,6 +140,46 @@ def test_main_start_end_prints_report(capsys):
     assert "70-80: 1" in captured.out
 
 
+def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR0915
+    """--start/--end across a multi-draw range prints one merged report."""
+    match_high = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+        ),
+    )
+    match_low = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.25"), draw=Decimal("0.30"), away=Decimal("0.35")
+        ),
+    )
+
+    def fetch(draw_number: int) -> Draw:
+        if draw_number == 4901:
+            return Draw(draw_number=draw_number, matches=[match_high])
+        return Draw(draw_number=draw_number, matches=[match_low])
+
+    flexmock(stryktips.core, fetch_draw=fetch)
+
+    exit_code = stryktips.core.main(["--start", "4901", "--end", "4902"])
+    captured = capsys.readouterr()
+
+    expected = "eligible: 2, excluded: 0\n20-30: 1\n70-80: 1"
+    assert exit_code == 0
+    assert captured.out.splitlines() == expected.splitlines()
+
+
 def test_main_start_end_reports_network_error_to_stderr(capsys):
     """A requests failure in the report path exits 1 and prints to stderr."""
 
