@@ -5,9 +5,11 @@ from datetime import date
 
 import pytest
 from flexmock import flexmock
+from requests import RequestException
 
 import stryktips.core
 from stryktips.models import DatepickerEntry, Draw
+from stryktips.resolver import DrawNotFound
 
 
 def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: PLR0915
@@ -112,8 +114,6 @@ def test_fetch_draw_from_args_rejects_unimplemented_report():
 
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
     """When 12 months have no entries, raise DrawNotFound."""
-    from stryktips.resolver import DrawNotFound
-
     flexmock(
         stryktips.core,
         fetch_draws_by_month=lambda y, m: [],
@@ -127,7 +127,6 @@ def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
 
 def test_main_reports_draw_not_found(capsys):
     """main maps DrawNotFound to exit 1 with a stderr message."""
-    from stryktips.resolver import DrawNotFound
 
     def raise_not_found(_args: argparse.Namespace) -> Draw:
         raise DrawNotFound("2000-01-01")
@@ -144,7 +143,6 @@ def test_main_reports_draw_not_found(capsys):
 
 def test_main_returns_network_error_to_stderr(capsys):
     """A requests failure in the fetch path exits 1 and prints to stderr."""
-    from requests import RequestException
 
     def raise_network(_args: argparse.Namespace) -> Draw:
         raise RequestException("connection refused")
