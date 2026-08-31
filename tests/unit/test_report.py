@@ -173,7 +173,9 @@ def test_format_report_aggregates_eligible_and_excluded_matches():
     unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
 
     # Act
-    result = format_report(make_draw([home_win, away_win, draw_match, odds_less, unplayed]))
+    result = format_report(
+        make_draw([home_win, away_win, draw_match, odds_less, unplayed])
+    )
 
     # Assert
     assert result == "eligible: 3, excluded: 1\n10-20: 1\n50-60: 1\n70-80: 1"
