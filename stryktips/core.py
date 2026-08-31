@@ -123,6 +123,8 @@ def _validate_report_args(
         parser.error("--start requires --end")
     if args.end is not None and args.start is None:
         parser.error("--end requires --start")
+    if args.end is not None and args.start is not None and args.start > args.end:
+        parser.error("--start must not be greater than --end")
     if args.end is not None and (
         args.draw is not None or args.date is not None or args.week is not None
     ):

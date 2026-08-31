@@ -164,6 +164,14 @@ def test_main_start_without_end_rejected(capsys):
     assert exc.value.code == 2
 
 
+def test_main_start_greater_than_end_rejected(capsys):
+    """--start greater than --end is a parser error with exit code 2."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main(["--start", "4901", "--end", "4900"])
+
+    assert exc.value.code == 2
+
+
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
     """When 12 months have no entries, raise DrawNotFound."""
     flexmock(
