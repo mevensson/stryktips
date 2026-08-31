@@ -2,12 +2,15 @@
 
 import argparse
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from flexmock import flexmock
+from requests import RequestException
 
 import stryktips.core
-from stryktips.models import DatepickerEntry, Draw
+from stryktips.models import DatepickerEntry, Draw, Match, Odds, OutcomeProbability
+from stryktips.resolver import DrawNotFound
 
 
 def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: PLR0915
@@ -100,20 +103,77 @@ def test_fetch_draw_from_args_routes_week():
     assert draw.draw_number == 4900
 
 
-def test_fetch_draw_from_args_rejects_unimplemented_report():
-    """--start/--end alone never reach fetch_draw; raise a clear error instead."""
+def test_fetch_draw_from_args_routes_draw():
+    """A --draw argument fetches the draw via fetch_draw."""
     flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]))
 
-    args = argparse.Namespace(date=None, week=None, draw=None)
+    args = argparse.Namespace(date=None, week=None, draw=4900)
 
-    with pytest.raises(ValueError, match="not yet implemented"):
-        stryktips.core._fetch_draw_from_args(args)
+    draw = stryktips.core._fetch_draw_from_args(args)
+
+    assert draw.draw_number == 4900
+
+
+def test_main_start_end_prints_report(capsys):
+    """--start/--end together print the bucket report for the fetched draw."""
+    match = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+        ),
+    )
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    )
+
+    exit_code = stryktips.core.main(["--start", "4900", "--end", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "eligible: 1, excluded: 0" in captured.out
+    assert "70-80: 1" in captured.out
+
+
+def test_main_start_end_reports_network_error_to_stderr(capsys):
+    """A requests failure in the report path exits 1 and prints to stderr."""
+
+    def raise_network(_dn: int) -> Draw:
+        raise RequestException("connection refused")
+
+    flexmock(stryktips.core, fetch_draw=raise_network)
+
+    exit_code = stryktips.core.main(["--start", "4900", "--end", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "connection refused" in captured.err
+    assert captured.out == ""
+
+
+def test_main_start_without_end_rejected(capsys):
+    """--start without --end is a parser error with exit code 2."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main(["--start", "4900"])
+
+    assert exc.value.code == 2
+
+
+def test_main_start_greater_than_end_rejected(capsys):
+    """--start greater than --end is a parser error with exit code 2."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main(["--start", "4901", "--end", "4900"])
+
+    assert exc.value.code == 2
 
 
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
     """When 12 months have no entries, raise DrawNotFound."""
-    from stryktips.resolver import DrawNotFound
-
     flexmock(
         stryktips.core,
         fetch_draws_by_month=lambda y, m: [],
@@ -127,7 +187,6 @@ def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
 
 def test_main_reports_draw_not_found(capsys):
     """main maps DrawNotFound to exit 1 with a stderr message."""
-    from stryktips.resolver import DrawNotFound
 
     def raise_not_found(_args: argparse.Namespace) -> Draw:
         raise DrawNotFound("2000-01-01")
@@ -144,7 +203,6 @@ def test_main_reports_draw_not_found(capsys):
 
 def test_main_returns_network_error_to_stderr(capsys):
     """A requests failure in the fetch path exits 1 and prints to stderr."""
-    from requests import RequestException
 
     def raise_network(_args: argparse.Namespace) -> Draw:
         raise RequestException("connection refused")

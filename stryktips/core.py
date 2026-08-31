@@ -8,6 +8,7 @@ from requests import RequestException
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
+from stryktips.report import format_report
 from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
@@ -26,16 +27,21 @@ def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
     args = parser.parse_args(argv)
+    _validate_report_args(parser, args)
 
     try:
-        draw = _fetch_draw_from_args(args)
+        return _run(args)
     except DrawNotFound as e:
         return _report_draw_not_found(e)
     except (ValueError, RequestException) as e:
         return _report_error(e)
 
-    _display(draw)
-    return 0
+
+def _run(args: argparse.Namespace) -> int:
+    if _display_report_if_start(args):
+        return 0
+    draw = _fetch_draw_from_args(args)
+    return _display(draw)
 
 
 def _report_draw_not_found(exc: DrawNotFound) -> int:
@@ -78,7 +84,7 @@ def create_parser() -> argparse.ArgumentParser:
         type=int,
         help="Start draw number for the prediction-quality report",
     )
-    group.add_argument(
+    parser.add_argument(
         "--end",
         type=int,
         help="End draw number for the prediction-quality report",
@@ -94,23 +100,53 @@ def _parse_week(value: str) -> str:
     return value
 
 
+def _display_report_if_start(args: argparse.Namespace) -> bool:
+    if args.start is None:
+        return False
+    _display_report(_fetch_report_draws(args.start, args.end))
+    return True
+
+
+def _fetch_report_draws(start: int, end: int) -> list[Draw]:
+    return [fetch_draw(n) for n in range(start, end + 1)]
+
+
+def _display_report(draws: list[Draw]) -> None:
+    for draw in draws:
+        print(format_report(draw))  # noqa: T201
+
+
+def _validate_report_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    if args.start is not None and args.end is None:
+        parser.error("--start requires --end")
+    if args.end is not None and args.start is None:
+        parser.error("--end requires --start")
+    if args.end is not None and args.start is not None and args.start > args.end:
+        parser.error("--start must not be greater than --end")
+    if args.end is not None and (
+        args.draw is not None or args.date is not None or args.week is not None
+    ):
+        parser.error("--end cannot be combined with --draw/--date/--week")
+
+
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
         return _resolve_draw_by_date(args.date)
     if args.week is not None:
         return _resolve_draw_by_week(args.week)
     if args.draw is None:
-        raise ValueError(
-            "The prediction-quality report (--start/--end) is not yet implemented"
-        )
+        raise ValueError("No draw selector provided")
     return fetch_draw(args.draw)
 
 
-def _display(draw: Draw) -> None:
+def _display(draw: Draw) -> int:
     header = format_header(draw)
     lines = format_matches(draw.matches)
     joined = "\n".join([header, *lines])
     print(joined)  # noqa: T201
+    return 0
 
 
 def _resolve_draw_by_date(date_str: str) -> Draw:
@@ -147,7 +183,7 @@ def _week_draw_index_message(exc: WeekDrawIndexError) -> str:
     return f"Error: {exc} Use {options}."
 
 
-def _forward_scan(  # noqa: PLR0915
+def _forward_scan(
     anchor: date,
     resolve: Callable[[list[DatepickerEntry]], ResolveResult],
     display_str: str,
@@ -158,18 +194,29 @@ def _forward_scan(  # noqa: PLR0915
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(year, month))
         result = resolve(all_entries)
-        draw_number = result.draw_number
-        if draw_number is not None:
-            if not result.exact_match:
-                print(  # noqa: T201
-                    f"Note: No draw found for {display_str},"
-                    f" using {result.match_date} (draw {draw_number})",
-                    file=sys.stderr,
-                )
-            return fetch_draw(draw_number)
-        month += 1
-        if month > MONTHS_IN_YEAR:
-            month = 1
-            year += 1
+        if result.draw_number is not None:
+            _print_fallback_note(result, display_str)
+            return fetch_draw(result.draw_number)
+        year, month = _advance_month(year, month)
 
     raise DrawNotFound(display_str)
+
+
+def _advance_month(year: int, month: int) -> tuple[int, int]:
+    """Advance to the next month, rolling the year over after December."""
+    month += 1
+    if month > MONTHS_IN_YEAR:
+        month = 1
+        year += 1
+    return year, month
+
+
+def _print_fallback_note(result: ResolveResult, display_str: str) -> None:
+    """Print a note to stderr when resolution fell back to the next draw."""
+    if result.exact_match:
+        return
+    print(  # noqa: T201
+        f"Note: No draw found for {display_str},"
+        f" using {result.match_date} (draw {result.draw_number})",
+        file=sys.stderr,
+    )

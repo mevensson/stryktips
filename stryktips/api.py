@@ -122,7 +122,7 @@ def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None
 
 
 def _parse_scores(match: dict[str, Any]) -> tuple[int | None, int | None]:
-    for r in match["result"]:
+    for r in match.get("result", []):
         if r["type"] == _RESULT_TYPE_FULLTIME:
             return int(r["home"]), int(r["away"])
     return None, None
@@ -150,5 +150,7 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
     return None
 
 
-def _parse_swedish_decimal(value: str) -> Decimal:
-    return Decimal(value.replace(",", "."))
+def _parse_swedish_decimal(value: object) -> Decimal:
+    if value is None:
+        return Decimal(0)
+    return Decimal(str(value).replace(",", "."))

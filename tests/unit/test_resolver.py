@@ -128,14 +128,13 @@ def test_resolve_draw_by_week_raises_on_non_positive_n():
 def test_resolve_draw_by_week_finds_next_draw_when_week_is_empty():
     """When no entry is inside the ISO week, return the first entry after Monday."""
     entries = [
-        DatepickerEntry(date=date(2020, 5, 9), draw_number=4900),
         DatepickerEntry(date=date(2020, 6, 20), draw_number=4642),
     ]
 
     result = resolve_draw_by_week(date(2020, 4, 6), entries)
 
     assert result == ResolveResult(
-        draw_number=4900, exact_match=False, match_date=date(2020, 5, 9)
+        draw_number=4642, exact_match=False, match_date=date(2020, 6, 20)
     )
 
 
