@@ -31,7 +31,7 @@ def format_matches(matches: list[Match]) -> list[str]:
 
 def _format_match(match: Match) -> str:
     outcome = _outcome(match)
-    one, x, two = _percentages(match)
+    one, x, two = _svenska_folket_percentages(match)
     odds_str = _format_odds(match)
     probs_str = _format_outcome_probabilities(match)
     return (
@@ -66,7 +66,7 @@ def _outcome(match: Match) -> str:
     return "?"
 
 
-def _percentages(match: Match) -> tuple[str, str, str]:
+def _svenska_folket_percentages(match: Match) -> tuple[str, str, str]:
     if match.svenska_folket:
         sf = match.svenska_folket
         return (str(sf.one), str(sf.x), str(sf.two))
