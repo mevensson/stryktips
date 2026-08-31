@@ -8,6 +8,7 @@ from requests import RequestException
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
+from stryktips.report import format_report
 from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
@@ -26,6 +27,10 @@ def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
     args = parser.parse_args(argv)
+    _validate_report_args(parser, args)
+
+    if _display_report_if_start(args):
+        return 0
 
     try:
         draw = _fetch_draw_from_args(args)
@@ -34,8 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, RequestException) as e:
         return _report_error(e)
 
-    _display(draw)
-    return 0
+    return _display(draw)
 
 
 def _report_draw_not_found(exc: DrawNotFound) -> int:
@@ -78,7 +82,7 @@ def create_parser() -> argparse.ArgumentParser:
         type=int,
         help="Start draw number for the prediction-quality report",
     )
-    group.add_argument(
+    parser.add_argument(
         "--end",
         type=int,
         help="End draw number for the prediction-quality report",
@@ -94,23 +98,51 @@ def _parse_week(value: str) -> str:
     return value
 
 
+def _display_report_if_start(args: argparse.Namespace) -> bool:
+    if args.start is None:
+        return False
+    _display_report(_fetch_report_draws(args.start, args.end))
+    return True
+
+
+def _fetch_report_draws(start: int, end: int) -> list[Draw]:
+    return [fetch_draw(n) for n in range(start, end + 1)]
+
+
+def _display_report(draws: list[Draw]) -> None:
+    for draw in draws:
+        print(format_report(draw))  # noqa: T201
+
+
+def _validate_report_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    if args.start is not None and args.end is None:
+        parser.error("--start requires --end")
+    if args.end is not None and args.start is None:
+        parser.error("--end requires --start")
+    if args.end is not None and (
+        args.draw is not None or args.date is not None or args.week is not None
+    ):
+        parser.error("--end cannot be combined with --draw/--date/--week")
+
+
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
         return _resolve_draw_by_date(args.date)
     if args.week is not None:
         return _resolve_draw_by_week(args.week)
     if args.draw is None:
-        raise ValueError(
-            "The prediction-quality report (--start/--end) is not yet implemented"
-        )
+        raise ValueError("No draw selector provided")
     return fetch_draw(args.draw)
 
 
-def _display(draw: Draw) -> None:
+def _display(draw: Draw) -> int:
     header = format_header(draw)
     lines = format_matches(draw.matches)
     joined = "\n".join([header, *lines])
     print(joined)  # noqa: T201
+    return 0
 
 
 def _resolve_draw_by_date(date_str: str) -> Draw:
