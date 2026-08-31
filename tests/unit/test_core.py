@@ -212,6 +212,35 @@ def test_main_start_greater_than_end_rejected(capsys):
     assert exc.value.code == 2
 
 
+def test_draw_numbers_in_range_walks_across_drawless_months():  # noqa: PLR0915
+    """Walk month-by-month collecting in-range draw numbers, skipping 404 months."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        if month == 3:
+            return [
+                DatepickerEntry(date=date(2020, 3, 7), draw_number=4639),
+                DatepickerEntry(date=date(2020, 3, 14), draw_number=4640),
+                DatepickerEntry(date=date(2020, 3, 21), draw_number=4641),
+            ]
+        if month in (4, 5):
+            return []
+        if month == 6:
+            return [
+                DatepickerEntry(date=date(2020, 6, 6), draw_number=4642),
+                DatepickerEntry(date=date(2020, 6, 13), draw_number=4643),
+            ]
+        raise AssertionError("unexpected month")
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+
+    result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
+
+    assert result == [4641, 4642]
+    assert calls == [(2020, 3), (2020, 4), (2020, 5), (2020, 6)]
+
+
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
     """When 12 months have no entries, raise DrawNotFound."""
     flexmock(

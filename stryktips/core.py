@@ -208,6 +208,12 @@ def _advance_month(year: int, month: int) -> tuple[int, int]:
     return year, month
 
 
+def _draw_numbers_in_range(
+    start: int, end: int, anchor_month: tuple[int, int]
+) -> list[int]:
+    return []
+
+
 def _print_fallback_note(result: ResolveResult, display_str: str) -> None:
     """Print a note to stderr when resolution fell back to the next draw."""
     if result.exact_match:
