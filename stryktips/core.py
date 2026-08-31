@@ -8,7 +8,7 @@ from requests import RequestException
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
-from stryktips.report import format_report
+from stryktips.report import format_aggregate_report
 from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
@@ -20,7 +20,7 @@ from stryktips.resolver import (
 )
 
 MONTHS_IN_YEAR = 12
-MAX_SCAN_MONTHS = MONTHS_IN_YEAR
+MAX_SCAN_MONTHS = 12
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -52,8 +52,8 @@ def _report_draw_not_found(exc: DrawNotFound) -> int:
     return 1
 
 
-def _report_error(error: Exception) -> int:
-    print(error, file=sys.stderr)  # noqa: T201
+def _report_error(exc: Exception) -> int:
+    print(exc, file=sys.stderr)  # noqa: T201
     return 1
 
 
@@ -112,8 +112,7 @@ def _fetch_report_draws(start: int, end: int) -> list[Draw]:
 
 
 def _display_report(draws: list[Draw]) -> None:
-    for draw in draws:
-        print(format_report(draw))  # noqa: T201
+    print(format_aggregate_report(draws))  # noqa: T201
 
 
 def _validate_report_args(
@@ -136,8 +135,6 @@ def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
         return _resolve_draw_by_date(args.date)
     if args.week is not None:
         return _resolve_draw_by_week(args.week)
-    if args.draw is None:
-        raise ValueError("No draw selector provided")
     return fetch_draw(args.draw)
 
 

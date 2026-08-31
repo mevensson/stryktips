@@ -5,7 +5,12 @@ from decimal import Decimal
 import pytest
 
 from stryktips.models import Draw, Match, Odds, OutcomeProbability
-from stryktips.report import bucket_index, format_report, realized_probability
+from stryktips.report import (
+    bucket_index,
+    format_aggregate_report,
+    format_report,
+    realized_probability,
+)
 
 
 def make_match(
@@ -191,3 +196,59 @@ def test_format_report_with_only_unplayed_matches_is_empty_report():
 
     # Assert
     assert result == "eligible: 0, excluded: 0"
+
+
+def test_format_aggregate_report_sums_buckets_and_counts_across_draws():
+    """Aggregate sums eligible/excluded and merges probability buckets across draws."""
+    # Arrange
+    draw_one = make_draw(
+        [
+            make_match(
+                home_score=3,
+                away_score=1,
+                outcome_probability=OutcomeProbability(
+                    home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+                ),
+            ),
+            make_match(
+                home_score=1,
+                away_score=1,
+                outcome_probability=OutcomeProbability(
+                    home=Decimal("0.20"), draw=Decimal("0.55"), away=Decimal("0.25")
+                ),
+            ),
+            make_match(home_score=1, away_score=0, outcome_probability=None),
+        ]
+    )
+    draw_two = make_draw(
+        [
+            make_match(
+                home_score=0,
+                away_score=2,
+                outcome_probability=OutcomeProbability(
+                    home=Decimal("0.05"), draw=Decimal("0.25"), away=Decimal("0.30")
+                ),
+            ),
+            make_match(
+                home_score=2,
+                away_score=0,
+                outcome_probability=OutcomeProbability(
+                    home=Decimal("0.15"), draw=Decimal("0.35"), away=Decimal("0.50")
+                ),
+            ),
+            make_match(
+                home_score=1,
+                away_score=1,
+                outcome_probability=OutcomeProbability(
+                    home=Decimal("0.20"), draw=Decimal("0.55"), away=Decimal("0.25")
+                ),
+            ),
+            make_match(home_score=1, away_score=0, outcome_probability=None),
+        ]
+    )
+
+    # Act
+    result = format_aggregate_report([draw_one, draw_two])
+
+    # Assert
+    assert result == "eligible: 5, excluded: 2\n10-20: 1\n30-40: 1\n50-60: 2\n70-80: 1"

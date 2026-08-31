@@ -96,33 +96,39 @@ def _not_found() -> ResolveResult:
 
 def week_monday(week_str: str) -> date:
     """Return the Monday of the ISO week described by ``week_str`` (YYYY.WW)."""
-    year, week = parse_week_value(week_str)
+    year, week, _ = _parse_week(week_str)
     return date.fromisocalendar(year, week, 1)
 
 
 def week_draw_index(week_str: str) -> int:
-    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1.
-
-    ``parse_week_value`` has already validated that any trailing ``.N`` suffix
-    is a positive integer, so its presence can be relied on here.
-    """
-    parts = week_str.split(".")
-    if len(parts) == _WEEK_PARTS_WITH_INDEX:
-        return int(parts[2])
-    return 1
+    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1."""
+    _, _, draw_index = _parse_week(week_str)
+    return draw_index
 
 
 def parse_week_value(value: str) -> tuple[int, int]:
+    """Return the ``(year, week)`` described by an ISO week string ``YYYY.WW[.N]``."""
+    year, week, _ = _parse_week(value)
+    return year, week
+
+
+def _parse_week(value: str) -> tuple[int, int, int]:
+    """Parse an ISO week string ``YYYY.WW[.N]`` into ``(year, week, draw_index)``."""
     parts = value.split(".")
     if len(parts) not in (_WEEK_PARTS, _WEEK_PARTS_WITH_INDEX) or not all(
         p.isdigit() for p in parts
     ):
         raise ValueError(f"Invalid week: {value}")
     year, week, *draw = (int(p) for p in parts)
-    if draw and draw[0] < 1:
+    draw_index = draw[0] if draw else 1
+    if draw_index < 1 or not _valid_week_date(year, week):
         raise ValueError(f"Invalid week: {value}")
+    return year, week, draw_index
+
+
+def _valid_week_date(year: int, week: int) -> bool:
     try:
         date.fromisocalendar(year, week, 1)
     except ValueError:
-        raise ValueError(f"Invalid week: {value}") from None
-    return year, week
+        return False
+    return True
