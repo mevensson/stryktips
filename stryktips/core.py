@@ -136,8 +136,6 @@ def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
         return _resolve_draw_by_date(args.date)
     if args.week is not None:
         return _resolve_draw_by_week(args.week)
-    if args.draw is None:
-        raise ValueError("No draw selector provided")
     return fetch_draw(args.draw)
 
 
