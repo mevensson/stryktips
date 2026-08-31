@@ -140,6 +140,22 @@ def test_main_start_end_prints_report(capsys):
     assert "70-80: 1" in captured.out
 
 
+def test_main_start_end_reports_network_error_to_stderr(capsys):
+    """A requests failure in the report path exits 1 and prints to stderr."""
+
+    def raise_network(_dn: int) -> Draw:
+        raise RequestException("connection refused")
+
+    flexmock(stryktips.core, fetch_draw=raise_network)
+
+    exit_code = stryktips.core.main(["--start", "4900", "--end", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "connection refused" in captured.err
+    assert captured.out == ""
+
+
 def test_main_start_without_end_rejected(capsys):
     """--start without --end is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:

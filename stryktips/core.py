@@ -29,16 +29,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     _validate_report_args(parser, args)
 
-    if _display_report_if_start(args):
-        return 0
-
     try:
-        draw = _fetch_draw_from_args(args)
+        return _run(args)
     except DrawNotFound as e:
         return _report_draw_not_found(e)
     except (ValueError, RequestException) as e:
         return _report_error(e)
 
+
+def _run(args: argparse.Namespace) -> int:
+    if _display_report_if_start(args):
+        return 0
+    draw = _fetch_draw_from_args(args)
     return _display(draw)
 
 
