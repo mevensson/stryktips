@@ -122,7 +122,7 @@ def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None
 
 
 def _parse_scores(match: dict[str, Any]) -> tuple[int | None, int | None]:
-    for r in match["result"]:
+    for r in match.get("result", []):
         if r["type"] == _RESULT_TYPE_FULLTIME:
             return int(r["home"]), int(r["away"])
     return None, None
