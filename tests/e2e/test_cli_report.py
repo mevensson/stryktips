@@ -119,3 +119,56 @@ def test_start_end_excludes_played_without_odds(mock_response, capsys):
     lines = captured.out.strip().split("\n")
     assert "eligible: 0, excluded: 13" in lines[0]
     assert len(lines) == 1  # no bucket rows for an all-excluded draw
+
+
+def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: PLR0915
+    """--start 4881 --end 4884 folds every draw in range into one report.
+
+    Draws 4881-4884 span the Dec 2024/Jan 2025 month boundary. The result is a
+    single aggregated summary (eligible/excluded summed) plus merged bucket rows;
+    no draw outside [4881, 4884] is fetched.
+    """
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4881, 4882, 4883, 4884):
+        draw_data: dict[str, Any] = json.loads(
+            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    for year, month in ((2024, 12), (2025, 1)):
+        datepicker_data: dict[str, Any] = json.loads(
+            Path(f"tests/fixtures/datepicker_{year}_{month:02d}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).and_return(mock_response(datepicker_data))
+
+    # No draw outside the range may be fetched, on either side of the boundary.
+    for out_of_range in (4880, 4885, 4886):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    exit_code = main(["--start", "4881", "--end", "4884"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    lines = captured.out.strip().split("\n")
+    assert "eligible: 47, excluded: 0" in lines[0]
+    assert len(lines) == 9
+    assert lines[1:] == [
+        "0-10: 1",
+        "10-20: 2",
+        "20-30: 17",
+        "30-40: 7",
+        "40-50: 7",
+        "50-60: 5",
+        "60-70: 6",
+        "70-80: 2",
+    ]
