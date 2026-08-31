@@ -155,7 +155,7 @@ def test_format_report_aggregates_eligible_and_excluded_matches():
         away_score=2,
         odds=Odds(home=Decimal("3.0"), draw=Decimal("3.2"), away=Decimal("2.4")),
         outcome_probability=OutcomeProbability(
-            home=Decimal("0.05"), draw=Decimal("0.20"), away=Decimal("0.15")
+            home=Decimal("0.65"), draw=Decimal("0.20"), away=Decimal("0.15")
         ),
     )
     draw_match = Match(
