@@ -23,6 +23,25 @@ def realized_probability(match: Match) -> Decimal | None:
     return match.outcome_probability.draw
 
 
-def format_report(draws: list[Draw]) -> str:
-    """Return a bucket report of eligible and excluded matches (not implemented)."""
-    return ""
+def format_report(draw: Draw) -> str:
+    """Return a probability-bucket report of eligible and excluded matches in a draw."""
+    buckets, eligible, excluded = _aggregate(draw)
+    lines = [f"eligible: {eligible}, excluded: {excluded}"]
+    lines.extend(
+        f"{i * 10}-{(i + 1) * 10}: {count}" for i, count in enumerate(buckets) if count
+    )
+    return "\n".join(lines)
+
+
+def _aggregate(draw: Draw) -> tuple[list[int], int, int]:
+    """Return probability buckets and eligible/excluded counts for a draw's matches."""
+    buckets = [0] * 10
+    eligible = excluded = 0
+    for match in draw.matches:
+        if match.home_score is not None and match.away_score is not None:
+            if match.outcome_probability is None:
+                excluded += 1
+            elif (probability := realized_probability(match)) is not None:
+                eligible += 1
+                buckets[bucket_index(probability)] += 1
+    return buckets, eligible, excluded
