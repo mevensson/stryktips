@@ -8,7 +8,7 @@ from requests import RequestException
 from stryktips.api import fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
-from stryktips.report import format_report
+from stryktips.report import format_aggregate_report
 from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
@@ -112,8 +112,7 @@ def _fetch_report_draws(start: int, end: int) -> list[Draw]:
 
 
 def _display_report(draws: list[Draw]) -> None:
-    for draw in draws:
-        print(format_report(draw))  # noqa: T201
+    print(format_aggregate_report(draws))  # noqa: T201
 
 
 def _validate_report_args(
