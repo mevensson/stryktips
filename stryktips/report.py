@@ -38,10 +38,10 @@ def _aggregate(draw: Draw) -> tuple[list[int], int, int]:
     buckets = [0] * 10
     eligible = excluded = 0
     for match in draw.matches:
-        if match.home_score is not None and match.away_score is not None:
-            if match.outcome_probability is None:
-                excluded += 1
-            elif (probability := realized_probability(match)) is not None:
-                eligible += 1
-                buckets[bucket_index(probability)] += 1
+        if (probability := realized_probability(match)) is not None:
+            eligible += 1
+            buckets[bucket_index(probability)] += 1
+        elif match.home_score is not None and match.away_score is not None:
+            # Excluded: played but odds-less (unplayed matches are silently dropped).
+            excluded += 1
     return buckets, eligible, excluded
