@@ -199,15 +199,6 @@ def _forward_scan(
     raise DrawNotFound(display_str)
 
 
-def _advance_month(year: int, month: int) -> tuple[int, int]:
-    """Advance to the next month, rolling the year over after December."""
-    month += 1
-    if month > MONTHS_IN_YEAR:
-        month = 1
-        year += 1
-    return year, month
-
-
 def _draw_numbers_in_range(
     start: int, end: int, anchor_month: tuple[int, int]
 ) -> list[int]:
@@ -223,6 +214,15 @@ def _draw_numbers_in_range(
             break
         year, month = _advance_month(year, month)
     return numbers
+
+
+def _advance_month(year: int, month: int) -> tuple[int, int]:
+    """Advance to the next month, rolling the year over after December."""
+    month += 1
+    if month > MONTHS_IN_YEAR:
+        month = 1
+        year += 1
+    return year, month
 
 
 def _print_fallback_note(result: ResolveResult, display_str: str) -> None:
