@@ -33,6 +33,11 @@ def format_report(draw: Draw) -> str:
     return "\n".join(lines)
 
 
+def format_aggregate_report(draws: list[Draw]) -> str:
+    """Return a merged probability-bucket report across multiple draws."""
+    return ""
+
+
 def _aggregate(draw: Draw) -> tuple[list[int], int, int]:
     """Return probability buckets and eligible/excluded counts for a draw's matches."""
     buckets = [0] * 10
