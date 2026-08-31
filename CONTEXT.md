@@ -44,6 +44,14 @@ _Avoid_: Odds probability
 How well a set of predicted probabilities matches the observed outcome frequencies.
 _Avoid_: Calibration, accuracy, reliability
 
+**Eligible Match**:
+A played Match with `startOdds` (hence an `OutcomeProbability`) that contributes its realized-outcome probability to a report bucket.
+_Avoid_: Qualifying match, included match
+
+**Excluded Match**:
+A played Match without `startOdds`, so no `OutcomeProbability` exists; counted in the prediction-quality report's excluded summary line rather than contributing a probability. Unplayed matches are silently ignored, not counted.
+_Avoid_: Dropped match, odds-less match
+
 **Period**:
 A contiguous span of Draws (a start Draw to an end Draw) treated as a single statistical sample.
 _Avoid_: Backtest, window, range

@@ -97,6 +97,8 @@ eligible: 13, excluded: 0
 50-60: 3
 ```
 
+Buckets with a zero count are omitted.
+
 ## Development
 
 - **Tests:** `pytest`
