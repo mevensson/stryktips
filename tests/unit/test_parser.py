@@ -69,6 +69,15 @@ def test_create_parser_date_and_draw_are_mutually_exclusive():
         parser.parse_args(["--draw", "4900", "--date", "2025-05-10"])
 
 
+def test_create_parser_accepts_start_and_end_together():
+    parser = create_parser()
+
+    args = parser.parse_args(["--start", "4900", "--end", "4900"])
+
+    assert args.start == 4900
+    assert args.end == 4900
+
+
 def test_create_parser_help_lists_start_and_end():
     parser = create_parser()
 
