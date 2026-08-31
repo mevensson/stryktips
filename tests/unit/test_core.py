@@ -167,10 +167,21 @@ def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR091
 
     def fetch(draw_number: int) -> Draw:
         if draw_number == 4901:
-            return Draw(draw_number=draw_number, matches=[match_high])
+            return Draw(
+                draw_number=draw_number,
+                matches=[match_high],
+                reg_close_time=datetime(2025, 5, 10, 15, 59),
+            )
         return Draw(draw_number=draw_number, matches=[match_low])
 
     flexmock(stryktips.core, fetch_draw=fetch)
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda year, month: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4901),
+            DatepickerEntry(date=date(2025, 5, 17), draw_number=4902),
+        ],
+    )
 
     exit_code = stryktips.core.main(["--start", "4901", "--end", "4902"])
     captured = capsys.readouterr()

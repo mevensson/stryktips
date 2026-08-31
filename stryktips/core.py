@@ -108,7 +108,24 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
 
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:
-    return [fetch_draw(n) for n in range(start, end + 1)]
+    """Fetch every draw in [start, end] by walking the datepicker month-by-month."""
+    anchor = fetch_draw(start)
+    draws = [anchor]
+    if start == end:
+        return draws
+    seen = {start}
+    for number in _draw_numbers_in_range(start, end, _draw_month(anchor)):
+        if number not in seen:
+            draws.append(fetch_draw(number))
+            seen.add(number)
+    return draws
+
+
+def _draw_month(draw: Draw) -> tuple[int, int]:
+    """Return the (year, month) of a draw's registration close time."""
+    if draw.reg_close_time is None:
+        raise ValueError(f"Draw {draw.draw_number} has no close time")
+    return draw.reg_close_time.year, draw.reg_close_time.month
 
 
 def _display_report(draws: list[Draw]) -> None:
