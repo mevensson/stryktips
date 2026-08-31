@@ -1,5 +1,6 @@
 """API client for fetching Stryktipset data."""
 
+from collections.abc import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -131,23 +132,26 @@ def _parse_scores(match: dict[str, Any]) -> tuple[int | None, int | None]:
 def _parse_svenska_folket(event: dict[str, Any]) -> SvenskaFolket | None:
     sf = event.get("svenskaFolket")
     if sf:
-        return SvenskaFolket(
-            one=_parse_swedish_decimal(sf.get("one", "0")),
-            x=_parse_swedish_decimal(sf.get("x", "0")),
-            two=_parse_swedish_decimal(sf.get("two", "0")),
-        )
+        one, x, two = _parse_three_decimal(sf)
+        return SvenskaFolket(one=one, x=x, two=two)
     return None
 
 
 def _parse_odds(event: dict[str, Any]) -> Odds | None:
     start_odds = event.get("startOdds")
     if start_odds:
-        return Odds(
-            home=_parse_swedish_decimal(start_odds.get("one", "0")),
-            draw=_parse_swedish_decimal(start_odds.get("x", "0")),
-            away=_parse_swedish_decimal(start_odds.get("two", "0")),
-        )
+        home, draw, away = _parse_three_decimal(start_odds)
+        return Odds(home=home, draw=draw, away=away)
     return None
+
+
+def _parse_three_decimal(source: Mapping[str, Any]) -> tuple[Decimal, Decimal, Decimal]:
+    """Parse the one/x/two decimal fields shared by odds and svenskaFolket."""
+    return (
+        _parse_swedish_decimal(source.get("one", "0")),
+        _parse_swedish_decimal(source.get("x", "0")),
+        _parse_swedish_decimal(source.get("two", "0")),
+    )
 
 
 def _parse_swedish_decimal(value: object) -> Decimal:
