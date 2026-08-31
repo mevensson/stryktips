@@ -52,8 +52,8 @@ def _report_draw_not_found(exc: DrawNotFound) -> int:
     return 1
 
 
-def _report_error(error: Exception) -> int:
-    print(error, file=sys.stderr)  # noqa: T201
+def _report_error(exc: Exception) -> int:
+    print(exc, file=sys.stderr)  # noqa: T201
     return 1
 
 
