@@ -20,7 +20,7 @@ from stryktips.resolver import (
 )
 
 MONTHS_IN_YEAR = 12
-MAX_SCAN_MONTHS = MONTHS_IN_YEAR
+MAX_SCAN_MONTHS = 12
 
 
 def main(argv: list[str] | None = None) -> int:
