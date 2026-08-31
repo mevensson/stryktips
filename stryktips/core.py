@@ -211,7 +211,18 @@ def _advance_month(year: int, month: int) -> tuple[int, int]:
 def _draw_numbers_in_range(
     start: int, end: int, anchor_month: tuple[int, int]
 ) -> list[int]:
-    return []
+    """Walk the datepicker month-by-month, collecting draw numbers in [start, end]."""
+    numbers: list[int] = []
+    year, month = anchor_month
+    for _ in range(MAX_SCAN_MONTHS):
+        entries = fetch_draws_by_month(year, month)
+        numbers.extend(
+            entry.draw_number for entry in entries if start <= entry.draw_number <= end
+        )
+        if any(entry.draw_number >= end for entry in entries):
+            break
+        year, month = _advance_month(year, month)
+    return numbers
 
 
 def _print_fallback_note(result: ResolveResult, display_str: str) -> None:
