@@ -61,6 +61,10 @@ exclusive with the other selectors.
   the predicted probability of the outcome that actually happened. A match is
   eligible iff it has a final score and `startOdds`; played-but-odds-less
   matches count toward the excluded total, and unplayed matches are ignored.
+- `--start`/`--end` may span a range of draws. The tool walks the datepicker
+  month-by-month from the start draw to collect every draw number within
+  `[start, end]`, tolerating gaps (drawless months or skipped draws), then
+  folds the whole range into one aggregated report.
 
 ## Output
 
@@ -86,7 +90,8 @@ The pipe-separated fields are:
 
 ### Prediction-quality report
 
-`--start`/`--end` print one report per draw, e.g. for `--start 4900 --end 4900`:
+`--start`/`--end` fold the whole `[start, end]` range into a single aggregated
+report. For a single draw, e.g. `--start 4900 --end 4900`:
 
 ```
 eligible: 13, excluded: 0
