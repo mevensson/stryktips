@@ -108,7 +108,24 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
 
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:
-    return [fetch_draw(n) for n in range(start, end + 1)]
+    """Fetch every draw in [start, end] by walking the datepicker month-by-month."""
+    anchor = fetch_draw(start)
+    draws = [anchor]
+    if start == end:
+        return draws
+    seen = {start}
+    for number in _draw_numbers_in_range(start, end, _draw_month(anchor)):
+        if number not in seen:
+            draws.append(fetch_draw(number))
+            seen.add(number)
+    return draws
+
+
+def _draw_month(draw: Draw) -> tuple[int, int]:
+    """Return the (year, month) of a draw's registration close time."""
+    if draw.reg_close_time is None:
+        raise ValueError(f"Draw {draw.draw_number} has no close time")
+    return draw.reg_close_time.year, draw.reg_close_time.month
 
 
 def _display_report(draws: list[Draw]) -> None:
@@ -197,6 +214,23 @@ def _forward_scan(
         year, month = _advance_month(year, month)
 
     raise DrawNotFound(display_str)
+
+
+def _draw_numbers_in_range(
+    start: int, end: int, anchor_month: tuple[int, int]
+) -> list[int]:
+    """Walk the datepicker month-by-month, collecting draw numbers in [start, end]."""
+    numbers: list[int] = []
+    year, month = anchor_month
+    for _ in range(MAX_SCAN_MONTHS):
+        entries = fetch_draws_by_month(year, month)
+        numbers.extend(
+            entry.draw_number for entry in entries if start <= entry.draw_number <= end
+        )
+        if any(entry.draw_number >= end for entry in entries):
+            break
+        year, month = _advance_month(year, month)
+    return numbers
 
 
 def _advance_month(year: int, month: int) -> tuple[int, int]:

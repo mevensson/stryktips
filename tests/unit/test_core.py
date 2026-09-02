@@ -1,7 +1,7 @@
 """Unit tests for stryktips.core orchestration logic."""
 
 import argparse
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
@@ -167,10 +167,21 @@ def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR091
 
     def fetch(draw_number: int) -> Draw:
         if draw_number == 4901:
-            return Draw(draw_number=draw_number, matches=[match_high])
+            return Draw(
+                draw_number=draw_number,
+                matches=[match_high],
+                reg_close_time=datetime(2025, 5, 10, 15, 59),
+            )
         return Draw(draw_number=draw_number, matches=[match_low])
 
     flexmock(stryktips.core, fetch_draw=fetch)
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda year, month: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4901),
+            DatepickerEntry(date=date(2025, 5, 17), draw_number=4902),
+        ],
+    )
 
     exit_code = stryktips.core.main(["--start", "4901", "--end", "4902"])
     captured = capsys.readouterr()
@@ -210,6 +221,86 @@ def test_main_start_greater_than_end_rejected(capsys):
         stryktips.core.main(["--start", "4901", "--end", "4900"])
 
     assert exc.value.code == 2
+
+
+def test_draw_numbers_in_range_walks_across_drawless_months():  # noqa: PLR0915
+    """Walk month-by-month collecting in-range draw numbers, skipping 404 months."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        if month == 3:
+            return [
+                DatepickerEntry(date=date(2020, 3, 7), draw_number=4639),
+                DatepickerEntry(date=date(2020, 3, 14), draw_number=4640),
+                DatepickerEntry(date=date(2020, 3, 21), draw_number=4641),
+            ]
+        if month in (4, 5):
+            return []
+        if month == 6:
+            return [
+                DatepickerEntry(date=date(2020, 6, 6), draw_number=4642),
+                DatepickerEntry(date=date(2020, 6, 13), draw_number=4643),
+            ]
+        raise AssertionError("unexpected month")
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+
+    result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
+
+    assert result == [4641, 4642]
+    assert calls == [(2020, 3), (2020, 4), (2020, 5), (2020, 6)]
+
+
+def test_fetch_report_draws_spanning_walks_datepicker_and_filters():  # noqa: PLR0915
+    """Spanning range walks the datepicker and returns only the in-range draws."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        if (year, month) == (2025, 5):
+            return [
+                DatepickerEntry(date=date(2025, 5, 3), draw_number=4880),
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4901),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4902),
+                DatepickerEntry(date=date(2025, 5, 24), draw_number=4903),
+            ]
+        raise AssertionError("unexpected month")
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(
+            draw_number=dn,
+            matches=[],
+            reg_close_time=datetime(2025, 5, 10, 15, 59),
+        ),
+    )
+
+    draws = stryktips.core._fetch_report_draws(4901, 4902)
+
+    assert [d.draw_number for d in draws] == [4901, 4902]
+    assert calls == [(2025, 5)]
+
+
+def test_fetch_report_draws_single_does_not_touch_datepicker():
+    """A single-draw range returns exactly that draw without walking the datepicker."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        return []
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
+    )
+
+    draws = stryktips.core._fetch_report_draws(4900, 4900)
+
+    assert [d.draw_number for d in draws] == [4900]
+    assert calls == []
 
 
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):

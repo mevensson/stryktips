@@ -172,3 +172,53 @@ def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: P
         "60-70: 6",
         "70-80: 2",
     ]
+
+
+def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
+    mock_response, capsys
+):
+    """--start 4641 --end 4642 walks the datepicker across the Apr/May 2020 gap.
+
+    Draw 4641 (Mar 2020) and draw 4642 (Jun 2020) straddle April and May 2020,
+    which have no draws and so return 404 from the datepicker. The walk must query
+    every month in between and collect only the draws in [4641, 4642], fetching
+    nothing outside that range.
+    """
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4641, 4642):
+        draw_data: dict[str, Any] = json.loads(
+            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    # Months with draws return 200; the drawless Apr/May 2020 months return 404.
+    for year, month in ((2020, 3), (2020, 6)):
+        datepicker_data: dict[str, Any] = json.loads(
+            Path(f"tests/fixtures/datepicker_{year}_{month:02d}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).once().and_return(mock_response(datepicker_data))
+    for year, month in ((2020, 4), (2020, 5)):
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).once().and_return(mock_response({"error": "not_found"}, status_code=404))
+
+    # No draw outside [4641, 4642] may be fetched, on either side of the gap.
+    for out_of_range in (4639, 4640, 4643, 4644):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    exit_code = main(["--start", "4641", "--end", "4642"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    lines = captured.out.strip().split("\n")
+    assert lines == ["eligible: 0, excluded: 20"]
