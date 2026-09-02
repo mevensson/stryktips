@@ -222,3 +222,55 @@ def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
     assert exit_code == 0
     lines = captured.out.strip().split("\n")
     assert lines == ["eligible: 0, excluded: 20"]
+
+
+def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR0915
+    """--start 4882 --end 4884 skips the interior draw absent from the datepicker.
+
+    Draw 4883 is a hole in the range: it appears in no datepicker month, so the walk
+    must not collect or fetch it. Only 4882 and 4884 are aggregated into the report.
+    """
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4882, 4884):
+        draw_data: dict[str, Any] = json.loads(
+            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    # Synthetic Jan 2025 datepicker: 4883 is omitted entirely from the month's data.
+    datepicker_data: dict[str, Any] = {
+        "resultDates": [
+            {"date": "2025-01-04T00:00:00+01:00", "drawNumber": 4882},
+            {"date": "2025-01-18T00:00:00+01:00", "drawNumber": 4884},
+        ]
+    }
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2025, month=1), timeout=30
+    ).once().and_return(mock_response(datepicker_data))
+
+    # The absent interior draw must never be fetched.
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4883), timeout=30
+    ).never()
+
+    exit_code = main(["--start", "4882", "--end", "4884"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    lines = captured.out.strip().split("\n")
+    assert lines == [
+        "eligible: 26, excluded: 0",
+        "10-20: 1",
+        "20-30: 9",
+        "30-40: 5",
+        "40-50: 6",
+        "50-60: 2",
+        "60-70: 1",
+        "70-80: 2",
+    ]
