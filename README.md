@@ -57,10 +57,13 @@ exclusive with the other selectors.
 - When no draw is found within 12 months, the program exits with code 1 and
   prints a message to stderr.
 - `--start`/`--end` print a prediction-quality report to stdout: a summary line
-  with the eligible/excluded match counts, then one row per 10%-wide bucket of
-  the predicted probability of the outcome that actually happened. A match is
-  eligible iff it has a final score and `startOdds`; played-but-odds-less
-  matches count toward the excluded total, and unplayed matches are ignored.
+  with the eligible/excluded match counts, then one row per 10%-wide probability
+  bucket. Each eligible match contributes three probabilities (home, draw, away),
+  each bucketed into its own `[low, high)` decade; a bucket row shows the count,
+  the mean predicted %, the observed outcome frequency %, and the gap
+  (observed − mean). A match is eligible iff it has a final score and
+  `startOdds`; played-but-odds-less matches count toward the excluded total, and
+  unplayed matches are ignored.
 - `--start`/`--end` may span a range of draws. The tool walks the datepicker
   month-by-month from the start draw to collect every draw number within
   `[start, end]`, tolerating gaps (drawless months or skipped draws), then
@@ -97,14 +100,22 @@ report. For a single draw, e.g. `--start 4900 --end 4900`:
 
 ```
 eligible: 13, excluded: 0
-10-20: 1
-20-30: 5
-30-40: 3
-40-50: 1
-50-60: 3
+0-10: 1 | 8% | 0% | -8%
+10-20: 4 | 17% | 25% | 8%
+20-30: 15 | 25% | 33% | 8%
+30-40: 10 | 36% | 30% | -6%
+40-50: 3 | 42% | 33% | -9%
+50-60: 5 | 56% | 60% | 4%
+70-80: 1 | 79% | 0% | -79%
 ```
 
-Buckets with a zero count are omitted.
+Each eligible match contributes three probabilities — `P(home)`, `P(draw)`,
+`P(away)` — each placed into its own `[low, high)` decade bucket. The **count**
+is the number of probability values in the bucket, the **mean predicted** is the
+average of those probabilities, the **observed** is the share of those values
+whose outcome actually occurred, and the **gap** is observed − mean predicted.
+The summary line counts matches, not probability values. Buckets with a zero
+count are omitted.
 
 ## Development
 

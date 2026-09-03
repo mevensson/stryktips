@@ -1,9 +1,14 @@
 # ADR 0002: Probability-Bucket Report
 
-The prediction-quality report buckets each eligible match — played with odds (`startOdds`) — by the predicted probability of the outcome that actually happened. Each eligible match contributes exactly one probability value — P(home) for a home win, P(draw) for a draw, P(away) for an away win — and that value is placed into a 10%-wide bucket.
+The prediction-quality report buckets the predicted probabilities of each eligible match — played with odds (`startOdds`) — into 10%-wide buckets. Each eligible match contributes **three** probability values, `P(home)`, `P(draw)`, and `P(away)`, and each value is placed into its own bucket. Buckets use the `[low, high)` convention: a value of exactly 0.50 lands in the 40–50 bucket, and 1.0 is clamped to the 90–100 bucket. This guarantees every value lands in exactly one bucket, with no boundary double-counting. Buckets with a zero count are omitted from the report.
 
-Buckets use the `[low, high)` convention: a value of exactly 0.50 lands in the 40–50 bucket, and 1.0 is clamped to the 90–100 bucket. This guarantees every value lands in exactly one bucket, with no boundary double-counting. Buckets with a zero count are omitted from the report.
+For each bucket, the report shows:
 
-Played-but-odds-less matches (no `startOdds`, hence no outcome probability) are counted in an "excluded" summary line rather than dropped, so under-covered periods are visible in the report. Unplayed matches are silently ignored.
+- **count** — the number of probability values in the bucket.
+- **mean predicted** — the average of those probability values.
+- **observed** — the share of those values whose outcome actually occurred.
+- **gap** — observed minus mean predicted.
 
-This slice deliberately stops at counts; mean/observed/gap columns land in a later ticket. The `[low, high)` convention and realized-outcome selection should be revisited if the report ever aggregates continuous values or changes how outcomes are resolved.
+Because each match contributes all three probabilities rather than only the realized one, the observed frequency genuinely varies per bucket, so a 50–60% bucket can come true about half the time and the report is a meaningful calibration.
+
+Played-but-odds-less matches (no `startOdds`, hence no outcome probability) are counted in an "excluded" summary line rather than dropped, so under-covered periods are visible in the report. Unplayed matches are silently ignored. The summary line counts matches, not probability values.
