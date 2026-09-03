@@ -69,9 +69,9 @@ class WeekDrawIndexError(ValueError):
         iso = monday.isocalendar()
         self.week_label = f"{iso.year}.{iso.week}"
         self.count = len(in_week)
-        self.dates = ", ".join(e.date.isoformat() for e in in_week)
+        dates = ", ".join(e.date.isoformat() for e in in_week)
         super().__init__(
-            f"Week {self.week_label} has {self.count} draws (dates: {self.dates})."
+            f"Week {self.week_label} has {self.count} draws (dates: {dates})."
         )
 
 
