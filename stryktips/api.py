@@ -39,6 +39,8 @@ def fetch_draw(draw_number: int) -> Draw:
     """
     url = f"{_API_DRAWS}/{draw_number}"
     response = requests.get(url, timeout=30)
+    if response.status_code == _NOT_FOUND:
+        raise DrawNotFoundError(f"Draw {draw_number} not found")
     response.raise_for_status()
 
     data = response.json()
