@@ -1,10 +1,18 @@
 """Report formatting helpers."""
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from decimal import Decimal
+from enum import Enum
 from itertools import chain
 
-from stryktips.models import Draw, Match, MatchOutcome, match_outcome
+from stryktips.models import (
+    Draw,
+    Match,
+    MatchOutcome,
+    OutcomeProbability,
+    match_outcome,
+)
 
 
 def bucket_index(probability: Decimal) -> int:
@@ -12,16 +20,21 @@ def bucket_index(probability: Decimal) -> int:
     return min(int(probability * 10), 9)
 
 
-def realized_probability(match: Match) -> Decimal | None:
-    """Return the predicted probability of the realized outcome, or None if unknown."""
-    outcome = match_outcome(match.home_score, match.away_score)
-    if outcome is None or match.outcome_probability is None:
-        return None
-    if outcome is MatchOutcome.HOME:
-        return match.outcome_probability.home
-    if outcome is MatchOutcome.AWAY:
-        return match.outcome_probability.away
-    return match.outcome_probability.draw
+@dataclass
+class BucketStats:
+    """Per-bucket accumulation of probability values and observed outcomes."""
+
+    count: int = 0
+    total: Decimal = Decimal("0")
+    observed: int = 0
+
+
+class _Tally(Enum):
+    """How a match is classified for the report."""
+
+    UNPLAYED = "unplayed"
+    ELIGIBLE = "eligible"
+    EXCLUDED = "excluded"
 
 
 def format_report(draw: Draw) -> str:
@@ -37,24 +50,61 @@ def format_aggregate_report(draws: list[Draw]) -> str:
     return _format_bucket_report(buckets, eligible, excluded)
 
 
-def _aggregate(matches: Iterable[Match]) -> tuple[list[int], int, int]:
-    """Return probability buckets and eligible/excluded counts for the given matches."""
-    buckets = [0] * 10
+def _aggregate(matches: Iterable[Match]) -> tuple[list[BucketStats], int, int]:
+    """Return per-bucket stats and eligible/excluded counts for the given matches."""
+    buckets = [BucketStats() for _ in range(10)]
     eligible = excluded = 0
     for match in matches:
-        if (probability := realized_probability(match)) is not None:
+        status = _tally_match(buckets, match)
+        if status is _Tally.ELIGIBLE:
             eligible += 1
-            buckets[bucket_index(probability)] += 1
-        elif match.home_score is not None and match.away_score is not None:
-            # Excluded: played but odds-less (unplayed matches are silently dropped).
+        elif status is _Tally.EXCLUDED:
             excluded += 1
     return buckets, eligible, excluded
 
 
-def _format_bucket_report(buckets: list[int], eligible: int, excluded: int) -> str:
+def _tally_match(buckets: list[BucketStats], match: Match) -> _Tally:
+    """Accumulate an eligible match's probabilities or classify it as excluded."""
+    outcome = match_outcome(match.home_score, match.away_score)
+    if outcome is None:
+        return _Tally.UNPLAYED
+    if match.outcome_probability is None:
+        return _Tally.EXCLUDED
+    _accumulate_probabilities(buckets, match.outcome_probability, outcome)
+    return _Tally.ELIGIBLE
+
+
+def _accumulate_probabilities(
+    buckets: list[BucketStats],
+    probabilities: OutcomeProbability,
+    outcome: MatchOutcome,
+) -> None:
+    """Bucket each of the three probabilities, counting observed outcomes."""
+    for probability, is_observed in (
+        (probabilities.home, outcome is MatchOutcome.HOME),
+        (probabilities.draw, outcome is MatchOutcome.DRAW),
+        (probabilities.away, outcome is MatchOutcome.AWAY),
+    ):
+        stats = buckets[bucket_index(probability)]
+        stats.count += 1
+        stats.total += probability
+        if is_observed:
+            stats.observed += 1
+
+
+def _format_bucket_report(
+    buckets: list[BucketStats], eligible: int, excluded: int
+) -> str:
     """Return a report string of the summary line and non-empty probability buckets."""
     lines = [f"eligible: {eligible}, excluded: {excluded}"]
-    lines.extend(
-        f"{i * 10}-{(i + 1) * 10}: {count}" for i, count in enumerate(buckets) if count
-    )
+    for index, stats in enumerate(buckets):
+        if not stats.count:
+            continue
+        mean = round(stats.total / stats.count * 100)
+        observed = round(stats.observed / stats.count * 100)
+        gap = observed - mean
+        lines.append(
+            f"{index * 10}-{(index + 1) * 10}: {stats.count} | "
+            f"{mean}% | {observed}% | {gap}%"
+        )
     return "\n".join(lines)

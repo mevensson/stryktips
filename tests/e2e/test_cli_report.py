@@ -95,11 +95,15 @@ def test_start_end_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
     assert exit_code == 0
     lines = captured.out.strip().split("\n")
     assert "eligible: 13, excluded: 0" in lines[0]
-    assert "10-20: 1" in lines
-    assert "20-30: 5" in lines
-    assert "30-40: 3" in lines
-    assert "40-50: 1" in lines
-    assert "50-60: 3" in lines
+    assert lines[1:] == [
+        "0-10: 1 | 8% | 0% | -8%",
+        "10-20: 4 | 17% | 25% | 8%",
+        "20-30: 15 | 25% | 33% | 8%",
+        "30-40: 10 | 36% | 30% | -6%",
+        "40-50: 3 | 42% | 33% | -9%",
+        "50-60: 5 | 56% | 60% | 4%",
+        "70-80: 1 | 79% | 0% | -79%",
+    ]
 
 
 def test_start_end_excludes_played_without_odds(mock_response, capsys):
@@ -163,14 +167,14 @@ def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: P
     assert "eligible: 47, excluded: 0" in lines[0]
     assert len(lines) == 9
     assert lines[1:] == [
-        "0-10: 1",
-        "10-20: 2",
-        "20-30: 17",
-        "30-40: 7",
-        "40-50: 7",
-        "50-60: 5",
-        "60-70: 6",
-        "70-80: 2",
+        "0-10: 1 | 8% | 100% | 92%",
+        "10-20: 24 | 16% | 8% | -8%",
+        "20-30: 57 | 26% | 30% | 4%",
+        "30-40: 19 | 35% | 37% | 2%",
+        "40-50: 14 | 44% | 50% | 6%",
+        "50-60: 14 | 55% | 36% | -19%",
+        "60-70: 9 | 65% | 67% | 2%",
+        "70-80: 3 | 74% | 67% | -7%",
     ]
 
 
@@ -266,13 +270,13 @@ def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR
     lines = captured.out.strip().split("\n")
     assert lines == [
         "eligible: 26, excluded: 0",
-        "10-20: 1",
-        "20-30: 9",
-        "30-40: 5",
-        "40-50: 6",
-        "50-60: 2",
-        "60-70: 1",
-        "70-80: 2",
+        "10-20: 11 | 16% | 9% | -7%",
+        "20-30: 34 | 26% | 26% | 0%",
+        "30-40: 12 | 35% | 42% | 7%",
+        "40-50: 8 | 44% | 75% | 31%",
+        "50-60: 8 | 55% | 25% | -30%",
+        "60-70: 3 | 64% | 33% | -31%",
+        "70-80: 2 | 73% | 100% | 27%",
     ]
 
 
@@ -327,13 +331,13 @@ def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # no
     lines = captured.out.strip().split("\n")
     assert lines == [
         "eligible: 26, excluded: 0",
-        "10-20: 1",
-        "20-30: 9",
-        "30-40: 5",
-        "40-50: 6",
-        "50-60: 2",
-        "60-70: 1",
-        "70-80: 2",
+        "10-20: 11 | 16% | 9% | -7%",
+        "20-30: 34 | 26% | 26% | 0%",
+        "30-40: 12 | 35% | 42% | 7%",
+        "40-50: 8 | 44% | 75% | 31%",
+        "50-60: 8 | 55% | 25% | -30%",
+        "60-70: 3 | 64% | 33% | -31%",
+        "70-80: 2 | 73% | 100% | 27%",
     ]
 
 
