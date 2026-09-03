@@ -186,6 +186,44 @@ def test_format_report_aggregates_eligible_and_excluded_matches():
     assert result == "eligible: 3, excluded: 1\n10-20: 1\n50-60: 1\n70-80: 1"
 
 
+def test_format_report_prints_count_mean_observed_gap():
+    """Each bucket row prints count, mean%, obs% and gap% from three probabilities."""
+    # Arrange
+    match_a = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=2,
+        away_score=0,
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.15"), draw=Decimal("0.25"), away=Decimal("0.60")
+        ),
+    )
+    match_b = Match(
+        event_number=2,
+        home_team="Frölunda",
+        away_team="Färjestad",
+        home_score=1,
+        away_score=1,
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.30"), draw=Decimal("0.30"), away=Decimal("0.40")
+        ),
+    )
+
+    # Act
+    result = format_report(make_draw([match_a, match_b]))
+
+    # Assert
+    assert result == (
+        "eligible: 2, excluded: 0\n"
+        "10-20: 1 | 15% | 100% | 85%\n"
+        "20-30: 1 | 25% | 0% | -25%\n"
+        "30-40: 2 | 30% | 50% | 20%\n"
+        "40-50: 1 | 40% | 0% | -40%\n"
+        "60-70: 1 | 60% | 0% | -60%"
+    )
+
+
 def test_format_report_with_only_unplayed_matches_is_empty_report():
     """Unplayed matches are ignored, leaving a zero summary and no buckets."""
     # Arrange
