@@ -24,6 +24,10 @@ _API_DRAWS = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws"
 _API_DATEPICKER = "https://api.spela.svenskaspel.se/draw/1/results/datepicker"
 
 
+class DrawNotFoundError(requests.RequestException):
+    """Raised when a requested draw is absent (HTTP 404)."""
+
+
 def fetch_draw(draw_number: int) -> Draw:
     """Fetch Stryktipset draw data for a specific draw.
 
@@ -35,6 +39,8 @@ def fetch_draw(draw_number: int) -> Draw:
     """
     url = f"{_API_DRAWS}/{draw_number}"
     response = requests.get(url, timeout=30)
+    if response.status_code == _NOT_FOUND:
+        raise DrawNotFoundError(f"Draw {draw_number} not found")
     response.raise_for_status()
 
     data = response.json()

@@ -5,7 +5,7 @@ from datetime import date
 
 from requests import RequestException
 
-from stryktips.api import fetch_draw, fetch_draws_by_month
+from stryktips.api import DrawNotFoundError, fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
 from stryktips.report import format_aggregate_report
@@ -13,9 +13,9 @@ from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
     WeekDrawIndexError,
+    parse_week,
     resolve_draw_by_date,
     resolve_draw_by_week,
-    week_draw_index,
     week_monday,
 )
 
@@ -109,7 +109,10 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:
     """Fetch every draw in [start, end] by walking the datepicker month-by-month."""
-    anchor = fetch_draw(start)
+    try:
+        anchor = fetch_draw(start)
+    except DrawNotFoundError:
+        return []
     draws = [anchor]
     if start != end:
         draws.extend(_interior_draws(start, end, _draw_month(anchor)))
@@ -187,8 +190,8 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
 
 def _resolve_draw_by_week(week_str: str) -> Draw:
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
-    monday = week_monday(week_str)
-    n = week_draw_index(week_str)
+    year, week, n = parse_week(week_str)
+    monday = date.fromisocalendar(year, week, 1)
     try:
         return _forward_scan(
             monday,

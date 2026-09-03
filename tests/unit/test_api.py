@@ -10,7 +10,7 @@ import pytest
 import requests
 from flexmock import flexmock
 
-from stryktips.api import fetch_draw, fetch_draws_by_month
+from stryktips.api import DrawNotFoundError, fetch_draw, fetch_draws_by_month
 from stryktips.models import DatepickerEntry, SvenskaFolket
 
 _API_URL = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/"
@@ -152,6 +152,19 @@ def test_fetch_draw_raises_on_missing_participants(mock_response):
 
     with pytest.raises(ValueError, match="participants"):
         fetch_draw(5000)
+
+
+def test_fetch_draw_raises_draw_not_found_on_404(mock_response):
+    """A 404 response raises DrawNotFoundError."""
+    # Arrange
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4900",
+        timeout=30,
+    ).and_return(mock_response({}, status_code=404))
+
+    # Act
+    with pytest.raises(DrawNotFoundError):
+        fetch_draw(4900)
 
 
 def test_fetch_draws_by_month_returns_parsed_entries(mock_response):

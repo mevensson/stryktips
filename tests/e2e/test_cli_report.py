@@ -335,3 +335,21 @@ def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # no
         "60-70: 1",
         "70-80: 2",
     ]
+
+
+def test_start_end_empty_range_prints_empty_report(capsys):
+    """--start/--end over a range with no collectible draw prints an empty report."""
+    not_found = flexmock(status_code=404)
+    not_found.should_receive("raise_for_status").and_raise(
+        requests.HTTPError("404 Client Error")
+    )
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
+        timeout=30,
+    ).and_return(not_found)
+
+    exit_code = main(["--start", "4900", "--end", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"

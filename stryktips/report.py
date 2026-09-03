@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from decimal import Decimal
 from itertools import chain
 
-from stryktips.models import Draw, Match
+from stryktips.models import Draw, Match, MatchOutcome, match_outcome
 
 
 def bucket_index(probability: Decimal) -> int:
@@ -14,13 +14,12 @@ def bucket_index(probability: Decimal) -> int:
 
 def realized_probability(match: Match) -> Decimal | None:
     """Return the predicted probability of the realized outcome, or None if unknown."""
-    if match.home_score is None or match.away_score is None:
+    outcome = match_outcome(match.home_score, match.away_score)
+    if outcome is None or match.outcome_probability is None:
         return None
-    if match.outcome_probability is None:
-        return None
-    if match.home_score > match.away_score:
+    if outcome is MatchOutcome.HOME:
         return match.outcome_probability.home
-    if match.home_score < match.away_score:
+    if outcome is MatchOutcome.AWAY:
         return match.outcome_probability.away
     return match.outcome_probability.draw
 
