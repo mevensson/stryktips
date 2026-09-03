@@ -75,6 +75,24 @@ class WeekDrawIndexError(ValueError):
         )
 
 
+def week_monday(week_str: str) -> date:
+    """Return the Monday of the ISO week described by ``week_str`` (YYYY.WW)."""
+    year, week, _ = _parse_week(week_str)
+    return date.fromisocalendar(year, week, 1)
+
+
+def week_draw_index(week_str: str) -> int:
+    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1."""
+    _, _, draw_index = _parse_week(week_str)
+    return draw_index
+
+
+def parse_week_value(value: str) -> tuple[int, int]:
+    """Return the ``(year, week)`` described by an ISO week string ``YYYY.WW[.N]``."""
+    year, week, _ = _parse_week(value)
+    return year, week
+
+
 def _first_on_or_after(
     target: date, entries: list[DatepickerEntry]
 ) -> ResolveResult | None:
@@ -92,24 +110,6 @@ def _first_on_or_after(
 def _not_found() -> ResolveResult:
     """Return the ResolveResult shape used when no entry satisfies the query."""
     return ResolveResult(draw_number=None, exact_match=False, match_date=None)
-
-
-def week_monday(week_str: str) -> date:
-    """Return the Monday of the ISO week described by ``week_str`` (YYYY.WW)."""
-    year, week, _ = _parse_week(week_str)
-    return date.fromisocalendar(year, week, 1)
-
-
-def week_draw_index(week_str: str) -> int:
-    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1."""
-    _, _, draw_index = _parse_week(week_str)
-    return draw_index
-
-
-def parse_week_value(value: str) -> tuple[int, int]:
-    """Return the ``(year, week)`` described by an ISO week string ``YYYY.WW[.N]``."""
-    year, week, _ = _parse_week(value)
-    return year, week
 
 
 def _parse_week(value: str) -> tuple[int, int, int]:

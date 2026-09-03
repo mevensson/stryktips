@@ -111,13 +111,22 @@ def _fetch_report_draws(start: int, end: int) -> list[Draw]:
     """Fetch every draw in [start, end] by walking the datepicker month-by-month."""
     anchor = fetch_draw(start)
     draws = [anchor]
-    if start == end:
-        return draws
+    if start != end:
+        draws.extend(_interior_draws(start, end, _draw_month(anchor)))
+    return draws
+
+
+def _interior_draws(start: int, end: int, anchor_month: tuple[int, int]) -> list[Draw]:
+    """Fetch the non-anchor draws in [start, end], skipping draws that fail."""
+    draws: list[Draw] = []
     seen = {start}
-    for number in _draw_numbers_in_range(start, end, _draw_month(anchor)):
+    for number in _draw_numbers_in_range(start, end, anchor_month):
         if number not in seen:
-            draws.append(fetch_draw(number))
-            seen.add(number)
+            try:
+                draws.append(fetch_draw(number))
+                seen.add(number)
+            except RequestException:
+                _warn_skipped_draw(number)
     return draws
 
 
@@ -240,6 +249,14 @@ def _advance_month(year: int, month: int) -> tuple[int, int]:
         month = 1
         year += 1
     return year, month
+
+
+def _warn_skipped_draw(number: int) -> None:
+    """Print a warning that a draw could not be fetched and was skipped."""
+    print(  # noqa: T201
+        f"Warning: could not fetch draw {number}, skipping.",
+        file=sys.stderr,
+    )
 
 
 def _print_fallback_note(result: ResolveResult, display_str: str) -> None:

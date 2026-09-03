@@ -274,3 +274,64 @@ def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR
         "60-70: 1",
         "70-80: 2",
     ]
+
+
+def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # noqa: PLR0915
+    """--start 4882 --end 4884 warns and skips an interior draw that 404s.
+
+    Draw 4883 is present in the datepicker but its individual fetch 404s. The
+    walk must print a warning to stderr, skip it, and still aggregate the rest
+    of the range (4882 + 4884) into the report.
+    """
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4882, 4884):
+        draw_data: dict[str, Any] = json.loads(
+            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).once().and_return(mock_response(draw_data))
+
+    # The interior draw is present in the datepicker but its fetch returns 404.
+    not_found = flexmock(status_code=404)
+    not_found.should_receive("raise_for_status").and_raise(
+        requests.HTTPError("404 Client Error")
+    )
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4883), timeout=30
+    ).once().and_return(not_found)
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    datepicker_data: dict[str, Any] = json.loads(
+        Path("tests/fixtures/datepicker_2025_01.json").read_text()
+    )
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2025, month=1), timeout=30
+    ).once().and_return(mock_response(datepicker_data))
+
+    # No draw outside the range may be fetched, on either side of the range.
+    for out_of_range in (4885, 4886):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    exit_code = main(["--start", "4882", "--end", "4884"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Warning: could not fetch draw 4883, skipping." in captured.err
+    assert "404 Client Error" not in captured.err
+    lines = captured.out.strip().split("\n")
+    assert lines == [
+        "eligible: 26, excluded: 0",
+        "10-20: 1",
+        "20-30: 9",
+        "30-40: 5",
+        "40-50: 6",
+        "50-60: 2",
+        "60-70: 1",
+        "70-80: 2",
+    ]

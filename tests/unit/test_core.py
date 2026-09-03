@@ -303,6 +303,36 @@ def test_fetch_report_draws_single_does_not_touch_datepicker():
     assert calls == []
 
 
+def test_fetch_report_draws_skips_draw_fetch_failure(capsys):  # noqa: PLR0915
+    """An interior draw whose fetch raises is skipped with a warning to stderr."""
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        return [
+            DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+            DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+            DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
+        ]
+
+    def fetch(draw_number: int) -> Draw:
+        if draw_number == 4883:
+            raise RequestException("404 Client Error")
+        return Draw(
+            draw_number=draw_number,
+            matches=[],
+            reg_close_time=datetime(2025, 1, 4, 15, 59),
+        )
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(stryktips.core, fetch_draw=fetch)
+
+    draws = stryktips.core._fetch_report_draws(4882, 4884)
+    captured = capsys.readouterr()
+
+    assert [d.draw_number for d in draws] == [4882, 4884]
+    assert "Warning: could not fetch draw 4883, skipping." in captured.err
+    assert "404 Client Error" not in captured.err
+
+
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
     """When 12 months have no entries, raise DrawNotFound."""
     flexmock(
