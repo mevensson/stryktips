@@ -187,7 +187,13 @@ def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR091
     exit_code = stryktips.core.main(["--start", "4901", "--end", "4902"])
     captured = capsys.readouterr()
 
-    expected = "eligible: 2, excluded: 0\n20-30: 1\n70-80: 1"
+    expected = (
+        "eligible: 2, excluded: 0\n"
+        "0-10: 1 | 5% | 0% | -5%\n"
+        "20-30: 2 | 22% | 50% | 28%\n"
+        "30-40: 2 | 32% | 0% | -32%\n"
+        "70-80: 1 | 75% | 100% | 25%"
+    )
     assert exit_code == 0
     assert captured.out.splitlines() == expected.splitlines()
 

@@ -9,7 +9,6 @@ from stryktips.report import (
     bucket_index,
     format_aggregate_report,
     format_report,
-    realized_probability,
 )
 
 
@@ -19,7 +18,7 @@ def make_match(
     away_score: int | None,
     outcome_probability: OutcomeProbability | None,
 ) -> Match:
-    """Construct a Match with only the fields realized_probability reads."""
+    """Construct a Match with only the fields the report reads."""
     return Match(
         event_number=1,
         home_team="Home",
@@ -61,81 +60,6 @@ def test_bucket_index_clamps_upper_bound_to_bucket_nine():
 
     # Assert
     assert result == 9
-
-
-def test_realized_probability_home_win_returns_home_probability():
-    """Home win picks the home outcome probability."""
-    # Arrange
-    probs = OutcomeProbability(
-        home=Decimal("0.7"), draw=Decimal("0.2"), away=Decimal("0.1")
-    )
-    match = make_match(home_score=2, away_score=0, outcome_probability=probs)
-
-    # Act
-    result = realized_probability(match)
-
-    # Assert
-    assert result == Decimal("0.7")
-
-
-def test_realized_probability_away_win_returns_away_probability():
-    """Away win picks the away outcome probability."""
-    # Arrange
-    probs = OutcomeProbability(
-        home=Decimal("0.1"), draw=Decimal("0.2"), away=Decimal("0.7")
-    )
-    match = make_match(home_score=0, away_score=2, outcome_probability=probs)
-
-    # Act
-    result = realized_probability(match)
-
-    # Assert
-    assert result == Decimal("0.7")
-
-
-def test_realized_probability_draw_returns_draw_probability():
-    """Draw picks the draw outcome probability."""
-    # Arrange
-    probs = OutcomeProbability(
-        home=Decimal("0.1"), draw=Decimal("0.7"), away=Decimal("0.2")
-    )
-    match = make_match(home_score=1, away_score=1, outcome_probability=probs)
-
-    # Act
-    result = realized_probability(match)
-
-    # Assert
-    assert result == Decimal("0.7")
-
-
-def test_realized_probability_unplayed_match_returns_none():
-    """Unplayed match with no scores yields None."""
-    # Arrange
-    match = make_match(
-        home_score=None,
-        away_score=None,
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.7"), draw=Decimal("0.2"), away=Decimal("0.1")
-        ),
-    )
-
-    # Act
-    result = realized_probability(match)
-
-    # Assert
-    assert result is None
-
-
-def test_realized_probability_without_outcome_probability_returns_none():
-    """Played match with no outcome probability yields None."""
-    # Arrange
-    match = make_match(home_score=2, away_score=0, outcome_probability=None)
-
-    # Act
-    result = realized_probability(match)
-
-    # Assert
-    assert result is None
 
 
 def test_format_report_aggregates_eligible_and_excluded_matches():
@@ -183,7 +107,15 @@ def test_format_report_aggregates_eligible_and_excluded_matches():
     )
 
     # Assert
-    assert result == "eligible: 3, excluded: 1\n10-20: 1\n50-60: 1\n70-80: 1"
+    assert result == (
+        "eligible: 3, excluded: 1\n"
+        "0-10: 1 | 5% | 0% | -5%\n"
+        "10-20: 1 | 15% | 100% | 85%\n"
+        "20-30: 4 | 21% | 0% | -21%\n"
+        "50-60: 1 | 55% | 100% | 45%\n"
+        "60-70: 1 | 65% | 0% | -65%\n"
+        "70-80: 1 | 75% | 100% | 25%"
+    )
 
 
 def test_format_report_prints_count_mean_observed_gap():
@@ -289,4 +221,12 @@ def test_format_aggregate_report_sums_buckets_and_counts_across_draws():
     result = format_aggregate_report([draw_one, draw_two])
 
     # Assert
-    assert result == "eligible: 5, excluded: 2\n10-20: 1\n30-40: 1\n50-60: 2\n70-80: 1"
+    assert result == (
+        "eligible: 5, excluded: 2\n"
+        "0-10: 2 | 5% | 0% | -5%\n"
+        "10-20: 1 | 15% | 100% | 85%\n"
+        "20-30: 6 | 22% | 0% | -22%\n"
+        "30-40: 2 | 32% | 50% | 18%\n"
+        "50-60: 3 | 53% | 67% | 14%\n"
+        "70-80: 1 | 75% | 100% | 25%"
+    )
