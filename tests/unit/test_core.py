@@ -9,6 +9,7 @@ from flexmock import flexmock
 from requests import RequestException
 
 import stryktips.core
+from stryktips.api import DrawNotFoundError
 from stryktips.models import DatepickerEntry, Draw, Match, Odds, OutcomeProbability
 from stryktips.resolver import DrawNotFound
 
@@ -301,6 +302,19 @@ def test_fetch_report_draws_single_does_not_touch_datepicker():
 
     assert [d.draw_number for d in draws] == [4900]
     assert calls == []
+
+
+def test_fetch_report_draws_returns_empty_when_start_draw_absent():
+    """An absent start draw (DrawNotFoundError) yields an empty report list."""
+
+    def raise_not_found(_dn: int) -> Draw:
+        raise DrawNotFoundError("Draw 4900 not found")
+
+    flexmock(stryktips.core, fetch_draw=raise_not_found)
+
+    draws = stryktips.core._fetch_report_draws(4900, 4900)
+
+    assert draws == []
 
 
 def test_fetch_report_draws_skips_draw_fetch_failure(capsys):  # noqa: PLR0915
