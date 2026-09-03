@@ -5,7 +5,7 @@ from datetime import date
 
 from requests import RequestException
 
-from stryktips.api import fetch_draw, fetch_draws_by_month
+from stryktips.api import DrawNotFoundError, fetch_draw, fetch_draws_by_month
 from stryktips.display import format_header, format_matches
 from stryktips.models import DatepickerEntry, Draw
 from stryktips.report import format_aggregate_report
@@ -109,7 +109,10 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:
     """Fetch every draw in [start, end] by walking the datepicker month-by-month."""
-    anchor = fetch_draw(start)
+    try:
+        anchor = fetch_draw(start)
+    except DrawNotFoundError:
+        return []
     draws = [anchor]
     if start != end:
         draws.extend(_interior_draws(start, end, _draw_month(anchor)))
