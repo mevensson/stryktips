@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from enum import Enum
 
 
 @dataclass
@@ -48,3 +49,24 @@ class Draw:
 class DatepickerEntry:
     date: date
     draw_number: int
+
+
+class MatchOutcome(Enum):
+    """The realized outcome of a match: home win, draw, or away win."""
+
+    HOME = "1"
+    DRAW = "X"
+    AWAY = "2"
+
+
+def match_outcome(
+    home_score: int | None, away_score: int | None
+) -> MatchOutcome | None:
+    """Classify the full-time score into a MatchOutcome, or None when unplayed."""
+    if home_score is None or away_score is None:
+        return None
+    if home_score > away_score:
+        return MatchOutcome.HOME
+    if home_score < away_score:
+        return MatchOutcome.AWAY
+    return MatchOutcome.DRAW

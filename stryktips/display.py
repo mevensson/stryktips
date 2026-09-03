@@ -1,6 +1,6 @@
 """Display formatting for Stryktipset matches."""
 
-from stryktips.models import Draw, Match
+from stryktips.models import Draw, Match, match_outcome
 
 
 def format_header(draw: Draw) -> str:
@@ -57,13 +57,8 @@ def _format_outcome_probabilities(match: Match) -> str:
 
 
 def _outcome(match: Match) -> str:
-    if match.home_score is not None and match.away_score is not None:
-        if match.home_score > match.away_score:
-            return "1"
-        if match.home_score < match.away_score:
-            return "2"
-        return "X"
-    return "?"
+    outcome = match_outcome(match.home_score, match.away_score)
+    return outcome.value if outcome is not None else "?"
 
 
 def _svenska_folket_percentages(match: Match) -> tuple[str, str, str]:
