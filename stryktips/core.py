@@ -37,6 +37,21 @@ def main(argv: list[str] | None = None) -> int:
         return _report_error(e)
 
 
+def _validate_report_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    if args.start is not None and args.end is None:
+        parser.error("--start requires --end")
+    if args.end is not None and args.start is None:
+        parser.error("--end requires --start")
+    if args.end is not None and args.start is not None and args.start > args.end:
+        parser.error("--start must not be greater than --end")
+    if args.end is not None and (
+        args.draw is not None or args.date is not None or args.week is not None
+    ):
+        parser.error("--end cannot be combined with --draw/--date/--week")
+
+
 def _run(args: argparse.Namespace) -> int:
     if _display_report_if_start(args):
         return 0
@@ -155,21 +170,6 @@ def _resolve_default_end(today: date) -> int:
             return max(entries, key=lambda entry: entry.date).draw_number
         year, month = _previous_month(year, month)
     raise DrawNotFound(today.isoformat())
-
-
-def _validate_report_args(
-    parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> None:
-    if args.start is not None and args.end is None:
-        parser.error("--start requires --end")
-    if args.end is not None and args.start is None:
-        parser.error("--end requires --start")
-    if args.end is not None and args.start is not None and args.start > args.end:
-        parser.error("--start must not be greater than --end")
-    if args.end is not None and (
-        args.draw is not None or args.date is not None or args.week is not None
-    ):
-        parser.error("--end cannot be combined with --draw/--date/--week")
 
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
