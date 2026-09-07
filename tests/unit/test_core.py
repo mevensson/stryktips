@@ -259,6 +259,21 @@ def test_draw_numbers_in_range_walks_across_drawless_months():  # noqa: PLR0915
     assert calls == [(2020, 3), (2020, 4), (2020, 5), (2020, 6)]
 
 
+def test_draw_numbers_in_range_warns_when_end_unreached(capsys):  # noqa: PLR0915
+    """When the end draw is never seen within the scan window, warn on stderr."""
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        return [DatepickerEntry(date=date(2020, month, 7), draw_number=4641)]
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+
+    result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
+    captured = capsys.readouterr()
+
+    assert result == [4641] * 12
+    assert "Warning: could not reach draw 4642" in captured.err
+
+
 def test_fetch_report_draws_spanning_walks_datepicker_and_filters():  # noqa: PLR0915
     """Spanning range walks the datepicker and returns only the in-range draws."""
     calls: list[tuple[int, int]] = []
