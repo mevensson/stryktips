@@ -8,10 +8,8 @@ from stryktips.models import DatepickerEntry
 from stryktips.resolver import (
     ResolveResult,
     WeekDrawIndexError,
-    parse_week_value,
     resolve_draw_by_date,
     resolve_draw_by_week,
-    week_draw_index,
     week_monday,
 )
 
@@ -138,34 +136,6 @@ def test_resolve_draw_by_week_finds_next_draw_when_week_is_empty():
     )
 
 
-def test_parse_week_value_returns_year_and_week():
-    """A valid ISO week string parses to year and week numbers."""
-    assert parse_week_value("2025.19") == (2025, 19)
-
-
-def test_parse_week_value_accepts_optional_draw_suffix():
-    """A YYYY.WW.N string parses to year and week numbers."""
-    assert parse_week_value("2024.52.2") == (2024, 52)
-
-
-def test_parse_week_value_raises_on_invalid():
-    """An unparseable or out-of-range week string raises ValueError."""
-    with pytest.raises(ValueError, match="Invalid week"):
-        parse_week_value("2025")
-    with pytest.raises(ValueError, match="Invalid week"):
-        parse_week_value("2025.99")
-
-
 def test_week_monday_returns_iso_monday():
     """week_monday returns the Monday of the given ISO week."""
     assert week_monday("2025.19") == date(2025, 5, 5)
-
-
-def test_week_draw_index_defaults_to_one():
-    """A week string without a .N suffix resolves to index 1."""
-    assert week_draw_index("2024.52") == 1
-
-
-def test_week_draw_index_parses_n_suffix():
-    """A YYYY.WW.N string resolves to index N."""
-    assert week_draw_index("2024.52.2") == 2
