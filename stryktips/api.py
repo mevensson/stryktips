@@ -43,10 +43,10 @@ def fetch_draw(draw_number: int) -> Draw:
         raise DrawNotFoundError(f"Draw {draw_number} not found")
     response.raise_for_status()
 
-    data = response.json()
-    draw_data = data.get("draw", {})
-    events = draw_data.get("drawEvents", [])
-    matches = [_parse_match(event) for event in events]
+    draw_data = response.json().get("draw", {})
+    if draw_data is None:
+        raise DrawNotFoundError(f"Draw {draw_number} not found")
+    matches = [_parse_match(event) for event in draw_data.get("drawEvents", [])]
 
     return Draw(
         draw_number=draw_data.get("drawNumber", 0),
