@@ -145,7 +145,16 @@ def _display_report(draws: list[Draw]) -> None:
 
 
 def _resolve_default_end(today: date) -> int:
-    return 0
+    """Return the draw number of the most recent draw on or before today."""
+    year, month = today.year, today.month
+    for _ in range(MAX_SCAN_MONTHS):
+        entries = [
+            entry for entry in fetch_draws_by_month(year, month) if entry.date <= today
+        ]
+        if entries:
+            return max(entries, key=lambda entry: entry.date).draw_number
+        year, month = _previous_month(year, month)
+    raise DrawNotFound(today.isoformat())
 
 
 def _validate_report_args(
@@ -257,6 +266,15 @@ def _advance_month(year: int, month: int) -> tuple[int, int]:
     if month > MONTHS_IN_YEAR:
         month = 1
         year += 1
+    return year, month
+
+
+def _previous_month(year: int, month: int) -> tuple[int, int]:
+    """Step to the previous month, rolling the year back after January."""
+    month -= 1
+    if month < 1:
+        month = MONTHS_IN_YEAR
+        year -= 1
     return year, month
 
 
