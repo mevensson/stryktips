@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,7 @@ import pytest
 import requests
 from flexmock import flexmock
 
+import stryktips.core as stryktips_core
 from stryktips import main
 
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
@@ -376,3 +378,58 @@ def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, c
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
     assert "Traceback" not in captured.err
+
+
+def test_start_without_end_defaults_to_most_recent_draw(mock_response, capsys):  # noqa: PLR0915
+    """--start 4881 (no --end) runs up to the most recent draw on or before today.
+
+    With "today" pinned to 2025-01-20, the defaulted end resolves to draw 4884
+    (the latest datepicker entry on or before that date; the Feb 1 entry 4886 is
+    after it). The report aggregates draws 4881-4884 exactly like an explicit
+    --end 4884, and no draw outside that range is fetched.
+    """
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4881, 4882, 4883, 4884):
+        draw_data: dict[str, Any] = json.loads(
+            (_FIXTURES / f"week_{draw_number}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    for year, month in ((2024, 12), (2025, 1)):
+        datepicker_data: dict[str, Any] = json.loads(
+            (_FIXTURES / f"datepicker_{year}_{month:02d}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).and_return(mock_response(datepicker_data))
+
+    # No draw outside the range may be fetched, on either side of the boundary.
+    for out_of_range in (4880, 4885, 4886):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    flexmock(stryktips_core).should_receive("date.today").and_return(date(2025, 1, 20))
+    exit_code = main(["--start", "4881"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    lines = captured.out.strip().split("\n")
+    assert "eligible: 47, excluded: 0" in lines[0]
+    assert len(lines) == 9
+    assert lines[1:] == [
+        "0-10: 1 | 8% | 100% | 92%",
+        "10-20: 24 | 16% | 8% | -8%",
+        "20-30: 57 | 26% | 30% | 4%",
+        "30-40: 19 | 35% | 37% | 2%",
+        "40-50: 14 | 44% | 50% | 6%",
+        "50-60: 14 | 55% | 36% | -19%",
+        "60-70: 9 | 65% | 67% | 2%",
+        "70-80: 3 | 74% | 67% | -7%",
+    ]
