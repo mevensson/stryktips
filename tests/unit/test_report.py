@@ -8,7 +8,6 @@ from stryktips.models import Draw, Match, Odds, OutcomeProbability
 from stryktips.report import (
     bucket_index,
     format_aggregate_report,
-    format_report,
 )
 
 
@@ -62,7 +61,7 @@ def test_bucket_index_clamps_upper_bound_to_bucket_nine():
     assert result == 9
 
 
-def test_format_report_aggregates_eligible_and_excluded_matches():
+def test_single_draw_aggregate_report_marks_eligible_and_excluded():
     """Eligible matches fill buckets and played-but-odds-less matches are excluded."""
     # Arrange
     home_win = Match(
@@ -102,8 +101,8 @@ def test_format_report_aggregates_eligible_and_excluded_matches():
     unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
 
     # Act
-    result = format_report(
-        make_draw([home_win, away_win, draw_match, odds_less, unplayed])
+    result = format_aggregate_report(
+        [make_draw([home_win, away_win, draw_match, odds_less, unplayed])]
     )
 
     # Assert
@@ -118,7 +117,7 @@ def test_format_report_aggregates_eligible_and_excluded_matches():
     )
 
 
-def test_format_report_prints_count_mean_observed_gap():
+def test_single_draw_aggregate_report_prints_count_mean_observed_gap():
     """Each bucket row prints count, mean%, obs% and gap% from three probabilities."""
     # Arrange
     match_a = Match(
@@ -143,7 +142,7 @@ def test_format_report_prints_count_mean_observed_gap():
     )
 
     # Act
-    result = format_report(make_draw([match_a, match_b]))
+    result = format_aggregate_report([make_draw([match_a, match_b])])
 
     # Assert
     assert result == (
@@ -156,13 +155,13 @@ def test_format_report_prints_count_mean_observed_gap():
     )
 
 
-def test_format_report_with_only_unplayed_matches_is_empty_report():
+def test_single_draw_aggregate_report_with_only_unplayed_matches_is_empty():
     """Unplayed matches are ignored, leaving a zero summary and no buckets."""
     # Arrange
     unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
 
     # Act
-    result = format_report(make_draw([unplayed]))
+    result = format_aggregate_report([make_draw([unplayed])])
 
     # Assert
     assert result == "eligible: 0, excluded: 0"

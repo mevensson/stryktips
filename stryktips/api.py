@@ -43,10 +43,10 @@ def fetch_draw(draw_number: int) -> Draw:
         raise DrawNotFoundError(f"Draw {draw_number} not found")
     response.raise_for_status()
 
-    data = response.json()
-    draw_data = data.get("draw", {})
-    events = draw_data.get("drawEvents", [])
-    matches = [_parse_match(event) for event in events]
+    draw_data = response.json().get("draw", {})
+    if draw_data is None:
+        raise DrawNotFoundError(f"Draw {draw_number} not found")
+    matches = [_parse_match(event) for event in draw_data.get("drawEvents", [])]
 
     return Draw(
         draw_number=draw_data.get("drawNumber", 0),
@@ -147,7 +147,10 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
 def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None:
     if odds is None:
         return None
-    home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
+    try:
+        home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
+    except ValueError:
+        return None
     return OutcomeProbability(home=home_p, draw=draw_p, away=away_p)
 
 

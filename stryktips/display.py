@@ -31,12 +31,12 @@ def format_matches(matches: list[Match]) -> list[str]:
 
 def _format_match(match: Match) -> str:
     outcome = _outcome(match)
-    one, x, two = _svenska_folket_percentages(match)
+    sf_str = _format_svenska_folket(match)
     odds_str = _format_odds(match)
     probs_str = _format_outcome_probabilities(match)
     return (
         f"{match.event_number}. {match.home_team} - {match.away_team}"
-        f" | {outcome} | {one}% - {x}% - {two}%{odds_str}{probs_str}"
+        f" | {outcome}{sf_str}{odds_str}{probs_str}"
     )
 
 
@@ -61,8 +61,8 @@ def _outcome(match: Match) -> str:
     return outcome.value if outcome is not None else "?"
 
 
-def _svenska_folket_percentages(match: Match) -> tuple[str, str, str]:
-    if match.svenska_folket:
-        sf = match.svenska_folket
-        return (str(sf.one), str(sf.x), str(sf.two))
-    return ("0", "0", "0")
+def _format_svenska_folket(match: Match) -> str:
+    if match.svenska_folket is None:
+        return ""
+    sf = match.svenska_folket
+    return f" | {sf.one}% - {sf.x}% - {sf.two}%"

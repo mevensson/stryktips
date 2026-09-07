@@ -14,12 +14,13 @@ from stryktips.api import DrawNotFoundError, fetch_draw, fetch_draws_by_month
 from stryktips.models import DatepickerEntry, SvenskaFolket
 
 _API_URL = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/"
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
 def mock_api_response():
     """Load real API response for week 4900."""
-    return json.loads(Path("tests/fixtures/week_4900.json").read_text())
+    return json.loads((_FIXTURES / "week_4900.json").read_text())
 
 
 def _mock_fetch_draw_4900(mock_api_response: dict[str, Any], mock_response: Any) -> Any:
@@ -136,6 +137,36 @@ def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response, mock_res
     )
 
 
+def test_fetch_draw_omits_outcome_probability_for_zero_odds(mock_response):
+    """A match whose startOdds carry a zero/missing field gets no probability."""
+    zero_odds_event: dict[str, Any] = {
+        "draw": {
+            "drawEvents": [
+                {
+                    "eventNumber": 1,
+                    "match": {
+                        "participants": [
+                            {"mediumName": "Home"},
+                            {"mediumName": "Away"},
+                        ],
+                        "result": [{"type": 2, "home": 1, "away": 0}],
+                    },
+                    "startOdds": {"one": "2.50", "x": "3.70", "two": "0"},
+                },
+            ]
+        }
+    }
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}5001",
+        timeout=30,
+    ).and_return(mock_response(zero_odds_event))
+
+    draw = fetch_draw(5001)
+
+    assert draw.matches[0].odds is not None
+    assert draw.matches[0].outcome_probability is None
+
+
 def test_fetch_draw_raises_on_missing_participants(mock_response):
     """A match without home/away participants raises ValueError."""
     bad_event: dict[str, Any] = {
@@ -165,6 +196,19 @@ def test_fetch_draw_raises_draw_not_found_on_404(mock_response):
     # Act
     with pytest.raises(DrawNotFoundError):
         fetch_draw(4900)
+
+
+def test_fetch_draw_raises_draw_not_found_on_null_draw(mock_response):
+    """A 200 response with a null draw raises DrawNotFoundError."""
+    # Arrange
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4971",
+        timeout=30,
+    ).and_return(mock_response({"draw": None}))
+
+    # Act
+    with pytest.raises(DrawNotFoundError):
+        fetch_draw(4971)
 
 
 def test_fetch_draws_by_month_returns_parsed_entries(mock_response):

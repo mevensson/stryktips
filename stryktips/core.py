@@ -242,6 +242,8 @@ def _draw_numbers_in_range(
         if any(entry.draw_number >= end for entry in entries):
             break
         year, month = _advance_month(year, month)
+    else:
+        _warn_truncated_range(start, end)
     return numbers
 
 
@@ -252,6 +254,15 @@ def _advance_month(year: int, month: int) -> tuple[int, int]:
         month = 1
         year += 1
     return year, month
+
+
+def _warn_truncated_range(start: int, end: int) -> None:
+    """Warn that the end draw was not reached, so the report may be truncated."""
+    print(  # noqa: T201
+        f"Warning: could not reach draw {end} within {MAX_SCAN_MONTHS} months"
+        f" of {start}, report may be truncated.",
+        file=sys.stderr,
+    )
 
 
 def _warn_skipped_draw(number: int) -> None:

@@ -81,18 +81,6 @@ def week_monday(week_str: str) -> date:
     return date.fromisocalendar(year, week, 1)
 
 
-def week_draw_index(week_str: str) -> int:
-    """Return the draw index from ``week_str`` (YYYY.WW[.N]), defaulting to 1."""
-    _, _, draw_index = parse_week(week_str)
-    return draw_index
-
-
-def parse_week_value(value: str) -> tuple[int, int]:
-    """Return the ``(year, week)`` described by an ISO week string ``YYYY.WW[.N]``."""
-    year, week, _ = parse_week(value)
-    return year, week
-
-
 def _first_on_or_after(
     target: date, entries: list[DatepickerEntry]
 ) -> ResolveResult | None:

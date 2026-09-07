@@ -10,6 +10,8 @@ from flexmock import flexmock
 
 from stryktips import main
 
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
+
 
 def test_help_shows_start_end_usage():
     result = subprocess.run(
@@ -81,9 +83,7 @@ def test_invalid_start_or_end_rejected(args):
 
 def test_start_end_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
     """--start 4900 --end 4900 prints the bucket report for draw 4900."""
-    draw_data: dict[str, Any] = json.loads(
-        Path("tests/fixtures/week_4900.json").read_text()
-    )
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
         timeout=30,
@@ -108,9 +108,7 @@ def test_start_end_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
 
 def test_start_end_excludes_played_without_odds(mock_response, capsys):
     """--start 4642 --end 4642 counts played-but-odds-less matches as excluded."""
-    draw_data: dict[str, Any] = json.loads(
-        Path("tests/fixtures/week_4642.json").read_text()
-    )
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,
@@ -135,7 +133,7 @@ def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: P
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4881, 4882, 4883, 4884):
         draw_data: dict[str, Any] = json.loads(
-            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+            (_FIXTURES / f"week_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -147,7 +145,7 @@ def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: P
     )
     for year, month in ((2024, 12), (2025, 1)):
         datepicker_data: dict[str, Any] = json.loads(
-            Path(f"tests/fixtures/datepicker_{year}_{month:02d}.json").read_text()
+            (_FIXTURES / f"datepicker_{year}_{month:02d}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             datepicker_url.format(year=year, month=month), timeout=30
@@ -191,7 +189,7 @@ def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4641, 4642):
         draw_data: dict[str, Any] = json.loads(
-            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+            (_FIXTURES / f"week_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -204,7 +202,7 @@ def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
     # Months with draws return 200; the drawless Apr/May 2020 months return 404.
     for year, month in ((2020, 3), (2020, 6)):
         datepicker_data: dict[str, Any] = json.loads(
-            Path(f"tests/fixtures/datepicker_{year}_{month:02d}.json").read_text()
+            (_FIXTURES / f"datepicker_{year}_{month:02d}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             datepicker_url.format(year=year, month=month), timeout=30
@@ -237,7 +235,7 @@ def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4882, 4884):
         draw_data: dict[str, Any] = json.loads(
-            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+            (_FIXTURES / f"week_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -290,7 +288,7 @@ def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # no
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4882, 4884):
         draw_data: dict[str, Any] = json.loads(
-            Path(f"tests/fixtures/week_{draw_number}.json").read_text()
+            (_FIXTURES / f"week_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -310,7 +308,7 @@ def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # no
         "?product=stryktipset&year={year}&month={month}"
     )
     datepicker_data: dict[str, Any] = json.loads(
-        Path("tests/fixtures/datepicker_2025_01.json").read_text()
+        (_FIXTURES / "datepicker_2025_01.json").read_text()
     )
     flexmock(requests).should_receive("get").with_args(
         datepicker_url.format(year=2025, month=1), timeout=30
@@ -357,3 +355,24 @@ def test_start_end_empty_range_prints_empty_report(capsys):
 
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
+def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, capsys):
+    """--start/--end where the anchor draw resolves to a null draw prints empty.
+
+    The API answers 200 with "draw": null (plus an error payload) for a draw
+    number that does not exist, instead of a 404. The report path must treat
+    this like any other absent draw and print an empty report rather than
+    crash with a traceback.
+    """
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4971",
+        timeout=30,
+    ).and_return(mock_response({"draw": None, "error": {"code": 404}}))
+
+    exit_code = main(["--start", "4971", "--end", "4999"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+    assert "Traceback" not in captured.err

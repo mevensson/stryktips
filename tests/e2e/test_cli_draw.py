@@ -9,6 +9,8 @@ from flexmock import flexmock
 
 from stryktips import main
 
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
+
 
 def test_draw_argument_required():
     result = subprocess.run(
@@ -24,9 +26,7 @@ def test_draw_argument_required():
 
 def test_draw_4900_displays_13_matches(mock_response, capsys):  # noqa: PLR0915
     """--draw 4900 displays the header and all 13 matches."""
-    draw_data: dict[str, Any] = json.loads(
-        Path("tests/fixtures/week_4900.json").read_text()
-    )
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
         timeout=30,

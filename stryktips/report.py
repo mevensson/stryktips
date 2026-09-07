@@ -37,12 +37,6 @@ class _Tally(Enum):
     EXCLUDED = "excluded"
 
 
-def format_report(draw: Draw) -> str:
-    """Return a probability-bucket report of eligible and excluded matches in a draw."""
-    buckets, eligible, excluded = _aggregate(draw.matches)
-    return _format_bucket_report(buckets, eligible, excluded)
-
-
 def format_aggregate_report(draws: list[Draw]) -> str:
     """Return a merged probability-bucket report across multiple draws."""
     matches = chain.from_iterable(draw.matches for draw in draws)
