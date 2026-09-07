@@ -85,6 +85,23 @@ def test_format_matches_extracts_percentages():
     assert "35% - 24% - 41%" in lines[0]
 
 
+def test_format_matches_omits_svenska_folket_when_absent():
+    """No fabricated 0% - 0% - 0% segment when the match has no svenska folket."""
+    match = Match(
+        event_number=1,
+        home_team="Home",
+        away_team="Away",
+        home_score=1,
+        away_score=0,
+        odds=Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80")),
+    )
+
+    lines = format_matches([match])
+
+    assert "0% - 0% - 0%" not in lines[0]
+    assert lines[0].startswith("1. Home - Away | 1 | 2.50 - 3.70 - 2.80")
+
+
 def test_format_matches_empty_list_returns_empty():
     """Empty input yields empty output list."""
     # Act
