@@ -357,3 +357,24 @@ def test_start_end_empty_range_prints_empty_report(capsys):
 
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
+def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, capsys):
+    """--start/--end where the anchor draw resolves to a null draw prints empty.
+
+    The API answers 200 with "draw": null (plus an error payload) for a draw
+    number that does not exist, instead of a 404. The report path must treat
+    this like any other absent draw and print an empty report rather than
+    crash with a traceback.
+    """
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4971",
+        timeout=30,
+    ).and_return(mock_response({"draw": None, "error": {"code": 404}}))
+
+    exit_code = main(["--start", "4971", "--end", "4999"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+    assert "Traceback" not in captured.err
