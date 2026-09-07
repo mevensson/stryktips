@@ -42,6 +42,14 @@ def test_remove_overround_handles_equal_odds():
     assert away_p == third
 
 
+def test_remove_overround_rejects_non_positive_odds():
+    """Zero or negative odds (e.g. a missing field parsed as 0) raise ValueError."""
+    with pytest.raises(ValueError, match="Odds must be positive"):
+        remove_overround(Decimal("2.50"), Decimal("3.70"), Decimal("0"))
+    with pytest.raises(ValueError, match="Odds must be positive"):
+        remove_overround(Decimal("-1.00"), Decimal("3.70"), Decimal("2.80"))
+
+
 def test_remove_overround_handles_heavy_favourite():
     """Heavy favourite odds produce near-certain probability."""
     # Act

@@ -136,6 +136,36 @@ def test_fetch_draw_parses_svenska_folket_as_decimal(mock_api_response, mock_res
     )
 
 
+def test_fetch_draw_omits_outcome_probability_for_zero_odds(mock_response):
+    """A match whose startOdds carry a zero/missing field gets no probability."""
+    zero_odds_event: dict[str, Any] = {
+        "draw": {
+            "drawEvents": [
+                {
+                    "eventNumber": 1,
+                    "match": {
+                        "participants": [
+                            {"mediumName": "Home"},
+                            {"mediumName": "Away"},
+                        ],
+                        "result": [{"type": 2, "home": 1, "away": 0}],
+                    },
+                    "startOdds": {"one": "2.50", "x": "3.70", "two": "0"},
+                },
+            ]
+        }
+    }
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}5001",
+        timeout=30,
+    ).and_return(mock_response(zero_odds_event))
+
+    draw = fetch_draw(5001)
+
+    assert draw.matches[0].odds is not None
+    assert draw.matches[0].outcome_probability is None
+
+
 def test_fetch_draw_raises_on_missing_participants(mock_response):
     """A match without home/away participants raises ValueError."""
     bad_event: dict[str, Any] = {

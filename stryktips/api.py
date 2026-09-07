@@ -147,7 +147,10 @@ def _parse_odds(event: dict[str, Any]) -> Odds | None:
 def _compute_outcome_probability(odds: Odds | None) -> OutcomeProbability | None:
     if odds is None:
         return None
-    home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
+    try:
+        home_p, draw_p, away_p = remove_overround(odds.home, odds.draw, odds.away)
+    except ValueError:
+        return None
     return OutcomeProbability(home=home_p, draw=draw_p, away=away_p)
 
 

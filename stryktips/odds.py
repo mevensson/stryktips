@@ -12,7 +12,13 @@ def remove_overround(
 
     Converts decimal odds to implied probabilities and normalises so they
     sum to exactly 1.0.
+
+    Raises:
+        ValueError: If any odds value is non-positive (e.g. zero for a
+            missing field); implied probabilities are undefined for these.
     """
+    if min(home_odds, draw_odds, away_odds) <= 0:
+        raise ValueError("Odds must be positive")
     implied_home = Decimal(1) / home_odds
     implied_draw = Decimal(1) / draw_odds
     implied_away = Decimal(1) / away_odds
