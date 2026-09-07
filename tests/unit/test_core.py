@@ -397,6 +397,68 @@ def test_main_reports_draw_not_found(capsys):
     assert captured.out == ""
 
 
+def test_resolve_default_end_returns_latest_entry_on_or_before_today():
+    """When today's month has an entry on or before today, return its draw_number."""
+    entries = [
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+        DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+        DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
+        DatepickerEntry(date=date(2025, 1, 25), draw_number=4885),
+        DatepickerEntry(date=date(2025, 2, 1), draw_number=4886),
+    ]
+    flexmock(stryktips.core, fetch_draws_by_month=lambda y, m: entries)
+
+    result = stryktips.core._resolve_default_end(date(2025, 1, 20))
+
+    assert result == 4884
+
+
+def test_resolve_default_end_falls_back_one_month_when_none_eligible():
+    """When today's month has no eligible entry, use the previous month's latest."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        if (year, month) == (2025, 1):
+            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
+        return [DatepickerEntry(date=date(2024, 12, 29), draw_number=4881)]
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+
+    result = stryktips.core._resolve_default_end(date(2025, 1, 1))
+
+    assert result == 4881
+
+
+def test_resolve_default_end_stops_scanning_once_entry_found():
+    """Stop querying months as soon as an eligible entry is found."""
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        return [DatepickerEntry(date=date(year, month, 10), draw_number=1000)]
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+
+    result = stryktips.core._resolve_default_end(date(2025, 1, 20))
+
+    assert result == 1000
+    assert calls == [(2025, 1)]
+
+
+def test_resolve_default_end_raises_when_no_entry_in_scan_window():
+    """When no month in the scan window has an eligible entry, raise DrawNotFound."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [],
+    )
+
+    with pytest.raises(DrawNotFound) as exc:
+        stryktips.core._resolve_default_end(date(2000, 1, 1))
+
+    assert exc.value.value == "2000-01-01"
+
+
 def test_main_returns_network_error_to_stderr(capsys):
     """A requests failure in the fetch path exits 1 and prints to stderr."""
 

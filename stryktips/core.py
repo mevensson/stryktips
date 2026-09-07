@@ -144,6 +144,10 @@ def _display_report(draws: list[Draw]) -> None:
     print(format_aggregate_report(draws))  # noqa: T201
 
 
+def _resolve_default_end(today: date) -> int:
+    return 0
+
+
 def _validate_report_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
