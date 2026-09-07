@@ -9,13 +9,13 @@ from flexmock import flexmock
 
 from stryktips import main
 
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
+
 
 def test_date_2025_05_10_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
     """--date 2025-05-10 finds draw 4900 and displays it."""
-    datepicker_data = json.loads(
-        Path("tests/fixtures/datepicker_2025_05.json").read_text()
-    )
-    draw_data = json.loads(Path("tests/fixtures/week_4900.json").read_text())
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -47,14 +47,14 @@ def test_date_2020_04_01_forward_scans_to_june(mock_response, capsys):  # noqa: 
             timeout=30,
         ).and_return(mock_response(empty_data))
 
-    june_data = json.loads(Path("tests/fixtures/datepicker_2020_06.json").read_text())
+    june_data = json.loads((_FIXTURES / "datepicker_2020_06.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
         "?product=stryktipset&year=2020&month=6",
         timeout=30,
     ).and_return(mock_response(june_data))
 
-    draw_data = json.loads(Path("tests/fixtures/week_4642.json").read_text())
+    draw_data = json.loads((_FIXTURES / "week_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,

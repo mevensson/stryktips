@@ -11,6 +11,8 @@ from flexmock import flexmock
 
 from stryktips import main
 
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
+
 
 def test_invalid_week_is_rejected_by_argparse():
     result = subprocess.run(
@@ -27,10 +29,8 @@ def test_invalid_week_is_rejected_by_argparse():
 
 def test_week_2025_19_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
     """--week 2025.19 resolves to the draw for ISO week 19 of 2025."""
-    datepicker_data = json.loads(
-        Path("tests/fixtures/datepicker_2025_05.json").read_text()
-    )
-    draw_data = json.loads(Path("tests/fixtures/week_4900.json").read_text())
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -54,10 +54,8 @@ def test_week_2025_19_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
 
 def test_week_2024_52_2_selects_second_draw(mock_response, capsys):  # noqa: PLR0915
     """--week 2024.52.2 resolves to the second draw of ISO week 52 of 2024."""
-    datepicker_data = json.loads(
-        Path("tests/fixtures/datepicker_2024_12.json").read_text()
-    )
-    draw_data = json.loads(Path("tests/fixtures/week_4881.json").read_text())
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2024_12.json").read_text())
+    draw_data = json.loads((_FIXTURES / "week_4881.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -81,9 +79,7 @@ def test_week_2024_52_2_selects_second_draw(mock_response, capsys):  # noqa: PLR
 
 def test_week_2024_52_3_exceeds_draw_count(mock_response, capsys):  # noqa: PLR0915
     """--week 2024.52.3 (only 2 draws that week) exits 1 with an error message."""
-    datepicker_data = json.loads(
-        Path("tests/fixtures/datepicker_2024_12.json").read_text()
-    )
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2024_12.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -113,14 +109,14 @@ def test_week_2020_15_forward_scans_to_june(mock_response, capsys):  # noqa: PLR
             timeout=30,
         ).and_return(mock_response(empty_data))
 
-    june_data = json.loads(Path("tests/fixtures/datepicker_2020_06.json").read_text())
+    june_data = json.loads((_FIXTURES / "datepicker_2020_06.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
         "?product=stryktipset&year=2020&month=6",
         timeout=30,
     ).and_return(mock_response(june_data))
 
-    draw_data = json.loads(Path("tests/fixtures/week_4642.json").read_text())
+    draw_data = json.loads((_FIXTURES / "week_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,

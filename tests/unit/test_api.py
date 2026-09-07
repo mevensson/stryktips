@@ -14,12 +14,13 @@ from stryktips.api import DrawNotFoundError, fetch_draw, fetch_draws_by_month
 from stryktips.models import DatepickerEntry, SvenskaFolket
 
 _API_URL = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/"
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
 def mock_api_response():
     """Load real API response for week 4900."""
-    return json.loads(Path("tests/fixtures/week_4900.json").read_text())
+    return json.loads((_FIXTURES / "week_4900.json").read_text())
 
 
 def _mock_fetch_draw_4900(mock_api_response: dict[str, Any], mock_response: Any) -> Any:
