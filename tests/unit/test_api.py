@@ -167,6 +167,19 @@ def test_fetch_draw_raises_draw_not_found_on_404(mock_response):
         fetch_draw(4900)
 
 
+def test_fetch_draw_raises_draw_not_found_on_null_draw(mock_response):
+    """A 200 response with a null draw raises DrawNotFoundError."""
+    # Arrange
+    flexmock(requests).should_receive("get").with_args(
+        f"{_API_URL}4971",
+        timeout=30,
+    ).and_return(mock_response({"draw": None}))
+
+    # Act
+    with pytest.raises(DrawNotFoundError):
+        fetch_draw(4971)
+
+
 def test_fetch_draws_by_month_returns_parsed_entries(mock_response):
     """fetch_draws_by_month returns DatepickerEntry list from the API."""
     # Arrange
