@@ -214,12 +214,41 @@ def test_main_start_end_reports_network_error_to_stderr(capsys):
     assert captured.out == ""
 
 
-def test_main_start_without_end_rejected(capsys):
-    """--start without --end is a parser error with exit code 2."""
-    with pytest.raises(SystemExit) as exc:
-        stryktips.core.main(["--start", "4900"])
+def test_main_start_without_end_resolves_default_end_and_prints_report(  # noqa: PLR0915
+    capsys, monkeypatch
+):
+    """--start without --end defaults the end to the most recent draw and reports."""
 
-    assert exc.value.code == 2
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 5, 10)
+
+    match = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+        ),
+    )
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    )
+    flexmock(stryktips.core).should_receive("_resolve_default_end").with_args(
+        date(2025, 5, 10)
+    ).and_return(4900)
+
+    exit_code = stryktips.core.main(["--start", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "eligible: 1, excluded: 0" in captured.out
 
 
 def test_main_start_greater_than_end_rejected(capsys):
