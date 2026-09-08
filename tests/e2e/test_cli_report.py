@@ -380,7 +380,9 @@ def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, c
     assert "Traceback" not in captured.err
 
 
-def test_start_without_end_defaults_to_most_recent_draw(mock_response, capsys):  # noqa: PLR0915
+def test_start_without_end_defaults_to_most_recent_draw(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
     """--start 4881 (no --end) runs up to the most recent draw on or before today.
 
     With "today" pinned to 2025-01-20, the defaulted end resolves to draw 4884
@@ -388,6 +390,12 @@ def test_start_without_end_defaults_to_most_recent_draw(mock_response, capsys): 
     after it). The report aggregates draws 4881-4884 exactly like an explicit
     --end 4884, and no draw outside that range is fetched.
     """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 20)
+
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4881, 4882, 4883, 4884):
         draw_data: dict[str, Any] = json.loads(
@@ -415,7 +423,7 @@ def test_start_without_end_defaults_to_most_recent_draw(mock_response, capsys): 
             draw_url.format(n=out_of_range), timeout=30
         ).never()
 
-    flexmock(stryktips_core).should_receive("date.today").and_return(date(2025, 1, 20))
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
     exit_code = main(["--start", "4881"])
     captured = capsys.readouterr()
 
