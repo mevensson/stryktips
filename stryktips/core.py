@@ -40,8 +40,6 @@ def main(argv: list[str] | None = None) -> int:
 def _validate_report_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
-    if args.start is not None and args.end is None:
-        parser.error("--start requires --end")
     if args.end is not None and args.start is None:
         parser.error("--end requires --start")
     if args.end is not None and args.start is not None and args.start > args.end:
@@ -50,6 +48,10 @@ def _validate_report_args(
         args.draw is not None or args.date is not None or args.week is not None
     ):
         parser.error("--end cannot be combined with --draw/--date/--week")
+    if args.start is not None and (
+        args.draw is not None or args.date is not None or args.week is not None
+    ):
+        parser.error("--start cannot be combined with --draw/--date/--week")
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -118,7 +120,8 @@ def _parse_week(value: str) -> str:
 def _display_report_if_start(args: argparse.Namespace) -> bool:
     if args.start is None:
         return False
-    _display_report(_fetch_report_draws(args.start, args.end))
+    end = args.end if args.end is not None else _resolve_default_end(date.today())
+    _display_report(_fetch_report_draws(args.start, end))
     return True
 
 
