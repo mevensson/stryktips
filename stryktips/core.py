@@ -44,14 +44,6 @@ def _validate_report_args(
         parser.error("--end requires --start")
     if args.end is not None and args.start is not None and args.start > args.end:
         parser.error("--start must not be greater than --end")
-    if args.end is not None and (
-        args.draw is not None or args.date is not None or args.week is not None
-    ):
-        parser.error("--end cannot be combined with --draw/--date/--week")
-    if args.start is not None and (
-        args.draw is not None or args.date is not None or args.week is not None
-    ):
-        parser.error("--start cannot be combined with --draw/--date/--week")
 
 
 def _run(args: argparse.Namespace) -> int:
