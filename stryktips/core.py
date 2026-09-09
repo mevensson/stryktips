@@ -141,7 +141,7 @@ def _interior_draws(start: int, end: int, anchor_month: tuple[int, int]) -> list
             try:
                 draws.append(fetch_draw(number))
                 seen.add(number)
-            except RequestException:
+            except DrawNotFoundError:
                 _warn_skipped_draw(number)
     return draws
 
