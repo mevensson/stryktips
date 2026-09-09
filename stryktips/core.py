@@ -31,7 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
     if (end_bound := _end_bound_without_start(argv)) is not None:
-        parser.error(f"{end_bound} requires --start-draw or --start-date")
+        parser.error(
+            f"{end_bound} requires --start-draw, --start-date, or --start-week"
+        )
     args = parser.parse_args(argv)
     _validate_report_args(parser, args)
 
