@@ -199,7 +199,7 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
     )
 
 
-def _resolve_draw_by_week(week_str: str) -> Draw:
+def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
