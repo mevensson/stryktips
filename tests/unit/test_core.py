@@ -322,7 +322,7 @@ def test_draw_numbers_in_range_warns_when_end_unreached(capsys):  # noqa: PLR091
     result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
     captured = capsys.readouterr()
 
-    assert result == [4641] * 12
+    assert result == [4641] * stryktips.core.MAX_SCAN_MONTHS
     assert "Warning: could not reach draw 4642" in captured.err
 
 
