@@ -251,6 +251,29 @@ def test_main_start_without_end_resolves_default_end_and_prints_report(  # noqa:
     assert "eligible: 1, excluded: 0" in captured.out
 
 
+def test_main_start_after_most_recent_prints_empty_report_without_fetch(
+    capsys, monkeypatch
+):
+    """--start after the most recent draw prints an empty report and never fetches."""
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 20)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(stryktips.core).should_receive("_resolve_default_end").with_args(
+        date(2025, 1, 20)
+    ).and_return(4884)
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).never()
+
+    exit_code = stryktips.core.main(["--start", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
 def test_main_start_greater_than_end_rejected(capsys):
     """--start greater than --end is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:
