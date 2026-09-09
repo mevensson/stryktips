@@ -66,7 +66,9 @@ mutually exclusive with the other selectors.
   `startOdds`; played-but-odds-less matches count toward the excluded total, and
   unplayed matches are ignored.
 - `--start` without `--end` runs the report up to the most recent draw dated on
-  or before today.
+  or before today. If that defaulted end is before the `--start` (the start is
+  after the most recent draw), the tool prints an empty report
+  (`eligible: 0, excluded: 0`) and exits 0 without fetching the start draw.
 - `--start`/`--end` may span a range of draws. The tool walks the datepicker
   month-by-month from the start draw to collect every draw number within
   `[start, end]`, tolerating gaps (drawless months or skipped draws), then
