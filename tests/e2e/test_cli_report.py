@@ -441,3 +441,44 @@ def test_start_without_end_defaults_to_most_recent_draw(  # noqa: PLR0915
         "60-70: 9 | 65% | 67% | 2%",
         "70-80: 3 | 74% | 67% | -7%",
     ]
+
+
+def test_start_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
+    """--start 4900 (no --end) after the most recent draw prints an empty report.
+
+    With "today" pinned to 2025-01-20, the defaulted end resolves to draw 4884
+    (the latest datepicker entry on or before that date). The start 4900 is
+    after that most recent draw, so the report is empty (exit 0) and the anchor
+    draw 4900 is never fetched.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 20)
+
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4900), timeout=30
+    ).never()
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    for year, month in ((2024, 12), (2025, 1)):
+        datepicker_data: dict[str, Any] = json.loads(
+            (_FIXTURES / f"datepicker_{year}_{month:02d}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).and_return(mock_response(datepicker_data))
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    exit_code = main(["--start", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"

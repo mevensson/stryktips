@@ -251,6 +251,29 @@ def test_main_start_without_end_resolves_default_end_and_prints_report(  # noqa:
     assert "eligible: 1, excluded: 0" in captured.out
 
 
+def test_main_start_after_most_recent_prints_empty_report_without_fetch(
+    capsys, monkeypatch
+):
+    """--start after the most recent draw prints an empty report and never fetches."""
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 20)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(stryktips.core).should_receive("_resolve_default_end").with_args(
+        date(2025, 1, 20)
+    ).and_return(4884)
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).never()
+
+    exit_code = stryktips.core.main(["--start", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
 def test_main_start_greater_than_end_rejected(capsys):
     """--start greater than --end is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:
@@ -299,7 +322,7 @@ def test_draw_numbers_in_range_warns_when_end_unreached(capsys):  # noqa: PLR091
     result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
     captured = capsys.readouterr()
 
-    assert result == [4641] * 12
+    assert result == [4641] * stryktips.core.MAX_SCAN_MONTHS
     assert "Warning: could not reach draw 4642" in captured.err
 
 
@@ -367,26 +390,24 @@ def test_fetch_report_draws_returns_empty_when_start_draw_absent():
     assert draws == []
 
 
-def test_fetch_report_draws_skips_draw_fetch_failure(capsys):  # noqa: PLR0915
-    """An interior draw whose fetch raises is skipped with a warning to stderr."""
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        return [
-            DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
-            DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
-            DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
-        ]
+def test_fetch_report_draws_skips_missing_draw_fetch_failure(capsys):  # noqa: PLR0915
+    """An interior draw whose fetch 404s (DrawNotFoundError) is skipped, warning."""
+    date_entries = [
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+        DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+        DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
+    ]
 
     def fetch(draw_number: int) -> Draw:
         if draw_number == 4883:
-            raise RequestException("404 Client Error")
+            raise DrawNotFoundError("Draw 4883 not found")
         return Draw(
             draw_number=draw_number,
             matches=[],
             reg_close_time=datetime(2025, 1, 4, 15, 59),
         )
 
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(stryktips.core, fetch_draws_by_month=lambda y, m: date_entries)
     flexmock(stryktips.core, fetch_draw=fetch)
 
     draws = stryktips.core._fetch_report_draws(4882, 4884)
@@ -394,7 +415,31 @@ def test_fetch_report_draws_skips_draw_fetch_failure(capsys):  # noqa: PLR0915
 
     assert [d.draw_number for d in draws] == [4882, 4884]
     assert "Warning: could not fetch draw 4883, skipping." in captured.err
-    assert "404 Client Error" not in captured.err
+    assert "Draw 4883 not found" not in captured.err
+
+
+def test_fetch_report_draws_propagates_network_failure():
+    """A non-404 network failure on an interior draw fails the run, not skip."""
+    date_entries = [
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+        DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+        DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
+    ]
+
+    def fetch(draw_number: int) -> Draw:
+        if draw_number == 4883:
+            raise RequestException("connection refused")
+        return Draw(
+            draw_number=draw_number,
+            matches=[],
+            reg_close_time=datetime(2025, 1, 4, 15, 59),
+        )
+
+    flexmock(stryktips.core, fetch_draws_by_month=lambda y, m: date_entries)
+    flexmock(stryktips.core, fetch_draw=fetch)
+
+    with pytest.raises(RequestException, match="connection refused"):
+        stryktips.core._fetch_report_draws(4882, 4884)
 
 
 def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):

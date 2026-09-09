@@ -1,7 +1,7 @@
 import argparse
 import sys
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 
 from requests import RequestException
 
@@ -113,6 +113,9 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
     if args.start is None:
         return False
     end = args.end if args.end is not None else _resolve_default_end(date.today())
+    if args.start > end:
+        _display_report([])
+        return True
     _display_report(_fetch_report_draws(args.start, end))
     return True
 
@@ -138,7 +141,7 @@ def _interior_draws(start: int, end: int, anchor_month: tuple[int, int]) -> list
             try:
                 draws.append(fetch_draw(number))
                 seen.add(number)
-            except RequestException:
+            except DrawNotFoundError:
                 _warn_skipped_draw(number)
     return draws
 
@@ -196,18 +199,32 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
     )
 
 
-def _resolve_draw_by_week(week_str: str) -> Draw:
+def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
-    try:
-        return _forward_scan(
-            monday,
-            lambda entries: resolve_draw_by_week(monday, entries, n),
-            week_str,
-        )
-    except WeekDrawIndexError as exc:
-        raise ValueError(_week_draw_index_message(exc)) from None
+    sunday = monday + timedelta(days=6)
+    all_entries: list[DatepickerEntry] = []
+    scan_year, scan_month = monday.year, monday.month
+    deferred_error: WeekDrawIndexError | None = None
+
+    for _ in range(MAX_SCAN_MONTHS):
+        all_entries.extend(fetch_draws_by_month(scan_year, scan_month))
+        try:
+            result = resolve_draw_by_week(monday, all_entries, n)
+        except WeekDrawIndexError as exc:
+            if (scan_year, scan_month) >= (sunday.year, sunday.month):
+                raise ValueError(_week_draw_index_message(exc)) from None
+            deferred_error = deferred_error or exc
+        else:
+            if result.draw_number is not None:
+                _print_fallback_note(result, week_str)
+                return fetch_draw(result.draw_number)
+        scan_year, scan_month = _advance_month(scan_year, scan_month)
+
+    if deferred_error is not None:
+        raise ValueError(_week_draw_index_message(deferred_error)) from None
+    raise DrawNotFound(week_str)
 
 
 def _week_draw_index_message(exc: WeekDrawIndexError) -> str:
