@@ -77,21 +77,21 @@ def test_create_parser_date_and_draw_are_mutually_exclusive():
         parser.parse_args(["--draw", "4900", "--date", "2025-05-10"])
 
 
-def test_create_parser_accepts_start_and_end_together():
-    """--start and --end parse together into a report range."""
+def test_create_parser_accepts_start_draw_and_end_draw_together():
+    """--start-draw and --end-draw parse together into a report range."""
     parser = create_parser()
 
-    args = parser.parse_args(["--start", "4900", "--end", "4900"])
+    args = parser.parse_args(["--start-draw", "4900", "--end-draw", "4900"])
 
-    assert args.start == 4900
-    assert args.end == 4900
+    assert args.start_draw == 4900
+    assert args.end_draw == 4900
 
 
-def test_create_parser_help_lists_start_and_end():
-    """Help text documents both --start and --end flags."""
+def test_create_parser_help_lists_start_draw_and_end_draw():
+    """Help text documents both --start-draw and --end-draw flags."""
     parser = create_parser()
 
     help_text = parser.format_help()
 
-    assert "--start" in help_text
-    assert "--end" in help_text
+    assert "--start-draw" in help_text
+    assert "--end-draw" in help_text

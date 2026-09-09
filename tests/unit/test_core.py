@@ -115,8 +115,8 @@ def test_fetch_draw_from_args_routes_draw():
     assert draw.draw_number == 4900
 
 
-def test_main_start_end_prints_report(capsys):
-    """--start/--end together print the bucket report for the fetched draw."""
+def test_main_start_draw_end_draw_prints_report(capsys):
+    """--start-draw/--end-draw together print the bucket report for the fetched draw."""
     match = Match(
         event_number=1,
         home_team="Brynäs",
@@ -133,7 +133,7 @@ def test_main_start_end_prints_report(capsys):
         fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
     )
 
-    exit_code = stryktips.core.main(["--start", "4900", "--end", "4900"])
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -141,8 +141,8 @@ def test_main_start_end_prints_report(capsys):
     assert "70-80: 1" in captured.out
 
 
-def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR0915
-    """--start/--end across a multi-draw range prints one merged report."""
+def test_main_start_draw_end_draw_prints_single_aggregated_report(capsys):  # noqa: PLR0915
+    """--start-draw/--end-draw across a multi-draw range prints one merged report."""
     match_high = Match(
         event_number=1,
         home_team="Brynäs",
@@ -184,7 +184,7 @@ def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR091
         ],
     )
 
-    exit_code = stryktips.core.main(["--start", "4901", "--end", "4902"])
+    exit_code = stryktips.core.main(["--start-draw", "4901", "--end-draw", "4902"])
     captured = capsys.readouterr()
 
     expected = (
@@ -198,7 +198,7 @@ def test_main_start_end_prints_single_aggregated_report(capsys):  # noqa: PLR091
     assert captured.out.splitlines() == expected.splitlines()
 
 
-def test_main_start_end_reports_network_error_to_stderr(capsys):
+def test_main_start_draw_end_draw_reports_network_error_to_stderr(capsys):
     """A requests failure in the report path exits 1 and prints to stderr."""
 
     def raise_network(_dn: int) -> Draw:
@@ -206,7 +206,7 @@ def test_main_start_end_reports_network_error_to_stderr(capsys):
 
     flexmock(stryktips.core, fetch_draw=raise_network)
 
-    exit_code = stryktips.core.main(["--start", "4900", "--end", "4900"])
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 1
@@ -214,10 +214,10 @@ def test_main_start_end_reports_network_error_to_stderr(capsys):
     assert captured.out == ""
 
 
-def test_main_start_without_end_resolves_default_end_and_prints_report(  # noqa: PLR0915
+def test_main_start_draw_without_end_draw_resolves_default_end_and_prints_report(  # noqa: PLR0915
     capsys, monkeypatch
 ):
-    """--start without --end defaults the end to the most recent draw and reports."""
+    """--start-draw without --end-draw defaults the end to the latest draw."""
 
     class _FakeDate(date):
         @classmethod
@@ -244,17 +244,17 @@ def test_main_start_without_end_resolves_default_end_and_prints_report(  # noqa:
         date(2025, 5, 10)
     ).and_return(4900)
 
-    exit_code = stryktips.core.main(["--start", "4900"])
+    exit_code = stryktips.core.main(["--start-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
     assert "eligible: 1, excluded: 0" in captured.out
 
 
-def test_main_start_after_most_recent_prints_empty_report_without_fetch(
+def test_main_start_draw_after_most_recent_prints_empty_report_without_fetch(
     capsys, monkeypatch
 ):
-    """--start after the most recent draw prints an empty report and never fetches."""
+    """--start-draw after the latest draw prints empty and never fetches."""
 
     class _FakeDate(date):
         @classmethod
@@ -267,17 +267,17 @@ def test_main_start_after_most_recent_prints_empty_report_without_fetch(
     ).and_return(4884)
     flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).never()
 
-    exit_code = stryktips.core.main(["--start", "4900"])
+    exit_code = stryktips.core.main(["--start-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
 
 
-def test_main_start_greater_than_end_rejected(capsys):
-    """--start greater than --end is a parser error with exit code 2."""
+def test_main_start_draw_greater_than_end_draw_rejected(capsys):
+    """--start-draw greater than --end-draw is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:
-        stryktips.core.main(["--start", "4901", "--end", "4900"])
+        stryktips.core.main(["--start-draw", "4901", "--end-draw", "4900"])
 
     assert exc.value.code == 2
 
