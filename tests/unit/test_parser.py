@@ -136,3 +136,44 @@ def test_create_parser_help_lists_start_date_and_end_date():
 
     assert "--start-date" in help_text
     assert "--end-date" in help_text
+
+
+def test_create_parser_accepts_start_week_and_end_draw_together():
+    """--start-week and --end-draw parse together into a report range."""
+    parser = create_parser()
+
+    args = parser.parse_args(["--start-week", "2025.19", "--end-draw", "4900"])
+
+    assert args.start_week == "2025.19"
+    assert args.end_draw == 4900
+
+
+def test_create_parser_accepts_start_draw_and_end_week_together():
+    """--start-draw and --end-week parse together into a report range."""
+    parser = create_parser()
+
+    args = parser.parse_args(["--start-draw", "4900", "--end-week", "2025.19"])
+
+    assert args.start_draw == 4900
+    assert args.end_week == "2025.19"
+
+
+def test_create_parser_start_week_and_start_draw_mutually_exclusive(capsys):
+    """Combining --start-week with --start-draw exits with an error."""
+    parser = create_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--start-week", "2025.19", "--start-draw", "4900"])
+    captured = capsys.readouterr()
+
+    assert "not allowed with" in captured.err
+
+
+def test_create_parser_help_lists_start_week_and_end_week():
+    """Help text documents both --start-week and --end-week flags."""
+    parser = create_parser()
+
+    help_text = parser.format_help()
+
+    assert "--start-week" in help_text
+    assert "--end-week" in help_text

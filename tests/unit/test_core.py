@@ -354,6 +354,74 @@ def test_main_end_date_without_start_rejected(capsys):
     assert "--end-date requires --start" in captured.err
 
 
+def test_main_start_week_end_draw_prints_report(capsys):
+    """--start-week/--end-draw together print the report for the resolved draw."""
+    match = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+        ),
+    )
+    flexmock(
+        stryktips.core,
+        _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[match]),
+    )
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    )
+
+    exit_code = stryktips.core.main(["--start-week", "2025.19", "--end-draw", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "eligible: 1, excluded: 0" in captured.out
+
+
+def test_main_start_draw_end_week_prints_report(capsys):
+    """--start-draw/--end-week together print the report for the resolved draw."""
+    match = Match(
+        event_number=1,
+        home_team="Brynäs",
+        away_team="Leksand",
+        home_score=3,
+        away_score=1,
+        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
+        outcome_probability=OutcomeProbability(
+            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
+        ),
+    )
+    flexmock(
+        stryktips.core,
+        _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[match]),
+    )
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    )
+
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.19"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "eligible: 1, excluded: 0" in captured.out
+
+
+def test_main_end_week_without_start_rejected(capsys):
+    """--end-week without a --start-* is a parser error with exit code 2."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main(["--end-week", "2025.19"])
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 2
+    assert "--end-week requires --start" in captured.err
+
+
 def test_draw_numbers_in_range_walks_across_drawless_months():  # noqa: PLR0915
     """Walk month-by-month collecting in-range draw numbers, skipping 404 months."""
     calls: list[tuple[int, int]] = []
