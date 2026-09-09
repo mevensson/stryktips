@@ -113,6 +113,9 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
     if args.start is None:
         return False
     end = args.end if args.end is not None else _resolve_default_end(date.today())
+    if args.start > end:
+        _display_report([])
+        return True
     _display_report(_fetch_report_draws(args.start, end))
     return True
 
