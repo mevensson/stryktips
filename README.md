@@ -35,13 +35,13 @@ python stryktips.py --week 2025.19
 | `--draw`   | Yes*     | int  | Draw number for Stryktipset data                   |
 | `--date`   | Yes*     | str  | Calendar date (YYYY-MM-DD) to find the draw on or after |
 | `--week`   | Yes*     | str  | ISO week (YYYY.WW[.N]) to find the draw on or after its Monday; `.N` selects the N-th draw dated within that week (1-indexed) |
-| `--start`  | Yes*     | int  | Start draw number for the prediction-quality report |
-| `--end`    | No       | int  | End draw number for the prediction-quality report |
+| `--start-draw`  | Yes*     | int  | Start draw number for the prediction-quality report |
+| `--end-draw`    | No       | int  | End draw number for the prediction-quality report |
 
-*Exactly one of `--draw`, `--date`, `--week`, or `--start` is required. `--start`
-alone runs the report up to the most recent draw; `--end` may be added to fix
-the upper bound (`--end` requires `--start`). The `--start`/`--end` pair is
-mutually exclusive with the other selectors.
+*Exactly one of `--draw`, `--date`, `--week`, or `--start-draw` is required.
+`--start-draw` alone runs the report up to the most recent draw; `--end-draw` may
+be added to fix the upper bound (`--end-draw` requires `--start-draw`). The
+`--start-draw`/`--end-draw` pair is mutually exclusive with the other selectors.
 
 ## Behavior
 
@@ -57,21 +57,24 @@ mutually exclusive with the other selectors.
   to stderr: `Note: No draw found for 2025-01-01, using 2025-01-04 (draw 4882)`.
 - When no draw is found within 12 months, the program exits with code 1 and
   prints a message to stderr.
-- `--start`/`--end` print a prediction-quality report to stdout: a summary line
-  with the eligible/excluded match counts, then one row per 10%-wide probability
+- `--start-draw`/`--end-draw` print a prediction-quality report to stdout: a
+  summary line with the eligible/excluded match counts, then one row per 10%-wide
+  probability
   bucket. Each eligible match contributes three probabilities (home, draw, away),
   each bucketed into its own `[low, high)` decade; a bucket row shows the count,
   the mean predicted %, the observed outcome frequency %, and the gap
   (observed − mean). A match is eligible iff it has a final score and
   `startOdds`; played-but-odds-less matches count toward the excluded total, and
   unplayed matches are ignored.
-- `--start` without `--end` runs the report up to the most recent draw dated on
-  or before today. If that defaulted end is before the `--start` (the start is
-  after the most recent draw), the tool prints an empty report
+- `--start-draw` without `--end-draw` runs the report up to the most recent draw
+  dated on or before today. If that defaulted end is before the `--start-draw`
+  (the start is after the most recent draw), the tool prints an empty report
   (`eligible: 0, excluded: 0`) and exits 0 without fetching the start draw.
-- An explicit `--end` before the `--start` is an error: the tool exits with code 2
-  and prints `--start must not be greater than --end` to stderr.
-- `--start`/`--end` may span a range of draws. The tool walks the datepicker
+- An explicit `--end-draw` before the `--start-draw` is an error: the tool exits
+  with code 2 and prints `--start-draw must not be greater than --end-draw` to
+  stderr.
+- `--start-draw`/`--end-draw` may span a range of draws. The tool walks the
+  datepicker
   month-by-month from the start draw to collect every draw number within
   `[start, end]`, tolerating gaps (drawless months or skipped draws), then
   folds the whole range into one aggregated report.
@@ -102,8 +105,8 @@ The pipe-separated fields are:
 
 ### Prediction-quality report
 
-`--start`/`--end` fold the whole `[start, end]` range into a single aggregated
-report. For a single draw, e.g. `--start 4900 --end 4900`:
+`--start-draw`/`--end-draw` fold the whole `[start, end]` range into a single
+aggregated report. For a single draw, e.g. `--start-draw 4900 --end-draw 4900`:
 
 ```
 eligible: 13, excluded: 0
