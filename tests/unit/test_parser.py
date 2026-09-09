@@ -95,3 +95,44 @@ def test_create_parser_help_lists_start_draw_and_end_draw():
 
     assert "--start-draw" in help_text
     assert "--end-draw" in help_text
+
+
+def test_create_parser_accepts_start_date_and_end_draw_together():
+    """--start-date and --end-draw parse together into a report range."""
+    parser = create_parser()
+
+    args = parser.parse_args(["--start-date", "2025-05-10", "--end-draw", "4900"])
+
+    assert args.start_date == "2025-05-10"
+    assert args.end_draw == 4900
+
+
+def test_create_parser_start_date_and_start_draw_mutually_exclusive(capsys):
+    """Combining --start-date with --start-draw exits with an error."""
+    parser = create_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--start-date", "2025-05-10", "--start-draw", "4900"])
+    captured = capsys.readouterr()
+
+    assert "not allowed with" in captured.err
+
+
+def test_create_parser_accepts_start_draw_and_end_date_together():
+    """--start-draw and --end-date parse together into a report range."""
+    parser = create_parser()
+
+    args = parser.parse_args(["--start-draw", "4900", "--end-date", "2025-05-10"])
+
+    assert args.start_draw == 4900
+    assert args.end_date == "2025-05-10"
+
+
+def test_create_parser_help_lists_start_date_and_end_date():
+    """Help text documents both --start-date and --end-date flags."""
+    parser = create_parser()
+
+    help_text = parser.format_help()
+
+    assert "--start-date" in help_text
+    assert "--end-date" in help_text
