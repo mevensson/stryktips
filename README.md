@@ -36,11 +36,12 @@ python stryktips.py --week 2025.19
 | `--date`   | Yes*     | str  | Calendar date (YYYY-MM-DD) to find the draw on or after |
 | `--week`   | Yes*     | str  | ISO week (YYYY.WW[.N]) to find the draw on or after its Monday; `.N` selects the N-th draw dated within that week (1-indexed) |
 | `--start`  | Yes*     | int  | Start draw number for the prediction-quality report |
-| `--end`    | Yes*     | int  | End draw number for the prediction-quality report |
+| `--end`    | No       | int  | End draw number for the prediction-quality report |
 
-*Exactly one of `--draw`, `--date`, `--week`, or the `--start`/`--end` pair is
-required. `--start` requires `--end` and vice versa; the pair is mutually
-exclusive with the other selectors.
+*Exactly one of `--draw`, `--date`, `--week`, or `--start` is required. `--start`
+alone runs the report up to the most recent draw; `--end` may be added to fix
+the upper bound (`--end` requires `--start`). The `--start`/`--end` pair is
+mutually exclusive with the other selectors.
 
 ## Behavior
 
@@ -64,6 +65,8 @@ exclusive with the other selectors.
   (observed − mean). A match is eligible iff it has a final score and
   `startOdds`; played-but-odds-less matches count toward the excluded total, and
   unplayed matches are ignored.
+- `--start` without `--end` runs the report up to the most recent draw dated on
+  or before today.
 - `--start`/`--end` may span a range of draws. The tool walks the datepicker
   month-by-month from the start draw to collect every draw number within
   `[start, end]`, tolerating gaps (drawless months or skipped draws), then

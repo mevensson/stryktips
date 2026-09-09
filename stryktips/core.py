@@ -37,6 +37,15 @@ def main(argv: list[str] | None = None) -> int:
         return _report_error(e)
 
 
+def _validate_report_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    if args.end is not None and args.start is None:
+        parser.error("--end requires --start")
+    if args.end is not None and args.start is not None and args.start > args.end:
+        parser.error("--start must not be greater than --end")
+
+
 def _run(args: argparse.Namespace) -> int:
     if _display_report_if_start(args):
         return 0
@@ -103,7 +112,8 @@ def _parse_week(value: str) -> str:
 def _display_report_if_start(args: argparse.Namespace) -> bool:
     if args.start is None:
         return False
-    _display_report(_fetch_report_draws(args.start, args.end))
+    end = args.end if args.end is not None else _resolve_default_end(date.today())
+    _display_report(_fetch_report_draws(args.start, end))
     return True
 
 
@@ -144,19 +154,17 @@ def _display_report(draws: list[Draw]) -> None:
     print(format_aggregate_report(draws))  # noqa: T201
 
 
-def _validate_report_args(
-    parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> None:
-    if args.start is not None and args.end is None:
-        parser.error("--start requires --end")
-    if args.end is not None and args.start is None:
-        parser.error("--end requires --start")
-    if args.end is not None and args.start is not None and args.start > args.end:
-        parser.error("--start must not be greater than --end")
-    if args.end is not None and (
-        args.draw is not None or args.date is not None or args.week is not None
-    ):
-        parser.error("--end cannot be combined with --draw/--date/--week")
+def _resolve_default_end(today: date) -> int:
+    """Return the draw number of the most recent draw on or before today."""
+    year, month = today.year, today.month
+    for _ in range(MAX_SCAN_MONTHS):
+        entries = [
+            entry for entry in fetch_draws_by_month(year, month) if entry.date <= today
+        ]
+        if entries:
+            return max(entries, key=lambda entry: entry.date).draw_number
+        year, month = _previous_month(year, month)
+    raise DrawNotFound(today.isoformat())
 
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
@@ -253,6 +261,15 @@ def _advance_month(year: int, month: int) -> tuple[int, int]:
     if month > MONTHS_IN_YEAR:
         month = 1
         year += 1
+    return year, month
+
+
+def _previous_month(year: int, month: int) -> tuple[int, int]:
+    """Step to the previous month, rolling the year back after January."""
+    month -= 1
+    if month < 1:
+        month = MONTHS_IN_YEAR
+        year -= 1
     return year, month
 
 

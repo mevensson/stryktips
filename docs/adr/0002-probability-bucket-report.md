@@ -1,6 +1,6 @@
 # ADR 0002: Probability-Bucket Report
 
-The prediction-quality report buckets the predicted probabilities of each eligible match — played with odds (`startOdds`) — into 10%-wide buckets. Each eligible match contributes **three** probability values, `P(home)`, `P(draw)`, and `P(away)`, and each value is placed into its own bucket. Buckets use the `[low, high)` convention: a value of exactly 0.50 lands in the 40–50 bucket, and 1.0 is clamped to the 90–100 bucket. This guarantees every value lands in exactly one bucket, with no boundary double-counting. Buckets with a zero count are omitted from the report.
+The prediction-quality report buckets the predicted probabilities of each eligible match — played with odds (`startOdds`) — into 10%-wide buckets. Each eligible match contributes **three** probability values, `P(home)`, `P(draw)`, and `P(away)`, and each value is placed into its own bucket. Buckets use the `[low, high)` convention: a value of exactly 0.49 lands in the 40–50 bucket, a value of 0.50 lands in the 50–60 bucket, and 1.0 is clamped to the 90–100 bucket. This guarantees every value lands in exactly one bucket, with no boundary double-counting. Buckets with a zero count are omitted from the report.
 
 For each bucket, the report shows:
 
