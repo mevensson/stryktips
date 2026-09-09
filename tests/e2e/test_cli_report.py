@@ -15,7 +15,7 @@ from stryktips import main
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
-def test_help_shows_start_end_usage():
+def test_help_shows_start_draw_end_draw_usage():
     result = subprocess.run(
         [sys.executable, "stryktips.py", "--help"],
         capture_output=True,
@@ -24,11 +24,11 @@ def test_help_shows_start_end_usage():
     )
 
     assert result.returncode == 0
-    assert "--start" in result.stdout
-    assert "--end" in result.stdout
+    assert "--start-draw" in result.stdout
+    assert "--end-draw" in result.stdout
 
 
-def test_start_argument_required():
+def test_start_draw_argument_required():
     result = subprocess.run(
         [sys.executable, "stryktips.py"],
         capture_output=True,
@@ -37,22 +37,22 @@ def test_start_argument_required():
     )
 
     assert result.returncode != 0
-    assert "--start" in result.stdout or "--start" in result.stderr
-    assert "--end" in result.stdout or "--end" in result.stderr
+    assert "--start-draw" in result.stdout or "--start-draw" in result.stderr
+    assert "--end-draw" in result.stdout or "--end-draw" in result.stderr
 
 
 @pytest.mark.parametrize(
     "args",
     [
-        ["--start", "4900", "--draw", "4900"],
-        ["--start", "4900", "--date", "2025-05-09"],
-        ["--start", "4900", "--week", "2025.19"],
-        ["--draw", "4900", "--end", "4900"],
-        ["--date", "2025-05-09", "--end", "4900"],
-        ["--week", "2025.19", "--end", "4900"],
+        ["--start-draw", "4900", "--draw", "4900"],
+        ["--start-draw", "4900", "--date", "2025-05-09"],
+        ["--start-draw", "4900", "--week", "2025.19"],
+        ["--draw", "4900", "--end-draw", "4900"],
+        ["--date", "2025-05-09", "--end-draw", "4900"],
+        ["--week", "2025.19", "--end-draw", "4900"],
     ],
 )
-def test_start_end_mutually_exclusive(args):
+def test_start_draw_end_draw_mutually_exclusive(args):
     result = subprocess.run(
         [sys.executable, "stryktips.py", *args],
         capture_output=True,
@@ -63,34 +63,34 @@ def test_start_end_mutually_exclusive(args):
     assert result.returncode == 2
 
 
-def test_start_after_end_errors():
-    """--start 4900 --end 4884 errors clearly and exits non-zero.
+def test_start_draw_after_end_draw_errors():
+    """--start-draw 4900 --end-draw 4884 errors clearly and exits non-zero.
 
-    An explicit --start later than an explicit --end is a mistake, so the CLI
-    must explain it on stderr and exit non-zero instead of producing a
+    An explicit --start-draw later than an explicit --end-draw is a mistake, so the
+    CLI must explain it on stderr and exit non-zero instead of producing a
     confusing report.
     """
     result = subprocess.run(
-        [sys.executable, "stryktips.py", "--start", "4900", "--end", "4884"],
+        [sys.executable, "stryktips.py", "--start-draw", "4900", "--end-draw", "4884"],
         capture_output=True,
         text=True,
         check=False,
     )
 
     assert result.returncode != 0
-    assert "--start must not be greater than --end" in result.stderr
+    assert "--start-draw must not be greater than --end-draw" in result.stderr
 
 
 @pytest.mark.parametrize(
     "args",
     [
-        ["--start", "abc"],
-        ["--start", "abc", "--end", "4900"],
-        ["--end", "abc"],
-        ["--start", "4900", "--end", "abc"],
+        ["--start-draw", "abc"],
+        ["--start-draw", "abc", "--end-draw", "4900"],
+        ["--end-draw", "abc"],
+        ["--start-draw", "4900", "--end-draw", "abc"],
     ],
 )
-def test_invalid_start_or_end_rejected(args):
+def test_invalid_start_draw_or_end_draw_rejected(args):
     result = subprocess.run(
         [sys.executable, "stryktips.py", *args],
         capture_output=True,
@@ -101,15 +101,15 @@ def test_invalid_start_or_end_rejected(args):
     assert result.returncode == 2
 
 
-def test_start_end_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
-    """--start 4900 --end 4900 prints the bucket report for draw 4900."""
+def test_start_draw_end_draw_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
+    """--start-draw 4900 --end-draw 4900 prints the bucket report for draw 4900."""
     draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
         timeout=30,
     ).and_return(mock_response(draw_data))
 
-    exit_code = main(["--start", "4900", "--end", "4900"])
+    exit_code = main(["--start-draw", "4900", "--end-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -126,15 +126,15 @@ def test_start_end_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
     ]
 
 
-def test_start_end_excludes_played_without_odds(mock_response, capsys):
-    """--start 4642 --end 4642 counts played-but-odds-less matches as excluded."""
+def test_start_draw_end_draw_excludes_played_without_odds(mock_response, capsys):
+    """--start-draw 4642 --end-draw 4642 counts odds-less played matches as excluded."""
     draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,
     ).and_return(mock_response(draw_data))
 
-    exit_code = main(["--start", "4642", "--end", "4642"])
+    exit_code = main(["--start-draw", "4642", "--end-draw", "4642"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -143,8 +143,8 @@ def test_start_end_excludes_played_without_odds(mock_response, capsys):
     assert len(lines) == 1  # no bucket rows for an all-excluded draw
 
 
-def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: PLR0915
-    """--start 4881 --end 4884 folds every draw in range into one report.
+def test_start_draw_end_draw_spanning_months_aggregates(mock_response, capsys):  # noqa: PLR0915
+    """--start-draw 4881 --end-draw 4884 folds every draw in range into one report.
 
     Draws 4881-4884 span the Dec 2024/Jan 2025 month boundary. The result is a
     single aggregated summary (eligible/excluded summed) plus merged bucket rows;
@@ -177,7 +177,7 @@ def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: P
             draw_url.format(n=out_of_range), timeout=30
         ).never()
 
-    exit_code = main(["--start", "4881", "--end", "4884"])
+    exit_code = main(["--start-draw", "4881", "--end-draw", "4884"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -196,10 +196,10 @@ def test_start_end_spanning_months_aggregates(mock_response, capsys):  # noqa: P
     ]
 
 
-def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
+def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: PLR0915
     mock_response, capsys
 ):
-    """--start 4641 --end 4642 walks the datepicker across the Apr/May 2020 gap.
+    """--start-draw 4641 --end-draw 4642 walks across the Apr/May 2020 gap.
 
     Draw 4641 (Mar 2020) and draw 4642 (Jun 2020) straddle April and May 2020,
     which have no draws and so return 404 from the datepicker. The walk must query
@@ -238,7 +238,7 @@ def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
             draw_url.format(n=out_of_range), timeout=30
         ).never()
 
-    exit_code = main(["--start", "4641", "--end", "4642"])
+    exit_code = main(["--start-draw", "4641", "--end-draw", "4642"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -246,8 +246,8 @@ def test_start_end_walks_datepicker_across_drawless_months(  # noqa: PLR0915
     assert lines == ["eligible: 0, excluded: 20"]
 
 
-def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR0915
-    """--start 4882 --end 4884 skips the interior draw absent from the datepicker.
+def test_start_draw_end_draw_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR0915
+    """--start-draw 4882 --end-draw 4884 skips the draw missing from datepicker.
 
     Draw 4883 is a hole in the range: it appears in no datepicker month, so the walk
     must not collect or fetch it. Only 4882 and 4884 are aggregated into the report.
@@ -281,7 +281,7 @@ def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR
         draw_url.format(n=4883), timeout=30
     ).never()
 
-    exit_code = main(["--start", "4882", "--end", "4884"])
+    exit_code = main(["--start-draw", "4882", "--end-draw", "4884"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -298,8 +298,8 @@ def test_start_end_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR
     ]
 
 
-def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # noqa: PLR0915
-    """--start 4882 --end 4884 warns and skips an interior draw that 404s.
+def test_start_draw_end_draw_reports_and_skips_fetch_failure(mock_response, capsys):  # noqa: PLR0915
+    """--start-draw 4882 --end-draw 4884 warns and skips an interior draw that 404s.
 
     Draw 4883 is present in the datepicker but its individual fetch 404s. The
     walk must print a warning to stderr, skip it, and still aggregate the rest
@@ -340,7 +340,7 @@ def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # no
             draw_url.format(n=out_of_range), timeout=30
         ).never()
 
-    exit_code = main(["--start", "4882", "--end", "4884"])
+    exit_code = main(["--start-draw", "4882", "--end-draw", "4884"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -359,8 +359,8 @@ def test_start_end_reports_and_skips_fetch_failure(mock_response, capsys):  # no
     ]
 
 
-def test_start_end_empty_range_prints_empty_report(capsys):
-    """--start/--end over a range with no collectible draw prints an empty report."""
+def test_start_draw_end_draw_empty_range_prints_empty_report(capsys):
+    """--start-draw/--end-draw with no collectible draw prints an empty report."""
     not_found = flexmock(status_code=404)
     not_found.should_receive("raise_for_status").and_raise(
         requests.HTTPError("404 Client Error")
@@ -370,15 +370,17 @@ def test_start_end_empty_range_prints_empty_report(capsys):
         timeout=30,
     ).and_return(not_found)
 
-    exit_code = main(["--start", "4900", "--end", "4900"])
+    exit_code = main(["--start-draw", "4900", "--end-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
 
 
-def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, capsys):
-    """--start/--end where the anchor draw resolves to a null draw prints empty.
+def test_start_draw_end_draw_anchor_returns_null_draw_prints_empty_report(
+    mock_response, capsys
+):
+    """--start-draw/--end-draw where the anchor draw is a null draw prints empty.
 
     The API answers 200 with "draw": null (plus an error payload) for a draw
     number that does not exist, instead of a 404. The report path must treat
@@ -390,7 +392,7 @@ def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, c
         timeout=30,
     ).and_return(mock_response({"draw": None, "error": {"code": 404}}))
 
-    exit_code = main(["--start", "4971", "--end", "4999"])
+    exit_code = main(["--start-draw", "4971", "--end-draw", "4999"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -398,15 +400,15 @@ def test_start_end_anchor_returns_null_draw_prints_empty_report(mock_response, c
     assert "Traceback" not in captured.err
 
 
-def test_start_without_end_defaults_to_most_recent_draw(  # noqa: PLR0915
+def test_start_draw_without_end_draw_defaults_to_most_recent_draw(  # noqa: PLR0915
     mock_response, monkeypatch, capsys
 ):
-    """--start 4881 (no --end) runs up to the most recent draw on or before today.
+    """--start-draw 4881 (no --end-draw) runs up to the most recent draw before today.
 
     With "today" pinned to 2025-01-20, the defaulted end resolves to draw 4884
     (the latest datepicker entry on or before that date; the Feb 1 entry 4886 is
     after it). The report aggregates draws 4881-4884 exactly like an explicit
-    --end 4884, and no draw outside that range is fetched.
+    --end-draw 4884, and no draw outside that range is fetched.
     """
 
     class _FakeDate(date):
@@ -442,7 +444,7 @@ def test_start_without_end_defaults_to_most_recent_draw(  # noqa: PLR0915
         ).never()
 
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
-    exit_code = main(["--start", "4881"])
+    exit_code = main(["--start-draw", "4881"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -461,10 +463,10 @@ def test_start_without_end_defaults_to_most_recent_draw(  # noqa: PLR0915
     ]
 
 
-def test_start_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
+def test_start_draw_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
     mock_response, monkeypatch, capsys
 ):
-    """--start 4900 (no --end) after the most recent draw prints an empty report.
+    """--start-draw 4900 (no --end-draw) after the latest draw prints an empty report.
 
     With "today" pinned to 2025-01-20, the defaulted end resolves to draw 4884
     (the latest datepicker entry on or before that date). The start 4900 is
@@ -495,7 +497,7 @@ def test_start_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
         ).and_return(mock_response(datepicker_data))
 
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
-    exit_code = main(["--start", "4900"])
+    exit_code = main(["--start-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0

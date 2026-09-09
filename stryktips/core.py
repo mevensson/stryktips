@@ -40,10 +40,14 @@ def main(argv: list[str] | None = None) -> int:
 def _validate_report_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
-    if args.end is not None and args.start is None:
-        parser.error("--end requires --start")
-    if args.end is not None and args.start is not None and args.start > args.end:
-        parser.error("--start must not be greater than --end")
+    if args.end_draw is not None and args.start_draw is None:
+        parser.error("--end-draw requires --start-draw")
+    if (
+        args.end_draw is not None
+        and args.start_draw is not None
+        and args.start_draw > args.end_draw
+    ):
+        parser.error("--start-draw must not be greater than --end-draw")
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -89,12 +93,12 @@ def create_parser() -> argparse.ArgumentParser:
         help="ISO week (YYYY.WW[.N]) of the draw",
     )
     group.add_argument(
-        "--start",
+        "--start-draw",
         type=int,
         help="Start draw number for the prediction-quality report",
     )
     parser.add_argument(
-        "--end",
+        "--end-draw",
         type=int,
         help="End draw number for the prediction-quality report",
     )
@@ -110,13 +114,17 @@ def _parse_week(value: str) -> str:
 
 
 def _display_report_if_start(args: argparse.Namespace) -> bool:
-    if args.start is None:
+    if args.start_draw is None:
         return False
-    end = args.end if args.end is not None else _resolve_default_end(date.today())
-    if args.start > end:
+    end = (
+        args.end_draw
+        if args.end_draw is not None
+        else _resolve_default_end(date.today())
+    )
+    if args.start_draw > end:
         _display_report([])
         return True
-    _display_report(_fetch_report_draws(args.start, end))
+    _display_report(_fetch_report_draws(args.start_draw, end))
     return True
 
 
