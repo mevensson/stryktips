@@ -30,8 +30,8 @@ _END_BOUND_FLAGS = ("--end-draw", "--end-date")
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
-    if _end_bound_without_start(argv):
-        parser.error("--end-date requires --start-draw or --start-date")
+    if (end_bound := _end_bound_without_start(argv)) is not None:
+        parser.error(f"{end_bound} requires --start-draw or --start-date")
     args = parser.parse_args(argv)
     _validate_report_args(parser, args)
 
@@ -43,12 +43,13 @@ def main(argv: list[str] | None = None) -> int:
         return _report_error(e)
 
 
-def _end_bound_without_start(argv: list[str] | None) -> bool:
-    """True when an --end-* flag is given without any --start-* bound."""
+def _end_bound_without_start(argv: list[str] | None) -> str | None:
+    """Return the --end-* flag given without any --start-* bound, else None."""
     flags = sys.argv[1:] if argv is None else argv
-    return any(flag in flags for flag in _END_BOUND_FLAGS) and not any(
-        flag in flags for flag in _START_BOUND_FLAGS
-    )
+    normalized = {token.split("=", 1)[0] for token in flags}
+    if not any(flag in normalized for flag in _START_BOUND_FLAGS):
+        return next((flag for flag in _END_BOUND_FLAGS if flag in normalized), None)
+    return None
 
 
 def _validate_report_args(
