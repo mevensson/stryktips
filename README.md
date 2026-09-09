@@ -69,6 +69,8 @@ mutually exclusive with the other selectors.
   or before today. If that defaulted end is before the `--start` (the start is
   after the most recent draw), the tool prints an empty report
   (`eligible: 0, excluded: 0`) and exits 0 without fetching the start draw.
+- An explicit `--end` before the `--start` is an error: the tool exits with code 2
+  and prints `--start must not be greater than --end` to stderr.
 - `--start`/`--end` may span a range of draws. The tool walks the datepicker
   month-by-month from the start draw to collect every draw number within
   `[start, end]`, tolerating gaps (drawless months or skipped draws), then
