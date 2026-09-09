@@ -570,3 +570,71 @@ def test_end_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
         "50-60: 5 | 56% | 60% | 4%",
         "70-80: 1 | 79% | 0% | -79%",
     ]
+
+
+def test_start_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
+    """--start-week 2025.19 --end-draw 4900 reuses the week resolver."""
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
+        timeout=30,
+    ).and_return(mock_response(draw_data))
+
+    exit_code = main(["--start-week", "2025.19", "--end-draw", "4900"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    lines = captured.out.strip().split("\n")
+    assert "eligible: 13, excluded: 0" in lines[0]
+    assert lines[1:] == [
+        "0-10: 1 | 8% | 0% | -8%",
+        "10-20: 4 | 17% | 25% | 8%",
+        "20-30: 15 | 25% | 33% | 8%",
+        "30-40: 10 | 36% | 30% | -6%",
+        "40-50: 3 | 42% | 33% | -9%",
+        "50-60: 5 | 56% | 60% | 4%",
+        "70-80: 1 | 79% | 0% | -79%",
+    ]
+
+
+def test_end_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
+    """--start-draw 4900 --end-week 2025.19 reuses the week resolver."""
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
+        timeout=30,
+    ).and_return(mock_response(draw_data))
+
+    exit_code = main(["--start-draw", "4900", "--end-week", "2025.19"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    lines = captured.out.strip().split("\n")
+    assert "eligible: 13, excluded: 0" in lines[0]
+    assert lines[1:] == [
+        "0-10: 1 | 8% | 0% | -8%",
+        "10-20: 4 | 17% | 25% | 8%",
+        "20-30: 15 | 25% | 33% | 8%",
+        "30-40: 10 | 36% | 30% | -6%",
+        "40-50: 3 | 42% | 33% | -9%",
+        "50-60: 5 | 56% | 60% | 4%",
+        "70-80: 1 | 79% | 0% | -79%",
+    ]
