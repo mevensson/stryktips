@@ -2,6 +2,7 @@ import argparse
 import sys
 from collections.abc import Callable
 from datetime import date, timedelta
+from typing import cast
 
 from requests import RequestException
 
@@ -22,10 +23,15 @@ from stryktips.resolver import (
 MONTHS_IN_YEAR = 12
 MAX_SCAN_MONTHS = 12
 
+_START_BOUND_FLAGS = ("--start-draw", "--start-date")
+_END_BOUND_FLAGS = ("--end-draw", "--end-date")
+
 
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
+    if _end_bound_without_start(argv):
+        parser.error("--end-date requires --start-draw or --start-date")
     args = parser.parse_args(argv)
     _validate_report_args(parser, args)
 
@@ -37,11 +43,17 @@ def main(argv: list[str] | None = None) -> int:
         return _report_error(e)
 
 
+def _end_bound_without_start(argv: list[str] | None) -> bool:
+    """True when an --end-* flag is given without any --start-* bound."""
+    flags = sys.argv[1:] if argv is None else argv
+    return any(flag in flags for flag in _END_BOUND_FLAGS) and not any(
+        flag in flags for flag in _START_BOUND_FLAGS
+    )
+
+
 def _validate_report_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
-    if args.end_draw is not None and args.start_draw is None:
-        parser.error("--end-draw requires --start-draw")
     if (
         args.end_draw is not None
         and args.start_draw is not None
@@ -97,10 +109,20 @@ def create_parser() -> argparse.ArgumentParser:
         type=int,
         help="Start draw number for the prediction-quality report",
     )
+    group.add_argument(
+        "--start-date",
+        type=str,
+        help="Calendar date (YYYY-MM-DD) of the report start draw",
+    )
     parser.add_argument(
         "--end-draw",
         type=int,
         help="End draw number for the prediction-quality report",
+    )
+    parser.add_argument(
+        "--end-date",
+        type=str,
+        help="Calendar date (YYYY-MM-DD) of the report end draw",
     )
     return parser
 
@@ -114,18 +136,36 @@ def _parse_week(value: str) -> str:
 
 
 def _display_report_if_start(args: argparse.Namespace) -> bool:
-    if args.start_draw is None:
+    if not _has_start_bound(args):
         return False
-    end = (
-        args.end_draw
-        if args.end_draw is not None
-        else _resolve_default_end(date.today())
-    )
-    if args.start_draw > end:
+    start = _resolve_start_bound(args)
+    end = _resolve_end_bound(args)
+    if start > end:
         _display_report([])
         return True
-    _display_report(_fetch_report_draws(args.start_draw, end))
+    _display_report(_fetch_report_draws(start, end))
     return True
+
+
+def _has_start_bound(args: argparse.Namespace) -> bool:
+    return args.start_draw is not None or args.start_date is not None
+
+
+def _resolve_start_bound(args: argparse.Namespace) -> int:
+    start_date = cast(str | None, args.start_date)
+    if start_date is not None:
+        return _resolve_draw_by_date(start_date).draw_number
+    return cast(int, args.start_draw)
+
+
+def _resolve_end_bound(args: argparse.Namespace) -> int:
+    end_date = cast(str | None, args.end_date)
+    if end_date is not None:
+        return _resolve_draw_by_date(end_date).draw_number
+    end_draw = cast(int | None, args.end_draw)
+    if end_draw is not None:
+        return end_draw
+    return _resolve_default_end(date.today())
 
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:

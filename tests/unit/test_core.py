@@ -304,7 +304,9 @@ def test_main_start_date_end_draw_prints_report(capsys):
         fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
     )
 
-    exit_code = stryktips.core.main(["--start-date", "2025-05-10", "--end-draw", "4900"])
+    exit_code = stryktips.core.main(
+        ["--start-date", "2025-05-10", "--end-draw", "4900"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -333,7 +335,9 @@ def test_main_start_draw_end_date_prints_report(capsys):
         fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
     )
 
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-date", "2025-05-10"])
+    exit_code = stryktips.core.main(
+        ["--start-draw", "4900", "--end-date", "2025-05-10"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
