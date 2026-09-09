@@ -63,6 +63,24 @@ def test_start_end_mutually_exclusive(args):
     assert result.returncode == 2
 
 
+def test_start_after_end_errors():
+    """--start 4900 --end 4884 errors clearly and exits non-zero.
+
+    An explicit --start later than an explicit --end is a mistake, so the CLI
+    must explain it on stderr and exit non-zero instead of producing a
+    confusing report.
+    """
+    result = subprocess.run(
+        [sys.executable, "stryktips.py", "--start", "4900", "--end", "4884"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "--start must not be greater than --end" in result.stderr
+
+
 @pytest.mark.parametrize(
     "args",
     [
