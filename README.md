@@ -37,16 +37,18 @@ python stryktips.py --week 2025.19
 | `--week`   | Yes*     | str  | ISO week (YYYY.WW[.N]) to find the draw on or after its Monday; `.N` selects the N-th draw dated within that week (1-indexed) |
 | `--start-draw`  | Yes*     | int  | Start draw number for the prediction-quality report |
 | `--start-date`  | Yes*     | str  | Calendar date (YYYY-MM-DD); the report starts at the draw on or after it |
+| `--start-week`  | Yes*     | str  | ISO week (YYYY.WW[.N]); the report starts at the draw in that week |
 | `--end-draw`    | No       | int  | End draw number for the prediction-quality report |
 | `--end-date`    | No       | str  | Calendar date (YYYY-MM-DD); the report ends at the draw on or after it |
+| `--end-week`    | No       | str  | ISO week (YYYY.WW[.N]); the report ends at the draw in that week |
 
-*Exactly one of `--draw`, `--date`, `--week`, `--start-draw`, or `--start-date` is
-required. `--start-draw`/`--start-date` alone runs the report up to the most recent
-draw; `--end-draw`/`--end-date` may be added to fix the upper bound (an `--end-*`
-requires a `--start-*`). The start bounds are mutually exclusive with the other
-selectors. Date bounds resolve to a draw on or after the given date, reusing the
-`--date` resolver, and may be mixed with draw-number bounds
-(e.g. `--start-date 2025-01-01 --end-draw 4900`).
+*Exactly one of `--draw`, `--date`, `--week`, `--start-draw`, `--start-date`, or
+`--start-week` is required. `--start-draw`/`--start-date`/`--start-week` alone runs
+the report up to the most recent draw; `--end-draw`/`--end-date`/`--end-week` may
+be added to fix the upper bound (an `--end-*` requires a `--start-*`). The start
+bounds are mutually exclusive with the other selectors. Date and week bounds reuse
+the `--date`/`--week` resolvers and may be mixed with draw-number bounds
+(e.g. `--start-week 2025.01 --end-draw 4884`).
 
 ## Behavior
 
@@ -71,17 +73,18 @@ selectors. Date bounds resolve to a draw on or after the given date, reusing the
   (observed − mean). A match is eligible iff it has a final score and
   `startOdds`; played-but-odds-less matches count toward the excluded total, and
   unplayed matches are ignored.
-- `--start-draw`/`--start-date` without an `--end-*` runs the report up to the
-  most recent draw dated on or before today. If that defaulted end is before the
-  resolved start (the start is after the most recent draw), the tool prints an
-  empty report (`eligible: 0, excluded: 0`) and exits 0 without fetching the
-  start draw.
+- `--start-draw`/`--start-date`/`--start-week` without an `--end-*` runs the report
+  up to the most recent draw dated on or before today. If that defaulted end is
+  before the resolved start (the start is after the most recent draw), the tool
+  prints an empty report (`eligible: 0, excluded: 0`) and exits 0 without fetching
+  the start draw.
 - A date bound resolves to the draw on or after the given date using the same
   month-by-month forward scan as `--date` (see above), so a range may be given
-  as e.g. `--start-date 2025-01-04 --end-draw 4884`.
+  as e.g. `--start-date 2025-01-04 --end-draw 4884`. A week bound resolves to the
+  draw in the given ISO week using the same resolver as `--week` (see above).
 - An `--end-*` flag without a `--start-*` flag is an error: the tool exits with
-  code 2 and prints `--end-draw requires --start-draw or --start-date` (naming
-  the end flag actually used) to stderr.
+  code 2 and prints `--end-draw requires --start-draw, --start-date, or
+  --start-week` (naming the end flag actually used) to stderr.
 - An explicit `--end-draw` before the `--start-draw` is an error: the tool exits
   with code 2 and prints `--start-draw must not be greater than --end-draw` to
   stderr.

@@ -23,15 +23,17 @@ from stryktips.resolver import (
 MONTHS_IN_YEAR = 12
 MAX_SCAN_MONTHS = 12
 
-_START_BOUND_FLAGS = ("--start-draw", "--start-date")
-_END_BOUND_FLAGS = ("--end-draw", "--end-date")
+_START_BOUND_FLAGS = ("--start-draw", "--start-date", "--start-week")
+_END_BOUND_FLAGS = ("--end-draw", "--end-date", "--end-week")
 
 
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
     if (end_bound := _end_bound_without_start(argv)) is not None:
-        parser.error(f"{end_bound} requires --start-draw or --start-date")
+        parser.error(
+            f"{end_bound} requires --start-draw, --start-date, or --start-week"
+        )
     args = parser.parse_args(argv)
     _validate_report_args(parser, args)
 
@@ -83,7 +85,7 @@ def _report_error(exc: Exception) -> int:
     return 1
 
 
-def create_parser() -> argparse.ArgumentParser:
+def create_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
     """Create and return the argument parser for the stryktips CLI."""
     parser = argparse.ArgumentParser(
         prog="stryktips.py",
@@ -115,6 +117,11 @@ def create_parser() -> argparse.ArgumentParser:
         type=str,
         help="Calendar date (YYYY-MM-DD) of the report start draw",
     )
+    group.add_argument(
+        "--start-week",
+        type=_parse_week,
+        help="ISO week (YYYY.WW[.N]) of the report start draw",
+    )
     parser.add_argument(
         "--end-draw",
         type=int,
@@ -124,6 +131,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--end-date",
         type=str,
         help="Calendar date (YYYY-MM-DD) of the report end draw",
+    )
+    parser.add_argument(
+        "--end-week",
+        type=_parse_week,
+        help="ISO week (YYYY.WW[.N]) of the report end draw",
     )
     return parser
 
@@ -149,13 +161,20 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
 
 
 def _has_start_bound(args: argparse.Namespace) -> bool:
-    return args.start_draw is not None or args.start_date is not None
+    return (
+        args.start_draw is not None
+        or args.start_date is not None
+        or args.start_week is not None
+    )
 
 
 def _resolve_start_bound(args: argparse.Namespace) -> int:
     start_date = cast(str | None, args.start_date)
     if start_date is not None:
         return _resolve_draw_by_date(start_date).draw_number
+    start_week = cast(str | None, args.start_week)
+    if start_week is not None:
+        return _resolve_draw_by_week(start_week).draw_number
     return cast(int, args.start_draw)
 
 
@@ -163,6 +182,9 @@ def _resolve_end_bound(args: argparse.Namespace) -> int:
     end_date = cast(str | None, args.end_date)
     if end_date is not None:
         return _resolve_draw_by_date(end_date).draw_number
+    end_week = cast(str | None, args.end_week)
+    if end_week is not None:
+        return _resolve_draw_by_week(end_week).draw_number
     end_draw = cast(int | None, args.end_draw)
     if end_draw is not None:
         return end_draw
