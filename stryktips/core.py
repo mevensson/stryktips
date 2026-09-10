@@ -277,7 +277,6 @@ def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
     sunday = monday + timedelta(days=6)
     all_entries: list[DatepickerEntry] = []
     scan_year, scan_month = monday.year, monday.month
-    deferred_error: WeekDrawIndexError | None = None
 
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(scan_year, scan_month))
@@ -286,15 +285,12 @@ def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
         except WeekDrawIndexError as exc:
             if (scan_year, scan_month) >= (sunday.year, sunday.month):
                 raise ValueError(_week_draw_index_message(exc)) from None
-            deferred_error = deferred_error or exc
         else:
             if result.draw_number is not None:
                 _print_fallback_note(result, week_str)
                 return fetch_draw(result.draw_number)
         scan_year, scan_month = _advance_month(scan_year, scan_month)
 
-    if deferred_error is not None:
-        raise ValueError(_week_draw_index_message(deferred_error)) from None
     raise DrawNotFound(week_str)
 
 
