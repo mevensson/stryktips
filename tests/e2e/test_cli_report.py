@@ -751,3 +751,52 @@ def test_resolved_start_after_end_errors(  # noqa: PLR0915
     assert "must not be greater than" in captured.err
     assert "4900" in captured.err
     assert "4884" in captured.err
+
+
+def test_start_date_forward_scans_across_empty_months(  # noqa: PLR0915
+    mock_response, capsys
+):
+    """--start-date 2020-04-01 --end-draw 4642 forward-scans empty months.
+
+    April and May 2020 have no draws, so the date resolver forward-scans to
+    June, resolving draw 4642 (dated 2020-06-20). A fallback note is printed on
+    stderr and the report aggregates the single resolved draw, fetching nothing
+    after the resolved end.
+    """
+    empty_data: dict[str, list[Any]] = {"resultDates": []}
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    for year, month in ((2020, 4), (2020, 5)):
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).and_return(mock_response(empty_data))
+
+    june_data = json.loads((_FIXTURES / "datepicker_2020_06.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2020, month=6), timeout=30
+    ).and_return(mock_response(june_data))
+
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4642.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4642), timeout=30
+    ).and_return(mock_response(draw_data))
+
+    # No draw after the resolved end may be fetched.
+    for out_of_range in (4643, 4644):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    exit_code = main(["--start-date", "2020-04-01", "--end-draw", "4642"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert (
+        "Note: No draw found for 2020-04-01, using 2020-06-20 (draw 4642)"
+        in captured.err
+    )
+    lines = captured.out.strip().split("\n")
+    assert lines == ["eligible: 0, excluded: 13"]
