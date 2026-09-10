@@ -171,20 +171,20 @@ def _has_start_bound(args: argparse.Namespace) -> bool:
 def _resolve_start_bound(args: argparse.Namespace) -> int:
     start_date = cast(str | None, args.start_date)
     if start_date is not None:
-        return cast(int, _resolve_draw_by_date(start_date).draw_number)
+        return _require_draw_number(_resolve_draw_by_date(start_date))
     start_week = cast(str | None, args.start_week)
     if start_week is not None:
-        return cast(int, _resolve_draw_by_week(start_week).draw_number)
+        return _require_draw_number(_resolve_draw_by_week(start_week))
     return cast(int, args.start_draw)
 
 
 def _resolve_end_bound(args: argparse.Namespace) -> int:
     end_date = cast(str | None, args.end_date)
     if end_date is not None:
-        return cast(int, _resolve_draw_by_date(end_date).draw_number)
+        return _require_draw_number(_resolve_draw_by_date(end_date))
     end_week = cast(str | None, args.end_week)
     if end_week is not None:
-        return cast(int, _resolve_draw_by_week(end_week).draw_number)
+        return _require_draw_number(_resolve_draw_by_week(end_week))
     end_draw = cast(int | None, args.end_draw)
     if end_draw is not None:
         return end_draw
@@ -243,9 +243,9 @@ def _resolve_default_end(today: date) -> int:
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
-        return fetch_draw(cast(int, _resolve_draw_by_date(args.date).draw_number))
+        return fetch_draw(_require_draw_number(_resolve_draw_by_date(args.date)))
     if args.week is not None:
-        return fetch_draw(cast(int, _resolve_draw_by_week(args.week).draw_number))
+        return fetch_draw(_require_draw_number(_resolve_draw_by_week(args.week)))
     return fetch_draw(args.draw)
 
 
@@ -255,6 +255,13 @@ def _display(draw: Draw) -> int:
     joined = "\n".join([header, *lines])
     print(joined)  # noqa: T201
     return 0
+
+
+def _require_draw_number(result: ResolveResult) -> int:
+    """Return the resolved draw number, raising if resolution produced none."""
+    if result.draw_number is None:
+        raise ValueError("Resolved draw has no draw number")
+    return result.draw_number
 
 
 def _resolve_draw_by_date(date_str: str) -> ResolveResult:
