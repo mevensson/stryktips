@@ -171,7 +171,7 @@ def _has_start_bound(args: argparse.Namespace) -> bool:
 def _resolve_start_bound(args: argparse.Namespace) -> int:
     start_date = cast(str | None, args.start_date)
     if start_date is not None:
-        return _resolve_draw_by_date(start_date).draw_number
+        return cast(int, _resolve_draw_by_date(start_date).draw_number)
     start_week = cast(str | None, args.start_week)
     if start_week is not None:
         return _resolve_draw_by_week(start_week).draw_number
@@ -181,7 +181,7 @@ def _resolve_start_bound(args: argparse.Namespace) -> int:
 def _resolve_end_bound(args: argparse.Namespace) -> int:
     end_date = cast(str | None, args.end_date)
     if end_date is not None:
-        return _resolve_draw_by_date(end_date).draw_number
+        return cast(int, _resolve_draw_by_date(end_date).draw_number)
     end_week = cast(str | None, args.end_week)
     if end_week is not None:
         return _resolve_draw_by_week(end_week).draw_number
@@ -243,7 +243,7 @@ def _resolve_default_end(today: date) -> int:
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
-        return _resolve_draw_by_date(args.date)
+        return fetch_draw(cast(int, _resolve_draw_by_date(args.date).draw_number))
     if args.week is not None:
         return _resolve_draw_by_week(args.week)
     return fetch_draw(args.draw)
@@ -257,7 +257,7 @@ def _display(draw: Draw) -> int:
     return 0
 
 
-def _resolve_draw_by_date(date_str: str) -> Draw:
+def _resolve_draw_by_date(date_str: str) -> ResolveResult:
     try:
         target = date.fromisoformat(date_str)
     except ValueError:
@@ -309,7 +309,7 @@ def _forward_scan(
     anchor: date,
     resolve: Callable[[list[DatepickerEntry]], ResolveResult],
     display_str: str,
-) -> Draw:
+) -> ResolveResult:
     all_entries: list[DatepickerEntry] = []
     year, month = anchor.year, anchor.month
 
@@ -318,7 +318,7 @@ def _forward_scan(
         result = resolve(all_entries)
         if result.draw_number is not None:
             _print_fallback_note(result, display_str)
-            return fetch_draw(result.draw_number)
+            return result
         year, month = _advance_month(year, month)
 
     raise DrawNotFound(display_str)
