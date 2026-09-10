@@ -104,6 +104,21 @@ def test_resolve_draw_by_week_uses_n_suffix_index(capsys):  # noqa: PLR0915
     assert captured.err == ""
 
 
+def test_resolve_draw_by_week_returns_draw_number_without_fetching_draw():
+    """Resolving by week scans the datepicker and does not fetch the draw itself."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").never()
+
+    result = stryktips.core._resolve_draw_by_week("2025.19")
+
+    assert result.draw_number == 4900
+
+
 def test_fetch_draw_from_args_routes_week():
     """A --week argument routes through _resolve_draw_by_week."""
     flexmock(
