@@ -42,6 +42,21 @@ def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: 
     )
 
 
+def test_resolve_draw_by_date_returns_draw_number_without_fetching_draw():
+    """Resolving by date scans the datepicker and does not fetch the draw itself."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").never()
+
+    result = stryktips.core._resolve_draw_by_date("2025-05-10")
+
+    assert result.draw_number == 4900
+
+
 def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
     """Draw whose date falls inside the ISO week resolves as an exact match."""
     calls: list[tuple[int, int]] = []
