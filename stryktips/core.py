@@ -154,6 +154,11 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
     start = _resolve_start_bound(args)
     end = _resolve_end_bound(args)
     if start > end:
+        if _has_end_bound(args):
+            raise ValueError(
+                f"--start bound resolved to draw {start}, which must not be"
+                f" greater than --end bound (draw {end})"
+            )
         _display_report([])
         return True
     _display_report(_fetch_report_draws(start, end))
@@ -168,27 +173,44 @@ def _has_start_bound(args: argparse.Namespace) -> bool:
     )
 
 
+def _has_end_bound(args: argparse.Namespace) -> bool:
+    return (
+        args.end_draw is not None
+        or args.end_date is not None
+        or args.end_week is not None
+    )
+
+
 def _resolve_start_bound(args: argparse.Namespace) -> int:
-    start_date = cast(str | None, args.start_date)
-    if start_date is not None:
-        return _resolve_draw_by_date(start_date).draw_number
-    start_week = cast(str | None, args.start_week)
-    if start_week is not None:
-        return _resolve_draw_by_week(start_week).draw_number
+    resolved = _resolve_date_or_week_bound(
+        cast(str | None, args.start_date), cast(str | None, args.start_week)
+    )
+    if resolved is not None:
+        return resolved
     return cast(int, args.start_draw)
 
 
 def _resolve_end_bound(args: argparse.Namespace) -> int:
-    end_date = cast(str | None, args.end_date)
-    if end_date is not None:
-        return _resolve_draw_by_date(end_date).draw_number
-    end_week = cast(str | None, args.end_week)
-    if end_week is not None:
-        return _resolve_draw_by_week(end_week).draw_number
+    resolved = _resolve_date_or_week_bound(
+        cast(str | None, args.end_date), cast(str | None, args.end_week)
+    )
+    if resolved is not None:
+        return resolved
     end_draw = cast(int | None, args.end_draw)
     if end_draw is not None:
         return end_draw
     return _resolve_default_end(date.today())
+
+
+def _resolve_date_or_week_bound(
+    date_str: str | None, week_str: str | None
+) -> int | None:
+    """Resolve an explicit --*-date or --*-week bound to a draw number, if given."""
+    if date_str is not None:
+        return _require_draw_number(_resolve_draw_by_date(date_str))
+    if week_str is not None:
+        return _require_draw_number(_resolve_draw_by_week(week_str))
+    return None
 
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:
@@ -243,9 +265,9 @@ def _resolve_default_end(today: date) -> int:
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
-        return _resolve_draw_by_date(args.date)
+        return fetch_draw(_require_draw_number(_resolve_draw_by_date(args.date)))
     if args.week is not None:
-        return _resolve_draw_by_week(args.week)
+        return fetch_draw(_require_draw_number(_resolve_draw_by_week(args.week)))
     return fetch_draw(args.draw)
 
 
@@ -257,7 +279,14 @@ def _display(draw: Draw) -> int:
     return 0
 
 
-def _resolve_draw_by_date(date_str: str) -> Draw:
+def _require_draw_number(result: ResolveResult) -> int:
+    """Return the resolved draw number, raising if resolution produced none."""
+    if result.draw_number is None:
+        raise ValueError("Resolved draw has no draw number")
+    return result.draw_number
+
+
+def _resolve_draw_by_date(date_str: str) -> ResolveResult:
     try:
         target = date.fromisoformat(date_str)
     except ValueError:
@@ -270,14 +299,13 @@ def _resolve_draw_by_date(date_str: str) -> Draw:
     )
 
 
-def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
+def _resolve_draw_by_week(week_str: str) -> ResolveResult:  # noqa: PLR0915
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
     sunday = monday + timedelta(days=6)
     all_entries: list[DatepickerEntry] = []
     scan_year, scan_month = monday.year, monday.month
-    deferred_error: WeekDrawIndexError | None = None
 
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(scan_year, scan_month))
@@ -286,15 +314,12 @@ def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
         except WeekDrawIndexError as exc:
             if (scan_year, scan_month) >= (sunday.year, sunday.month):
                 raise ValueError(_week_draw_index_message(exc)) from None
-            deferred_error = deferred_error or exc
         else:
             if result.draw_number is not None:
                 _print_fallback_note(result, week_str)
-                return fetch_draw(result.draw_number)
+                return result
         scan_year, scan_month = _advance_month(scan_year, scan_month)
 
-    if deferred_error is not None:
-        raise ValueError(_week_draw_index_message(deferred_error)) from None
     raise DrawNotFound(week_str)
 
 
@@ -309,7 +334,7 @@ def _forward_scan(
     anchor: date,
     resolve: Callable[[list[DatepickerEntry]], ResolveResult],
     display_str: str,
-) -> Draw:
+) -> ResolveResult:
     all_entries: list[DatepickerEntry] = []
     year, month = anchor.year, anchor.month
 
@@ -318,7 +343,7 @@ def _forward_scan(
         result = resolve(all_entries)
         if result.draw_number is not None:
             _print_fallback_note(result, display_str)
-            return fetch_draw(result.draw_number)
+            return result
         year, month = _advance_month(year, month)
 
     raise DrawNotFound(display_str)

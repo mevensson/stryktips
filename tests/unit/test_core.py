@@ -42,6 +42,21 @@ def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: 
     )
 
 
+def test_resolve_draw_by_date_returns_draw_number_without_fetching_draw():
+    """Resolving by date scans the datepicker and does not fetch the draw itself."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").never()
+
+    result = stryktips.core._resolve_draw_by_date("2025-05-10")
+
+    assert result.draw_number == 4900
+
+
 def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
     """Draw whose date falls inside the ISO week resolves as an exact match."""
     calls: list[tuple[int, int]] = []
@@ -89,13 +104,28 @@ def test_resolve_draw_by_week_uses_n_suffix_index(capsys):  # noqa: PLR0915
     assert captured.err == ""
 
 
+def test_resolve_draw_by_week_returns_draw_number_without_fetching_draw():
+    """Resolving by week scans the datepicker and does not fetch the draw itself."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").never()
+
+    result = stryktips.core._resolve_draw_by_week("2025.19")
+
+    assert result.draw_number == 4900
+
+
 def test_fetch_draw_from_args_routes_week():
     """A --week argument routes through _resolve_draw_by_week."""
     flexmock(
         stryktips.core,
         _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[]),
     )
-    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=1234, matches=[]))
+    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]))
 
     args = argparse.Namespace(date=None, week="2025.19", draw=None)
 
@@ -311,6 +341,27 @@ def test_main_start_date_end_draw_prints_report(capsys):
 
     assert exit_code == 0
     assert "eligible: 1, excluded: 0" in captured.out
+
+
+def test_main_start_date_resolved_after_end_draw_fails_without_fetching(capsys):
+    """A date-resolved start after the explicit end draw exits 1 without fetching."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").never()
+
+    exit_code = stryktips.core.main(
+        ["--start-date", "2025-05-10", "--end-draw", "4884"]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "must not be greater than" in captured.err
+    assert "4900" in captured.err
+    assert "4884" in captured.err
 
 
 def test_main_start_draw_end_date_prints_report(capsys):

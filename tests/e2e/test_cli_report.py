@@ -713,3 +713,41 @@ def test_end_without_start_rejected(args):
 
     assert result.returncode == 2
     assert "requires --start-draw" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "start_args",
+    [
+        ["--start-date", "2025-05-10"],
+        ["--start-week", "2025.19"],
+    ],
+)
+def test_resolved_start_after_end_errors(  # noqa: PLR0915
+    mock_response, capsys, start_args
+):
+    """A date/week start resolving after the end errors (exit 1), no draws fetched.
+
+    Both --start-date 2025-05-10 and --start-week 2025.19 resolve to draw 4900,
+    which is later than --end-draw 4884. The bounds must resolve via the
+    datepicker only; no draw may be fetched before the runtime error is raised.
+    """
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4884, 4900):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).never()
+
+    exit_code = main([*start_args, "--end-draw", "4884"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "must not be greater than" in captured.err
+    assert "4900" in captured.err
+    assert "4884" in captured.err
