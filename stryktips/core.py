@@ -174,7 +174,7 @@ def _resolve_start_bound(args: argparse.Namespace) -> int:
         return cast(int, _resolve_draw_by_date(start_date).draw_number)
     start_week = cast(str | None, args.start_week)
     if start_week is not None:
-        return _resolve_draw_by_week(start_week).draw_number
+        return cast(int, _resolve_draw_by_week(start_week).draw_number)
     return cast(int, args.start_draw)
 
 
@@ -184,7 +184,7 @@ def _resolve_end_bound(args: argparse.Namespace) -> int:
         return cast(int, _resolve_draw_by_date(end_date).draw_number)
     end_week = cast(str | None, args.end_week)
     if end_week is not None:
-        return _resolve_draw_by_week(end_week).draw_number
+        return cast(int, _resolve_draw_by_week(end_week).draw_number)
     end_draw = cast(int | None, args.end_draw)
     if end_draw is not None:
         return end_draw
@@ -245,7 +245,7 @@ def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
     if args.date is not None:
         return fetch_draw(cast(int, _resolve_draw_by_date(args.date).draw_number))
     if args.week is not None:
-        return _resolve_draw_by_week(args.week)
+        return fetch_draw(cast(int, _resolve_draw_by_week(args.week).draw_number))
     return fetch_draw(args.draw)
 
 
@@ -270,7 +270,7 @@ def _resolve_draw_by_date(date_str: str) -> ResolveResult:
     )
 
 
-def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
+def _resolve_draw_by_week(week_str: str) -> ResolveResult:  # noqa: PLR0915
     """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
@@ -288,7 +288,7 @@ def _resolve_draw_by_week(week_str: str) -> Draw:  # noqa: PLR0915
         else:
             if result.draw_number is not None:
                 _print_fallback_note(result, week_str)
-                return fetch_draw(result.draw_number)
+                return result
         scan_year, scan_month = _advance_month(scan_year, scan_month)
 
     raise DrawNotFound(week_str)

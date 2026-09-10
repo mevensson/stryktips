@@ -125,7 +125,7 @@ def test_fetch_draw_from_args_routes_week():
         stryktips.core,
         _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[]),
     )
-    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=1234, matches=[]))
+    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]))
 
     args = argparse.Namespace(date=None, week="2025.19", draw=None)
 
