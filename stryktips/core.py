@@ -182,26 +182,35 @@ def _has_end_bound(args: argparse.Namespace) -> bool:
 
 
 def _resolve_start_bound(args: argparse.Namespace) -> int:
-    start_date = cast(str | None, args.start_date)
-    if start_date is not None:
-        return _require_draw_number(_resolve_draw_by_date(start_date))
-    start_week = cast(str | None, args.start_week)
-    if start_week is not None:
-        return _require_draw_number(_resolve_draw_by_week(start_week))
+    resolved = _resolve_date_or_week_bound(
+        cast(str | None, args.start_date), cast(str | None, args.start_week)
+    )
+    if resolved is not None:
+        return resolved
     return cast(int, args.start_draw)
 
 
 def _resolve_end_bound(args: argparse.Namespace) -> int:
-    end_date = cast(str | None, args.end_date)
-    if end_date is not None:
-        return _require_draw_number(_resolve_draw_by_date(end_date))
-    end_week = cast(str | None, args.end_week)
-    if end_week is not None:
-        return _require_draw_number(_resolve_draw_by_week(end_week))
+    resolved = _resolve_date_or_week_bound(
+        cast(str | None, args.end_date), cast(str | None, args.end_week)
+    )
+    if resolved is not None:
+        return resolved
     end_draw = cast(int | None, args.end_draw)
     if end_draw is not None:
         return end_draw
     return _resolve_default_end(date.today())
+
+
+def _resolve_date_or_week_bound(
+    date_str: str | None, week_str: str | None
+) -> int | None:
+    """Resolve an explicit --*-date or --*-week bound to a draw number, if given."""
+    if date_str is not None:
+        return _require_draw_number(_resolve_draw_by_date(date_str))
+    if week_str is not None:
+        return _require_draw_number(_resolve_draw_by_week(week_str))
+    return None
 
 
 def _fetch_report_draws(start: int, end: int) -> list[Draw]:
