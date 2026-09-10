@@ -638,3 +638,57 @@ def test_end_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
         "50-60: 5 | 56% | 60% | 4%",
         "70-80: 1 | 79% | 0% | -79%",
     ]
+
+
+def test_mixed_start_date_end_week_aggregates(mock_response, capsys):  # noqa: PLR0915
+    """--start-date 2025-01-04 --end-week 2025.02 mixes formats and aggregates.
+
+    The start date resolves to draw 4882 (dated 2025-01-04) and the end week
+    resolves to draw 4883 (dated 2025-01-11, inside ISO week 2025.02). Both
+    resolutions are exact matches, so no fallback note is printed. The report
+    folds draws 4882 + 4883 into a single aggregate and fetches nothing outside
+    the range.
+    """
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4882, 4883):
+        draw_data: dict[str, Any] = json.loads(
+            (_FIXTURES / f"week_{draw_number}.json").read_text()
+        )
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    datepicker_data: dict[str, Any] = json.loads(
+        (_FIXTURES / "datepicker_2025_01.json").read_text()
+    )
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2025, month=1), timeout=30
+    ).and_return(mock_response(datepicker_data))
+
+    # No draw outside [4882, 4883] may be fetched, on either side of the range.
+    for out_of_range in (4881, 4884, 4885):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    exit_code = main(["--start-date", "2025-01-04", "--end-week", "2025.02"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    lines = captured.out.strip().split("\n")
+    assert "eligible: 21, excluded: 0" in lines[0]
+    assert lines[1:] == [
+        "0-10: 1 | 8% | 100% | 92%",
+        "10-20: 13 | 15% | 0% | -15%",
+        "20-30: 24 | 25% | 38% | 13%",
+        "30-40: 5 | 33% | 40% | 7%",
+        "40-50: 6 | 44% | 50% | 6%",
+        "50-60: 8 | 56% | 25% | -31%",
+        "60-70: 3 | 65% | 67% | 2%",
+        "70-80: 3 | 74% | 67% | -7%",
+    ]
