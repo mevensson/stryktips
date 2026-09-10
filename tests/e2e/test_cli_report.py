@@ -692,3 +692,24 @@ def test_mixed_start_date_end_week_aggregates(mock_response, capsys):  # noqa: P
         "60-70: 3 | 65% | 67% | 2%",
         "70-80: 3 | 74% | 67% | -7%",
     ]
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--end-draw", "4900"],
+        ["--end-date", "2025-05-10"],
+        ["--end-week", "2025.19"],
+    ],
+)
+def test_end_without_start_rejected(args):
+    """--end-* without any --start-* bound is rejected (exit 2)."""
+    result = subprocess.run(
+        [sys.executable, "stryktips.py", *args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "requires --start-draw" in result.stderr
