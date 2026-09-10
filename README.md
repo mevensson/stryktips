@@ -88,6 +88,11 @@ the `--date`/`--week` resolvers and may be mixed with draw-number bounds
 - An explicit `--end-draw` before the `--start-draw` is an error: the tool exits
   with code 2 and prints `--start-draw must not be greater than --end-draw` to
   stderr.
+- When the resolved start exceeds an explicitly given `--end-*` (for example
+  `--start-date 2025-05-10 --end-draw 4884`, where the date resolves to a later
+  draw), the tool exits with code 1 and prints `--start bound resolved to draw
+  <start>, which must not be greater than --end bound (draw <end>)` to stderr
+  without fetching any draw.
 - `--start-draw`/`--end-draw` may span a range of draws. The tool walks the
   datepicker
   month-by-month from the start draw to collect every draw number within

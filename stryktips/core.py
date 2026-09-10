@@ -154,6 +154,11 @@ def _display_report_if_start(args: argparse.Namespace) -> bool:
     start = _resolve_start_bound(args)
     end = _resolve_end_bound(args)
     if start > end:
+        if _has_end_bound(args):
+            raise ValueError(
+                f"--start bound resolved to draw {start}, which must not be"
+                f" greater than --end bound (draw {end})"
+            )
         _display_report([])
         return True
     _display_report(_fetch_report_draws(start, end))
@@ -165,6 +170,14 @@ def _has_start_bound(args: argparse.Namespace) -> bool:
         args.start_draw is not None
         or args.start_date is not None
         or args.start_week is not None
+    )
+
+
+def _has_end_bound(args: argparse.Namespace) -> bool:
+    return (
+        args.end_draw is not None
+        or args.end_date is not None
+        or args.end_week is not None
     )
 
 
