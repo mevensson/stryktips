@@ -343,6 +343,27 @@ def test_main_start_date_end_draw_prints_report(capsys):
     assert "eligible: 1, excluded: 0" in captured.out
 
 
+def test_main_start_date_resolved_after_end_draw_fails_without_fetching(capsys):
+    """A date-resolved start after the explicit end draw exits 1 without fetching."""
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").never()
+
+    exit_code = stryktips.core.main(
+        ["--start-date", "2025-05-10", "--end-draw", "4884"]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "must not be greater than" in captured.err
+    assert "4900" in captured.err
+    assert "4884" in captured.err
+
+
 def test_main_start_draw_end_date_prints_report(capsys):
     """--start-draw/--end-date together print the report for the resolved draw."""
     match = Match(
