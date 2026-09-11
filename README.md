@@ -39,15 +39,16 @@ python stryktips.py --week 2025.19
 | `--start-date`  | Yes*     | str  | Calendar date (YYYY-MM-DD); the report starts at the draw on or after it |
 | `--start-week`  | Yes*     | str  | ISO week (YYYY.WW[.N]); the report starts at the draw in that week |
 | `--end-draw`    | No       | int  | End draw number for the prediction-quality report |
-| `--end-date`    | No       | str  | Calendar date (YYYY-MM-DD); the report ends at the draw on or after it |
+| `--end-date`    | No       | str  | Calendar date (YYYY-MM-DD); the report ends at the latest draw on or before it (capped at today) |
 | `--end-week`    | No       | str  | ISO week (YYYY.WW[.N]); the report ends at the draw in that week |
 
 *Exactly one of `--draw`, `--date`, `--week`, `--start-draw`, `--start-date`, or
 `--start-week` is required. `--start-draw`/`--start-date`/`--start-week` alone runs
 the report up to the most recent draw; `--end-draw`/`--end-date`/`--end-week` may
 be added to fix the upper bound (an `--end-*` requires a `--start-*`). The start
-bounds are mutually exclusive with the other selectors. Date and week bounds reuse
-the `--date`/`--week` resolvers and may be mixed with draw-number bounds
+bounds are mutually exclusive with the other selectors. Start date/week bounds reuse
+the `--date`/`--week` resolvers, while `--end-date` uses the same backward
+on-or-before search as the default end; bounds may be mixed with draw-number bounds
 (e.g. `--start-week 2025.01 --end-draw 4884`).
 
 ## Behavior
@@ -78,10 +79,13 @@ the `--date`/`--week` resolvers and may be mixed with draw-number bounds
   before the resolved start (the start is after the most recent draw), the tool
   prints an empty report (`eligible: 0, excluded: 0`) and exits 0 without fetching
   the start draw.
-- A date bound resolves to the draw on or after the given date using the same
-  month-by-month forward scan as `--date` (see above), so a range may be given
-  as e.g. `--start-date 2025-01-04 --end-draw 4884`. A week bound resolves to the
-  draw in the given ISO week using the same resolver as `--week` (see above).
+- A `--start-date` bound resolves to the draw on or after the given date using
+  the same month-by-month forward scan as `--date` (see above). A `--end-date`
+  bound resolves to the latest draw dated on or before `min(today, date)`,
+  searching month-by-month backwards (up to 12 months), so a range may be given
+  as e.g. `--start-date 2025-01-04 --end-date 2025-05-11`. A week bound resolves
+  to the draw in the given ISO week using the same resolver as `--week` (see
+  above).
 - An `--end-*` flag without a `--start-*` flag is an error: the tool exits with
   code 2 and prints `--end-draw requires --start-draw, --start-date, or
   --start-week` (naming the end flag actually used) to stderr.
