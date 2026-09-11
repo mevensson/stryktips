@@ -193,7 +193,8 @@ def _resolve_start_bound(args: argparse.Namespace) -> int:
 def _resolve_end_bound(args: argparse.Namespace) -> int:
     end_date = cast(str | None, args.end_date)
     if end_date is not None:
-        return _resolve_default_end(min(_parse_date(end_date), date.today()))
+        bound = min(_parse_date(end_date), date.today())
+        return _resolve_default_end(bound)
     resolved = _resolve_date_or_week_bound(None, cast(str | None, args.end_week))
     if resolved is not None:
         return resolved
