@@ -40,15 +40,15 @@ python stryktips.py --week 2025.19
 | `--start-week`  | Yes*     | str  | ISO week (YYYY.WW[.N]); the report starts at the draw in that week |
 | `--end-draw`    | No       | int  | End draw number for the prediction-quality report |
 | `--end-date`    | No       | str  | Calendar date (YYYY-MM-DD); the report ends at the latest draw on or before it (capped at today) |
-| `--end-week`    | No       | str  | ISO week (YYYY.WW[.N]); the report ends at the draw in that week |
+| `--end-week`    | No       | str  | ISO week (YYYY.WW[.N]); without `.N`, end at the latest draw on or before Sunday (capped at today); `.N` selects the N-th draw in the week |
 
 *Exactly one of `--draw`, `--date`, `--week`, `--start-draw`, `--start-date`, or
 `--start-week` is required. `--start-draw`/`--start-date`/`--start-week` alone runs
 the report up to the most recent draw; `--end-draw`/`--end-date`/`--end-week` may
 be added to fix the upper bound (an `--end-*` requires a `--start-*`). The start
 bounds are mutually exclusive with the other selectors. Start date/week bounds reuse
-the `--date`/`--week` resolvers, while `--end-date` uses the same backward
-on-or-before search as the default end; bounds may be mixed with draw-number bounds
+the `--date`/`--week` resolvers, while `--end-date` and unindexed `--end-week`
+use the same backward on-or-before search as the default end; bounds may be mixed with draw-number bounds
 (e.g. `--start-week 2025.01 --end-draw 4884`).
 
 ## Behavior
@@ -83,9 +83,21 @@ on-or-before search as the default end; bounds may be mixed with draw-number bou
   the same month-by-month forward scan as `--date` (see above). A `--end-date`
   bound resolves to the latest draw dated on or before `min(today, date)`,
   searching month-by-month backwards (up to 12 months), so a range may be given
-  as e.g. `--start-date 2025-01-04 --end-date 2025-05-11`. A week bound resolves
-  to the draw in the given ISO week using the same resolver as `--week` (see
-  above).
+  as e.g. `--start-date 2025-01-04 --end-date 2025-05-11`. A `--start-week` bound
+  uses the same resolver as `--week` (see above).
+- An unindexed `--end-week YYYY.WW` ends at the latest draw on or before
+  `min(today, Sunday of that ISO week)`. It searches backward from the bound
+  month for up to 12 months, so a drawless week uses a preceding draw without
+  a warning. A future week uses today as the bound. Date and unindexed-week
+  ends before available history fail with exit code 1 if that bounded search
+  finds no preceding draw.
+- Omitting the end-week index differs from explicitly supplying `.1`. For the
+  historical two-draw week `2024.52`, `--start-draw 4880 --end-week 2024.52`
+  includes draws 4880 and 4881, as does `--end-week 2024.52.2`;
+  `--end-week 2024.52.1` includes only draw 4880. Earlier draws remain included
+  subject to the report start. Explicit indexed ends currently use the
+  `--week` resolver; additional indexed-end fallback and today-clamping rules
+  are being delivered in [issue #79](https://github.com/mevensson/stryktips/issues/79).
 - An `--end-*` flag without a `--start-*` flag is an error: the tool exits with
   code 2 and prints `--end-draw requires --start-draw, --start-date, or
   --start-week` (naming the end flag actually used) to stderr.
