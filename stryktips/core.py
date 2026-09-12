@@ -195,7 +195,11 @@ def _resolve_end_bound(args: argparse.Namespace) -> int:
     if end_date is not None:
         bound = min(_parse_date(end_date), date.today())
         return _resolve_default_end(bound)
-    resolved = _resolve_date_or_week_bound(None, cast(str | None, args.end_week))
+    end_week = cast(str | None, args.end_week)
+    if end_week is not None and end_week.count(".") == 1:
+        sunday = week_monday(end_week) + timedelta(days=6)
+        return _resolve_default_end(min(sunday, date.today()))
+    resolved = _resolve_date_or_week_bound(None, end_week)
     if resolved is not None:
         return resolved
     end_draw = cast(int | None, args.end_draw)
