@@ -14,6 +14,7 @@ from stryktips.resolver import (
     DrawNotFound,
     ResolveResult,
     WeekDrawIndexError,
+    entries_in_week,
     parse_week,
     resolve_draw_by_date,
     resolve_draw_by_week,
@@ -217,9 +218,11 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
 
     When the requested index exceeds the draws held by a week that has already
     completed (its Sunday is before today), the week's final draw is used and a
-    warning is printed. Otherwise the excessive-index error is raised, as it is
-    for ``--week`` and ``--start-week``. A non-positive index is still rejected
-    by ``resolve_draw_by_week``.
+    warning is printed. A completed week holding no draws at all instead falls
+    back to the latest draw before the week and warns. Otherwise the
+    excessive-index error is raised, as it is for ``--week`` and
+    ``--start-week``. A non-positive index is still rejected by
+    ``resolve_draw_by_week``.
     """
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
@@ -229,10 +232,20 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
 
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(scan_year, scan_month))
+        relevant_months_collected = (scan_year, scan_month) >= (
+            sunday.year,
+            sunday.month,
+        )
+        if (
+            relevant_months_collected
+            and sunday < date.today()
+            and not entries_in_week(monday, all_entries)
+        ):
+            return _warn_empty_end_week(week_str, monday)
         try:
             result = resolve_draw_by_week(monday, all_entries, n)
         except WeekDrawIndexError as exc:
-            if (scan_year, scan_month) >= (sunday.year, sunday.month):
+            if relevant_months_collected:
                 if sunday < date.today():
                     return _warn_excessive_end_week(week_str, monday, all_entries)
                 raise ValueError(_week_draw_index_message(exc)) from None
@@ -243,6 +256,18 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
         scan_year, scan_month = _advance_month(scan_year, scan_month)
 
     raise DrawNotFound(week_str)
+
+
+def _warn_empty_end_week(week_str: str, monday: date) -> int:
+    """Warn that an indexed --end-week holds no draws and return the preceding draw."""
+    preceding = _latest_entry_on_or_before(monday - timedelta(days=1))
+    print(  # noqa: T201
+        f"Warning: --end-week {week_str} has no draws;"
+        f" using preceding draw {preceding.draw_number}"
+        f" ({preceding.date.isoformat()}).",
+        file=sys.stderr,
+    )
+    return preceding.draw_number
 
 
 def _warn_excessive_end_week(
@@ -314,15 +339,24 @@ def _display_report(draws: list[Draw]) -> None:
 
 def _resolve_default_end(today: date) -> int:
     """Return the draw number of the most recent draw on or before today."""
-    year, month = today.year, today.month
+    return _latest_entry_on_or_before(today).draw_number
+
+
+def _latest_entry_on_or_before(limit: date) -> DatepickerEntry:
+    """Return the most recent datepicker entry dated on or before ``limit``.
+
+    Searches backward month-by-month for up to ``MAX_SCAN_MONTHS``, raising
+    ``DrawNotFound`` when no entry exists within the scan window.
+    """
+    year, month = limit.year, limit.month
     for _ in range(MAX_SCAN_MONTHS):
         entries = [
-            entry for entry in fetch_draws_by_month(year, month) if entry.date <= today
+            entry for entry in fetch_draws_by_month(year, month) if entry.date <= limit
         ]
         if entries:
-            return max(entries, key=lambda entry: entry.date).draw_number
+            return max(entries, key=lambda entry: entry.date)
         year, month = _previous_month(year, month)
-    raise DrawNotFound(today.isoformat())
+    raise DrawNotFound(limit.isoformat())
 
 
 def _fetch_draw_from_args(args: argparse.Namespace) -> Draw:
