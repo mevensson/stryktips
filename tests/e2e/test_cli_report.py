@@ -1052,3 +1052,65 @@ def test_start_date_forward_scans_across_empty_months(  # noqa: PLR0915
     )
     lines = captured.out.strip().split("\n")
     assert lines == ["eligible: 0, excluded: 13"]
+
+
+def test_excessive_end_week_index_resolves_to_final_draw(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
+    """--end-week 2024.52.3 falls back to the week's final Draw 4881.
+
+    ISO week 2024.52 holds two Draws: 4880 (December 26) and 4881 (December 29).
+    The out-of-range index .3 selects no third Draw, so resolution falls back to
+    the week's final Draw 4881. Starting at 4880, the report still spans the whole
+    week, and the warning names the requested indexed week plus the fallback Draw
+    and date. With today pinned to January 20, only the historical month is used.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 20)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4880, 4881):
+        draw_data = json.loads((_FIXTURES / f"week_{draw_number}.json").read_text())
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+    for draw_number in (4879, 4882):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).never()
+
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2024_12.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2024&month=12",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=1",
+        timeout=30,
+    ).never()
+
+    exit_code = main(["--start-draw", "4880", "--end-week", "2024.52.3"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Warning" in captured.err
+    assert "2024.52.3" in captured.err
+    assert "4881" in captured.err
+    assert "2024-12-29" in captured.err
+    assert captured.out.splitlines() == [
+        "eligible: 26, excluded: 0",
+        "0-10: 2 | 7% | 0% | -7%",
+        "10-20: 7 | 16% | 29% | 13%",
+        "20-30: 34 | 26% | 26% | 0%",
+        "30-40: 14 | 34% | 29% | -5%",
+        "40-50: 10 | 43% | 40% | -3%",
+        "50-60: 5 | 53% | 60% | 7%",
+        "60-70: 5 | 64% | 60% | -4%",
+        "80-90: 1 | 86% | 100% | 14%",
+    ]

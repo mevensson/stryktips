@@ -530,6 +530,52 @@ def test_resolve_end_bound_unindexed_historical_week_returns_latest_draw(monkeyp
     assert result == 4881
 
 
+def test_main_excessive_end_week_index_falls_back_to_final_draw(  # noqa: PLR0915
+    capsys, monkeypatch
+):
+    """--end-week 2024.52.3 falls back to the week's final Draw 4881 with a warning.
+
+    ISO week 2024.52 holds two Draws: 4880 (December 26) and 4881 (December 29).
+    The out-of-range index .3 selects no third Draw, so the end bound must resolve
+    to the week's final Draw 4881 and warn on stderr, rather than raising the
+    excessive-index error that --week reports. With today pinned to January 20,
+    only the historical month is scanned and the report spans 4880-4881.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 1, 20)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
+        2024, 12
+    ).and_return(
+        [
+            DatepickerEntry(date=date(2024, 12, 21), draw_number=4879),
+            DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
+            DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
+        ]
+    )
+    flexmock(
+        stryktips.core,
+        fetch_draw=lambda dn: Draw(
+            draw_number=dn,
+            matches=[],
+            reg_close_time=datetime(2024, 12, 26, 15, 59),
+        ),
+    )
+
+    exit_code = stryktips.core.main(["--start-draw", "4880", "--end-week", "2024.52.3"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Warning" in captured.err
+    assert "2024.52.3" in captured.err
+    assert "4881" in captured.err
+    assert "2024-12-29" in captured.err
+
+
 def test_main_end_week_without_start_rejected(capsys):
     """--end-week without a --start-* is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:

@@ -95,9 +95,14 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   historical two-draw week `2024.52`, `--start-draw 4880 --end-week 2024.52`
   includes draws 4880 and 4881, as does `--end-week 2024.52.2`;
   `--end-week 2024.52.1` includes only draw 4880. Earlier draws remain included
-  subject to the report start. Explicit indexed ends currently use the
-  `--week` resolver; additional indexed-end fallback and today-clamping rules
-  are being delivered in [issue #79](https://github.com/mevensson/stryktips/issues/79).
+  subject to the report start.
+- For a completed week (its Sunday is before today) containing draws, an
+  excessive positive `--end-week` index uses the final draw of that week and
+  prints a warning to stderr identifying the requested indexed week and the
+  fallback draw and date. For example, `--end-week 2024.52.3` ends at draw 4881
+  (2024-12-29) once that week is completed. The warning alone does not cause
+  failure: the report exits 0. `--week` and `--start-week` still reject an
+  excessive index, and zero or negative indices remain invalid.
 - An `--end-*` flag without a `--start-*` flag is an error: the tool exits with
   code 2 and prints `--end-draw requires --start-draw, --start-date, or
   --start-week` (naming the end flag actually used) to stderr.

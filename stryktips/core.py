@@ -196,16 +196,72 @@ def _resolve_end_bound(args: argparse.Namespace) -> int:
         bound = min(_parse_date(end_date), date.today())
         return _resolve_default_end(bound)
     end_week = cast(str | None, args.end_week)
-    if end_week is not None and end_week.count(".") == 1:
-        sunday = week_monday(end_week) + timedelta(days=6)
-        return _resolve_default_end(min(sunday, date.today()))
-    resolved = _resolve_date_or_week_bound(None, end_week)
-    if resolved is not None:
-        return resolved
+    if end_week is not None:
+        return _resolve_end_week(end_week)
     end_draw = cast(int | None, args.end_draw)
     if end_draw is not None:
         return end_draw
     return _resolve_default_end(date.today())
+
+
+def _resolve_end_week(end_week: str) -> int:
+    """Resolve an --end-week, indexed or not, to a draw number."""
+    if end_week.count(".") == 1:
+        sunday = week_monday(end_week) + timedelta(days=6)
+        return _resolve_default_end(min(sunday, date.today()))
+    return _resolve_indexed_end_week(end_week)
+
+
+def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
+    """Resolve an indexed --end-week, falling back within a completed week.
+
+    When the requested index exceeds the draws held by a week that has already
+    completed (its Sunday is before today), the week's final draw is used and a
+    warning is printed. Otherwise the excessive-index error is raised, as it is
+    for ``--week`` and ``--start-week``. A non-positive index is still rejected
+    by ``resolve_draw_by_week``.
+    """
+    year, week, n = parse_week(week_str)
+    monday = date.fromisocalendar(year, week, 1)
+    sunday = monday + timedelta(days=6)
+    all_entries: list[DatepickerEntry] = []
+    scan_year, scan_month = monday.year, monday.month
+
+    for _ in range(MAX_SCAN_MONTHS):
+        all_entries.extend(fetch_draws_by_month(scan_year, scan_month))
+        try:
+            result = resolve_draw_by_week(monday, all_entries, n)
+        except WeekDrawIndexError as exc:
+            if (scan_year, scan_month) >= (sunday.year, sunday.month):
+                if sunday < date.today():
+                    return _warn_excessive_end_week(week_str, monday, all_entries)
+                raise ValueError(_week_draw_index_message(exc)) from None
+        else:
+            if result.draw_number is not None:
+                _print_fallback_note(result, week_str)
+                return _require_draw_number(result)
+        scan_year, scan_month = _advance_month(scan_year, scan_month)
+
+    raise DrawNotFound(week_str)
+
+
+def _warn_excessive_end_week(
+    week_str: str, monday: date, entries: list[DatepickerEntry]
+) -> int:
+    """Warn that an --end-week index overran and return the week's final draw."""
+    final = _final_week_draw(monday, entries)
+    print(  # noqa: T201
+        f"Warning: --end-week {week_str} exceeds the draws in the week;"
+        f" using final draw {final.draw_number} ({final.date.isoformat()}).",
+        file=sys.stderr,
+    )
+    return final.draw_number
+
+
+def _final_week_draw(monday: date, entries: list[DatepickerEntry]) -> DatepickerEntry:
+    """Return the last draw dated within the ISO week starting on ``monday``."""
+    sunday = monday + timedelta(days=6)
+    return max((e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date)
 
 
 def _resolve_date_or_week_bound(
