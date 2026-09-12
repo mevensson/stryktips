@@ -379,7 +379,9 @@ def test_main_start_draw_end_date_prints_report(capsys):
     )
     flexmock(
         stryktips.core,
-        _resolve_draw_by_date=lambda d: Draw(draw_number=4900, matches=[match]),
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+        ],
     )
     flexmock(
         stryktips.core,
@@ -393,6 +395,32 @@ def test_main_start_draw_end_date_prints_report(capsys):
 
     assert exit_code == 0
     assert "eligible: 1, excluded: 0" in captured.out
+
+
+def test_resolve_end_bound_end_date_returns_latest_draw_on_or_before_bound(monkeypatch):
+    """--end-date resolves to the latest draw dated on or before the given date."""
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 6, 1)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(
+        stryktips.core,
+        fetch_draws_by_month=lambda y, m: [
+            DatepickerEntry(date=date(2025, 5, 3), draw_number=4899),
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+        ],
+    )
+    args = stryktips.core.create_parser().parse_args(
+        ["--start-draw", "4900", "--end-date", "2025-05-11"]
+    )
+
+    result = stryktips.core._resolve_end_bound(args)
+
+    assert result == 4900
 
 
 def test_main_end_date_without_start_rejected(capsys):

@@ -538,8 +538,21 @@ def test_start_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     ]
 
 
-def test_end_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
-    """--start-draw 4900 --end-date 2025-05-10 reuses the date resolver."""
+@pytest.mark.parametrize("end_date", ["2025-05-10", "2025-05-11"])
+def test_end_date_resolves_to_draw(mock_response, monkeypatch, capsys, end_date):  # noqa: PLR0915
+    """--start-draw 4900 --end-date resolves to the latest draw on or before the bound.
+
+    With "today" pinned to 2025-06-01, both an exact-date bound (2025-05-10) and
+    a non-draw bound (2025-05-11) resolve to draw 4900. The later draw 4901 is
+    excluded, and the bound month (May) is scanned without a today-month (June)
+    lookup.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 6, 1)
+
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
     draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
 
@@ -554,7 +567,19 @@ def test_end_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
         timeout=30,
     ).and_return(mock_response(draw_data))
 
-    exit_code = main(["--start-draw", "4900", "--end-date", "2025-05-10"])
+    # The draw after the bound and the today-month datepicker are never fetched.
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4901",
+        timeout=30,
+    ).never()
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=6",
+        timeout=30,
+    ).never()
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    exit_code = main(["--start-draw", "4900", "--end-date", end_date])
     captured = capsys.readouterr()
 
     assert exit_code == 0

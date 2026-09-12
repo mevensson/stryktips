@@ -191,9 +191,11 @@ def _resolve_start_bound(args: argparse.Namespace) -> int:
 
 
 def _resolve_end_bound(args: argparse.Namespace) -> int:
-    resolved = _resolve_date_or_week_bound(
-        cast(str | None, args.end_date), cast(str | None, args.end_week)
-    )
+    end_date = cast(str | None, args.end_date)
+    if end_date is not None:
+        bound = min(_parse_date(end_date), date.today())
+        return _resolve_default_end(bound)
+    resolved = _resolve_date_or_week_bound(None, cast(str | None, args.end_week))
     if resolved is not None:
         return resolved
     end_draw = cast(int | None, args.end_draw)
@@ -287,16 +289,19 @@ def _require_draw_number(result: ResolveResult) -> int:
 
 
 def _resolve_draw_by_date(date_str: str) -> ResolveResult:
-    try:
-        target = date.fromisoformat(date_str)
-    except ValueError:
-        raise ValueError(f"Invalid date: {date_str}") from None
-
+    target = _parse_date(date_str)
     return _forward_scan(
         target,
         lambda entries: resolve_draw_by_date(target, entries),
         date_str,
     )
+
+
+def _parse_date(date_str: str) -> date:
+    try:
+        return date.fromisoformat(date_str)
+    except ValueError:
+        raise ValueError(f"Invalid date: {date_str}") from None
 
 
 def _resolve_draw_by_week(week_str: str) -> ResolveResult:  # noqa: PLR0915
