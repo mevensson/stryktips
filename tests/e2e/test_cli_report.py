@@ -824,6 +824,69 @@ def test_unindexed_drawless_end_week_resolves_to_latest_preceding_draw(  # noqa:
     ]
 
 
+def test_indexed_empty_completed_end_week_resolves_to_preceding_draw(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
+    """--end-week 2025.20.1 on an emptied completed week ends at Draw 4900.
+
+    The synthetic May datepicker omits Draw 4901, leaving ISO week 2025.20
+    (May 12-18) with no draws. Because the week has completed, the indexed end
+    falls back to the latest preceding Draw 4900 (May 10), not the later 4902
+    (May 25). A warning names the requested indexed week and the fallback draw
+    and date. Both are in the bound month, so no multi-month backward search is
+    needed.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 6, 1)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    datepicker_data["resultDates"] = [
+        entry for entry in datepicker_data["resultDates"] if entry["drawNumber"] != 4901
+    ]
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4900), timeout=30
+    ).and_return(mock_response(draw_data))
+    for draw_number in (4899, 4901, 4902, 4903):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).never()
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=6",
+        timeout=30,
+    ).never()
+
+    exit_code = main(["--start-draw", "4900", "--end-week", "2025.20.1"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Warning" in captured.err
+    assert "2025.20.1" in captured.err
+    assert "4900" in captured.err
+    assert "2025-05-10" in captured.err
+    assert captured.out.splitlines() == [
+        "eligible: 13, excluded: 0",
+        "0-10: 1 | 8% | 0% | -8%",
+        "10-20: 4 | 17% | 25% | 8%",
+        "20-30: 15 | 25% | 33% | 8%",
+        "30-40: 10 | 36% | 30% | -6%",
+        "40-50: 3 | 42% | 33% | -9%",
+        "50-60: 5 | 56% | 60% | 4%",
+        "70-80: 1 | 79% | 0% | -79%",
+    ]
+
+
 @pytest.mark.parametrize(
     "end_bound",
     [
