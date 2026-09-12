@@ -576,6 +576,52 @@ def test_main_excessive_end_week_index_falls_back_to_final_draw(  # noqa: PLR091
     assert "2024-12-29" in captured.err
 
 
+def test_main_indexed_empty_completed_end_week_selects_predecessor_draw(  # noqa: PLR0915
+    capsys, monkeypatch
+):
+    """--end-week 2025.20.1 on an empty completed week ends at Draw 4900.
+
+    ISO week 2025.20 (May 12-18) holds no draws: the synthetic May datepicker
+    omits Draw 4901, leaving only Draw 4900 (May 10) before and Draw 4902
+    (May 25) after. Because the week has completed (today is June 1), the
+    indexed end must fall back to the latest preceding Draw 4900 and warn on
+    stderr, rather than continuing to the later Draw 4902. The single-draw
+    report then fetches only 4900.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 6, 1)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
+        2025, 5
+    ).and_return(
+        [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+            DatepickerEntry(date=date(2025, 5, 25), draw_number=4902),
+        ]
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).and_return(
+        Draw(
+            draw_number=4900,
+            matches=[],
+            reg_close_time=datetime(2025, 5, 10, 15, 59),
+        )
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4902).never()
+
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.20.1"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Warning" in captured.err
+    assert "2025.20.1" in captured.err
+    assert "4900" in captured.err
+    assert "2025-05-10" in captured.err
+
+
 def test_main_end_week_without_start_rejected(capsys):
     """--end-week without a --start-* is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:
