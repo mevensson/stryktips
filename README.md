@@ -103,6 +103,10 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   (2024-12-29) once that week is completed. The warning alone does not cause
   failure: the report exits 0. `--week` and `--start-week` still reject an
   excessive index, and zero or negative indices remain invalid.
+- If an indexed completed end week contains no draws, the report ends at the
+  latest draw before that week. A warning identifies the requested indexed week
+  and the fallback draw and date. This uses the bounded backward search and
+  fails with exit code 1 if no preceding draw is found within 12 months.
 - An `--end-*` flag without a `--start-*` flag is an error: the tool exits with
   code 2 and prints `--end-draw requires --start-draw, --start-date, or
   --start-week` (naming the end flag actually used) to stderr.
