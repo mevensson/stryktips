@@ -1,0 +1,25 @@
+{
+  "draw": {
+    "drawNumber": 4880,
+    "drawComment": "Stryktipset v. 2024-52",
+    "regOpenTime": "2024-12-21T18:00:00+01:00",
+    "regCloseTime": "2024-12-26T15:59:00+01:00",
+    "cancelCloseTime": "2024-12-26T16:00:00+01:00",
+    "drawEvents": [
+      {"eventNumber": 1, "match": {"matchStart": "2024-12-26T21:00:00+01:00", "participants": [{"mediumName": "Liverpool"}, {"mediumName": "Leicester"}], "result": [{"type": 2, "home": "3", "away": "1"}]}, "startOdds": {"one": "1,13", "x": "10,50", "two": "23,00"}, "svenskaFolket": {"one": "93", "x": "5", "two": "2"}},
+      {"eventNumber": 2, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Chelsea"}, {"mediumName": "Fulham"}], "result": [{"type": 2, "home": "1", "away": "2"}]}, "startOdds": {"one": "1,50", "x": "4,80", "two": "6,40"}, "svenskaFolket": {"one": "66", "x": "23", "two": "11"}},
+      {"eventNumber": 3, "match": {"matchStart": "2024-12-26T18:30:00+01:00", "participants": [{"mediumName": "Wolves"}, {"mediumName": "Man Utd"}], "result": [{"type": 2, "home": "2", "away": "0"}]}, "startOdds": {"one": "4,70", "x": "4,25", "two": "1,73"}, "svenskaFolket": {"one": "23", "x": "23", "two": "54"}},
+      {"eventNumber": 4, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Newcastle"}, {"mediumName": "Aston V"}], "result": [{"type": 2, "home": "3", "away": "0"}]}, "startOdds": {"one": "1,91", "x": "4,00", "two": "3,95"}, "svenskaFolket": {"one": "59", "x": "22", "two": "19"}},
+      {"eventNumber": 5, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Nottingha"}, {"mediumName": "Tottenham"}], "result": [{"type": 2, "home": "1", "away": "0"}]}, "startOdds": {"one": "2,75", "x": "3,75", "two": "2,55"}, "svenskaFolket": {"one": "46", "x": "21", "two": "33"}},
+      {"eventNumber": 6, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Southampt"}, {"mediumName": "West Ham"}], "result": [{"type": 2, "home": "0", "away": "1"}]}, "startOdds": {"one": "3,30", "x": "3,95", "two": "2,12"}, "svenskaFolket": {"one": "23", "x": "26", "two": "51"}},
+      {"eventNumber": 7, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Bournemou"}, {"mediumName": "Crystal P"}], "result": [{"type": 2, "home": "0", "away": "0"}]}, "startOdds": {"one": "2,02", "x": "3,65", "two": "3,90"}, "svenskaFolket": {"one": "56", "x": "23", "two": "21"}},
+      {"eventNumber": 8, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Blackburn"}, {"mediumName": "Sunderlan"}], "result": [{"type": 2, "home": "2", "away": "2"}]}, "startOdds": {"one": "2,85", "x": "3,35", "two": "2,55"}, "svenskaFolket": {"one": "28", "x": "27", "two": "45"}},
+      {"eventNumber": 9, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Bristol C"}, {"mediumName": "Luton"}], "result": [{"type": 2, "home": "1", "away": "0"}]}, "startOdds": {"one": "2,60", "x": "3,40", "two": "2,75"}, "svenskaFolket": {"one": "51", "x": "25", "two": "24"}},
+      {"eventNumber": 10, "match": {"matchStart": "2024-12-26T18:30:00+01:00", "participants": [{"mediumName": "Derby"}, {"mediumName": "West Brom"}], "result": [{"type": 2, "home": "2", "away": "1"}]}, "startOdds": {"one": "3,20", "x": "3,30", "two": "2,35"}, "svenskaFolket": {"one": "25", "x": "32", "two": "43"}},
+      {"eventNumber": 11, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Norwich"}, {"mediumName": "Millwall"}], "result": [{"type": 2, "home": "2", "away": "1"}]}, "startOdds": {"one": "2,30", "x": "3,20", "two": "3,40"}, "svenskaFolket": {"one": "49", "x": "30", "two": "21"}},
+      {"eventNumber": 12, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Preston"}, {"mediumName": "Hull"}], "result": [{"type": 2, "home": "1", "away": "0"}]}, "startOdds": {"one": "2,35", "x": "3,25", "two": "3,20"}, "svenskaFolket": {"one": "46", "x": "32", "two": "22"}},
+      {"eventNumber": 13, "match": {"matchStart": "2024-12-26T16:00:00+01:00", "participants": [{"mediumName": "Sheff U"}, {"mediumName": "Burnley"}], "result": [{"type": 2, "home": "0", "away": "2"}]}, "startOdds": {"one": "2,28", "x": "3,25", "two": "3,40"}, "svenskaFolket": {"one": "41", "x": "34", "two": "25"}}
+    ]
+  },
+  "error": null
+}
