@@ -27,7 +27,7 @@ Use the same strategy for each iteration.
 
 ## Step 2 - Write a failing unit test (red)
 
-Delegate to a subagent to write a unit test for the *next step*.
+Delegate to the `implementer` subagent to write a unit test for the *next step*.
 
 **Note**: this step is mandatory, and a failing end to end test is **not** a failing unit test.
 
@@ -40,7 +40,7 @@ Delegate to a subagent to write a unit test for the *next step*.
 
 ## Step 3 - Make the test pass (green)
 
-Delegate to a subagent to make the test pass.
+Delegate to the `implementer` subagent to make the test pass.
 
 **Sub agent prompt**
 - Point to the commit that added the unit test.
@@ -57,7 +57,7 @@ The purpose of this step is to keep the code clean and prevent rot and must be p
 
 ### Review all code
 
-Delegate to a subagent to make a review of all code.
+Delegate to the `reviewer` subagent to make a review of all code.
 
 **Sub agent prompt**
 - Tell the subagent to review all code in the project.
@@ -66,7 +66,7 @@ Delegate to a subagent to make a review of all code.
 
 ### Handle the review comments
 
-Delegate to a subagent to handle the **review findings**.
+Delegate to the `implementer` subagent to handle the **review findings**.
 
 **Sub agent prompt**
 - The **review findings**.
