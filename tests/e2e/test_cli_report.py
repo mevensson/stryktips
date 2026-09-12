@@ -765,6 +765,74 @@ def test_unindexed_drawless_end_week_resolves_to_latest_preceding_draw(  # noqa:
     ]
 
 
+@pytest.mark.parametrize(
+    "end_bound",
+    [
+        ["--end-date", "2020-05-15"],
+        ["--end-week", "2020.20"],
+    ],
+)
+def test_historical_end_bound_searches_back_across_empty_months(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys, end_bound
+):
+    """A May 2020 date/unindexed-week end resolves back to Draw 4641.
+
+    With today pinned to 2020-06-01, both --end-date 2020-05-15 and
+    --end-week 2020.20 (Sunday 2020-05-17) bound the report in May 2020. May
+    returns an empty 200, April 2020 returns 404, and March 2020 holds the
+    latest preceding Draw 4641 (2020-03-14). The backward search must query the
+    bound and intervening months in order, never the today month (June), and
+    fetch only Draw 4641.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2020, 6, 1)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    empty_data: dict[str, list[Any]] = {"resultDates": []}
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2020, month=5), timeout=30
+    ).once().ordered().and_return(mock_response(empty_data))
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2020, month=4), timeout=30
+    ).once().ordered().and_return(
+        mock_response({"error": "not_found"}, status_code=404)
+    )
+    march_data = json.loads((_FIXTURES / "datepicker_2020_03.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2020, month=3), timeout=30
+    ).once().ordered().and_return(mock_response(march_data))
+
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    draw_data = json.loads((_FIXTURES / "week_4641.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4641), timeout=30
+    ).once().and_return(mock_response(draw_data))
+
+    # Neither the today month nor any Draw outside the resolved end is fetched.
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2020, month=6), timeout=30
+    ).never()
+    for draw_number in (4639, 4640, 4642, 4643, 4644):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).never()
+
+    exit_code = main(["--start-draw", "4641", *end_bound])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == ["eligible: 0, excluded: 7"]
+
+
 def test_mixed_start_date_end_week_aggregates(mock_response, capsys):  # noqa: PLR0915
     """--start-date 2025-01-04 --end-week 2025.02 mixes formats and aggregates.
 
