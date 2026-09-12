@@ -261,10 +261,7 @@ def _warn_excessive_end_week(
 def _final_week_draw(monday: date, entries: list[DatepickerEntry]) -> DatepickerEntry:
     """Return the last draw dated within the ISO week starting on ``monday``."""
     sunday = monday + timedelta(days=6)
-    in_week = sorted(
-        (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
-    )
-    return in_week[-1]
+    return max((e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date)
 
 
 def _resolve_date_or_week_bound(
