@@ -462,8 +462,15 @@ def test_main_start_week_end_draw_prints_report(capsys):
     assert "eligible: 1, excluded: 0" in captured.out
 
 
-def test_main_start_draw_end_week_prints_report(capsys):
+def test_main_start_draw_end_week_prints_report(capsys, monkeypatch):
     """--start-draw/--end-week together print the report for the resolved draw."""
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 6, 1)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
     match = Match(
         event_number=1,
         home_team="Brynäs",
@@ -475,9 +482,14 @@ def test_main_start_draw_end_week_prints_report(capsys):
             home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
         ),
     )
-    flexmock(
-        stryktips.core,
-        _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[match]),
+    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
+        2025, 5
+    ).and_return(
+        [
+            DatepickerEntry(date=date(2025, 5, 3), draw_number=4899),
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+        ]
     )
     flexmock(
         stryktips.core,
