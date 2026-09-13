@@ -107,6 +107,10 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   latest draw before that week. A warning identifies the requested indexed week
   and the fallback draw and date. This uses the bounded backward search and
   fails with exit code 1 if no preceding draw is found within 12 months.
+- If a date, unindexed-week, or indexed empty completed-week end exhausts its
+  backward search, the error is printed to stderr and no report draws are
+  fetched. The 12-month window includes the month where the backward search
+  begins; it does not scan indefinitely for older history.
 - An `--end-*` flag without a `--start-*` flag is an error: the tool exits with
   code 2 and prints `--end-draw requires --start-draw, --start-date, or
   --start-week` (naming the end flag actually used) to stderr.
