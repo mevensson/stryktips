@@ -14,6 +14,22 @@ from stryktips import main
 
 _FIXTURES = Path(__file__).parent.parent / "fixtures"
 
+# A 12-month backward window anchored on May 2025, crossing the year boundary.
+_BACKWARD_MONTHS_FROM_MAY_2025 = [
+    (2025, 5),
+    (2025, 4),
+    (2025, 3),
+    (2025, 2),
+    (2025, 1),
+    (2024, 12),
+    (2024, 11),
+    (2024, 10),
+    (2024, 9),
+    (2024, 8),
+    (2024, 7),
+    (2024, 6),
+]
+
 
 def test_help_shows_start_draw_end_draw_usage():
     result = subprocess.run(
@@ -953,6 +969,83 @@ def test_historical_end_bound_searches_back_across_empty_months(  # noqa: PLR091
     assert exit_code == 0
     assert captured.err == ""
     assert captured.out.splitlines() == ["eligible: 0, excluded: 7"]
+
+
+@pytest.mark.parametrize(
+    ("end_args", "expected_months", "expected_error"),
+    [
+        (
+            ["--end-date", "2025-05-15"],
+            _BACKWARD_MONTHS_FROM_MAY_2025,
+            "No draw found within 12 months of 2025-05-15",
+        ),
+        (
+            ["--end-week", "2025.20"],
+            _BACKWARD_MONTHS_FROM_MAY_2025,
+            "No draw found within 12 months of 2025-05-18",
+        ),
+        (
+            ["--end-week", "2025.20.1"],
+            [(2025, 5), *_BACKWARD_MONTHS_FROM_MAY_2025],
+            "No draw found within 12 months of 2025-05-11",
+        ),
+    ],
+)
+def test_end_bound_without_preceding_draw_errors_after_backward_window(  # noqa: PLR0913, PLR0915
+    mock_response, monkeypatch, capsys, end_args, expected_months, expected_error
+):
+    """A date or week end with no predecessor fails within the 12-month window.
+
+    With "today" pinned to 2025-06-01, a May 2025 date or week bound searches
+    the bound month and 11 earlier months (May 2025 back to June 2024) across
+    the year boundary. Every month is empty or absent, so resolution fails
+    within 12 months rather than reaching the 13th older month (May 2024) or the
+    today month (June 2025). The indexed empty completed-week bound first
+    inspects the requested month and repeats it as the first month of the
+    backward window. Exit is 1 with a bounded-search message on stderr, no
+    fallback warning, empty stdout, and no report Draw fetch.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 6, 1)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    for year, month in expected_months:
+        if (year, month) == (2025, 5):
+            payload: dict[str, Any] = {"resultDates": []}
+            status_code = 200
+        else:
+            payload = {"error": "not_found"}
+            status_code = 404
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).once().ordered().and_return(mock_response(payload, status_code=status_code))
+
+    # The 13th older month and the today month are never looked up.
+    for year, month in ((2024, 5), (2025, 6)):
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).never()
+
+    # No report Draw may be fetched when the end bound fails to resolve.
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4884",
+        timeout=30,
+    ).never()
+
+    exit_code = main(["--start-draw", "4884", *end_args])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert expected_error in captured.err
+    assert "Warning" not in captured.err
+    assert captured.out == ""
 
 
 def test_mixed_start_date_end_week_aggregates(mock_response, capsys):  # noqa: PLR0915
