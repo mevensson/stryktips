@@ -213,8 +213,43 @@ def _resolve_end_week(end_week: str) -> int:
     return _resolve_indexed_end_week(end_week)
 
 
-def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
-    """Resolve an indexed --end-week, falling back within a completed week.
+def _resolve_indexed_end_week(week_str: str) -> int:
+    """Resolve an indexed --end-week according to which part of the week it is.
+
+    A week containing today uses the current-week policy; a wholly past or
+    wholly future week keeps the completed/upcoming fallback behaviour.
+    """
+    year, week, n = parse_week(week_str)
+    monday = date.fromisocalendar(year, week, 1)
+    sunday = monday + timedelta(days=6)
+    today = date.today()
+    if monday <= today <= sunday:
+        return _resolve_current_week_indexed_end(n, monday, today)
+    return _resolve_other_indexed_end_week(week_str, n, monday, sunday, today)
+
+
+def _resolve_current_week_indexed_end(n: int, monday: date, today: date) -> int:
+    """Resolve an indexed --end-week that falls within the current ISO week.
+
+    The index is honored only when its draw is dated on or before today, even
+    if a later draw in the same week is also available. A later or
+    unavailable index, or a week holding no draws yet, clamps to the latest
+    draw on or before today without an index warning.
+    """
+    entries = _entries_from_month_to_month(monday, today)
+    try:
+        result = resolve_draw_by_week(monday, entries, n)
+    except WeekDrawIndexError:
+        return _latest_draw_number_on_or_before(today, entries)
+    if result.match_date is not None and result.match_date <= today:
+        return _require_draw_number(result)
+    return _latest_draw_number_on_or_before(today, entries)
+
+
+def _resolve_other_indexed_end_week(  # noqa: PLR0915
+    week_str: str, n: int, monday: date, sunday: date, today: date
+) -> int:
+    """Resolve an indexed --end-week falling outside the current week.
 
     When the requested index exceeds the draws held by a week that has already
     completed (its Sunday is before today), the week's final draw is used and a
@@ -224,9 +259,6 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
     ``--start-week``. A non-positive index is still rejected by
     ``resolve_draw_by_week``.
     """
-    year, week, n = parse_week(week_str)
-    monday = date.fromisocalendar(year, week, 1)
-    sunday = monday + timedelta(days=6)
     all_entries: list[DatepickerEntry] = []
     scan_year, scan_month = monday.year, monday.month
 
@@ -238,7 +270,7 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
         )
         if (
             relevant_months_collected
-            and sunday < date.today()
+            and sunday < today
             and not entries_in_week(monday, all_entries)
         ):
             return _warn_empty_end_week(week_str, monday)
@@ -246,7 +278,7 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
             result = resolve_draw_by_week(monday, all_entries, n)
         except WeekDrawIndexError as exc:
             if relevant_months_collected:
-                if sunday < date.today():
+                if sunday < today:
                     return _warn_excessive_end_week(week_str, monday, all_entries)
                 raise ValueError(_week_draw_index_message(exc)) from None
         else:
@@ -256,6 +288,30 @@ def _resolve_indexed_end_week(week_str: str) -> int:  # noqa: PLR0915
         scan_year, scan_month = _advance_month(scan_year, scan_month)
 
     raise DrawNotFound(week_str)
+
+
+def _entries_from_month_to_month(start: date, end: date) -> list[DatepickerEntry]:
+    """Fetch every month from ``start`` through ``end``, newest month first."""
+    entries: list[DatepickerEntry] = []
+    year, month = end.year, end.month
+    while (year, month) >= (start.year, start.month):
+        entries.extend(fetch_draws_by_month(year, month))
+        year, month = _previous_month(year, month)
+    return entries
+
+
+def _latest_draw_number_on_or_before(
+    today: date, entries: list[DatepickerEntry]
+) -> int:
+    """Return the latest entry on or before today, scanning back if needed."""
+    latest = max(
+        (entry for entry in entries if entry.date <= today),
+        key=lambda entry: entry.date,
+        default=None,
+    )
+    if latest is not None:
+        return latest.draw_number
+    return _resolve_default_end(today)
 
 
 def _warn_empty_end_week(week_str: str, monday: date) -> int:
