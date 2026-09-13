@@ -96,6 +96,11 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   includes draws 4880 and 4881, as does `--end-week 2024.52.2`;
   `--end-week 2024.52.1` includes only draw 4880. Earlier draws remain included
   subject to the report start.
+- In the current week, an explicit end-week index selecting a draw dated on or
+  before today is honored without an index warning, even if a later draw in the
+  same week is also dated on or before today. For example, on 2024-12-29,
+  `--start-draw 4880 --end-week 2024.52.1` includes only draw 4880 (December 26),
+  although draw 4881 (December 29) is also available.
 - For a completed week (its Sunday is before today) containing draws, an
   excessive positive `--end-week` index uses the final draw of that week and
   prints a warning to stderr identifying the requested indexed week and the
