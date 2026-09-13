@@ -783,6 +783,65 @@ def test_end_week_resolves_to_draw(  # noqa: PLR0915
     assert captured.out.splitlines() == expected_lines
 
 
+def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
+    """--start-draw 4880 --end-week 2024.52.1 on Sunday 2024-12-29 ends at 4880.
+
+    ISO week 2024.52 holds draws 4880 (December 26) and 4881 (December 29).
+    With "today" pinned to Sunday 2024-12-29, both draws are dated on or before
+    today, so the week is current but already available. The explicit index .1
+    must still select only 4880 as the report end without a warning, even though
+    a later draw in the same week is also available. Draws 4881 and every other
+    draw outside [4880, 4880] must not be fetched.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2024, 12, 29)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    draw_data = json.loads((_FIXTURES / "week_4880.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4880), timeout=30
+    ).and_return(mock_response(draw_data))
+    for draw_number in (4879, 4881, 4882):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).never()
+
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2024_12.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2024&month=12",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=1",
+        timeout=30,
+    ).never()
+
+    exit_code = main(["--start-draw", "4880", "--end-week", "2024.52.1"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == [
+        "eligible: 13, excluded: 0",
+        "0-10: 2 | 7% | 0% | -7%",
+        "10-20: 1 | 15% | 100% | 85%",
+        "20-30: 18 | 26% | 22% | -4%",
+        "30-40: 8 | 35% | 38% | 3%",
+        "40-50: 6 | 43% | 50% | 7%",
+        "50-60: 2 | 54% | 50% | -4%",
+        "60-70: 1 | 65% | 0% | -65%",
+        "80-90: 1 | 86% | 100% | 14%",
+    ]
+
+
 def test_unindexed_drawless_end_week_resolves_to_latest_preceding_draw(  # noqa: PLR0915
     mock_response, monkeypatch, capsys
 ):
