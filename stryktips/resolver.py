@@ -41,10 +41,7 @@ def resolve_draw_by_week(
     """Resolve the N-th draw dated inside the ISO week, else the next after Monday."""
     if n < 1:
         raise ValueError("Draw number must be a positive integer")
-    sunday = monday + timedelta(days=6)
-    in_week = sorted(
-        (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
-    )
+    in_week = entries_in_week(monday, entries)
     if in_week:
         if n > len(in_week):
             raise WeekDrawIndexError(monday, in_week)
@@ -79,6 +76,16 @@ def week_monday(week_str: str) -> date:
     """Return the Monday of the ISO week described by ``week_str`` (YYYY.WW)."""
     year, week, _ = parse_week(week_str)
     return date.fromisocalendar(year, week, 1)
+
+
+def entries_in_week(
+    monday: date, entries: list[DatepickerEntry]
+) -> list[DatepickerEntry]:
+    """Return the entries dated within the ISO week starting on ``monday``, sorted."""
+    sunday = monday + timedelta(days=6)
+    return sorted(
+        (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
+    )
 
 
 def _first_on_or_after(
