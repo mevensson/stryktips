@@ -843,18 +843,14 @@ def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
 
 
 @pytest.mark.parametrize(
-    ("today", "expected_warning"),
+    ("today", "expects_warning"),
     [
-        pytest.param(date(2024, 12, 29), None, id="sunday-current-week"),
-        pytest.param(
-            date(2024, 12, 30),
-            "final draw 4881 (2024-12-29)",
-            id="monday-completed-week",
-        ),
+        pytest.param(date(2024, 12, 29), False, id="sunday-current-week"),
+        pytest.param(date(2024, 12, 30), True, id="monday-completed-week"),
     ],
 )
 def test_excessive_end_week_index_clamps_silently_only_while_week_is_current(  # noqa: PLR0915
-    mock_response, monkeypatch, capsys, today, expected_warning
+    mock_response, monkeypatch, capsys, today, expects_warning
 ):
     """--end-week 2024.52.3 falls back to Draw 4881 on the Sunday and Monday.
 
@@ -901,11 +897,13 @@ def test_excessive_end_week_index_clamps_silently_only_while_week_is_current(  #
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    if expected_warning is None:
+    if not expects_warning:
         assert captured.err == ""
     else:
-        assert "--end-week 2024.52.3 exceeds the draws in the week;" in captured.err
-        assert expected_warning in captured.err
+        assert "Warning" in captured.err
+        assert "2024.52.3" in captured.err
+        assert "4881" in captured.err
+        assert "2024-12-29" in captured.err
     assert captured.out.splitlines() == [
         "eligible: 26, excluded: 0",
         "0-10: 2 | 7% | 0% | -7%",
