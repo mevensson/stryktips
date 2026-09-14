@@ -101,6 +101,10 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   same week is also dated on or before today. For example, on 2024-12-29,
   `--start-draw 4880 --end-week 2024.52.1` includes only draw 4880 (December 26),
   although draw 4881 (December 29) is also available.
+- If a current-week end index selects a draw dated after today or an index
+  that is not yet available, the report ends at the latest draw on or before
+  today without an index warning. This also applies when the current week has
+  no draws yet: the end may resolve to a draw from a preceding week.
 - For a completed week (its Sunday is before today) containing draws, an
   excessive positive `--end-week` index uses the final draw of that week and
   prints a warning to stderr identifying the requested indexed week and the

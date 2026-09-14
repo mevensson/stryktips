@@ -622,6 +622,48 @@ def test_main_indexed_empty_completed_end_week_selects_predecessor_draw(  # noqa
     assert "2025-05-10" in captured.err
 
 
+def test_main_current_week_indexed_end_after_today_clamps_to_latest_draw(  # noqa: PLR0915
+    capsys, monkeypatch
+):
+    """--end-week 2025.20.1 on the current week clamps to Draw 4900 without warning.
+
+    With today pinned to Monday 2025-05-12, ISO week 2025.20 is current and its
+    only Draw 4901 (May 17) is later in the week. The indexed end selects that
+    later Draw, which must instead clamp to the latest Draw on or before today
+    (4900) without an index warning or fallback note. Only Draw 4900 is fetched.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 5, 12)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
+        2025, 5
+    ).and_return(
+        [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+        ]
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).and_return(
+        Draw(
+            draw_number=4900,
+            matches=[],
+            reg_close_time=datetime(2025, 5, 10, 15, 59),
+        )
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4901).never()
+
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.20.1"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
 def test_main_end_week_without_start_rejected(capsys):
     """--end-week without a --start-* is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:

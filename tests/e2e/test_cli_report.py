@@ -842,6 +842,78 @@ def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
     ]
 
 
+@pytest.mark.parametrize(
+    ("end_week", "unpublished_draw"),
+    [
+        pytest.param("2025.20.1", None, id="published-draw-after-today"),
+        pytest.param("2025.20.2", None, id="unavailable-index"),
+        pytest.param("2025.20.1", 4901, id="no-draw-yet-this-week"),
+    ],
+)
+def test_current_week_later_or_missing_index_clamps_to_latest_draw(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys, end_week, unpublished_draw
+):
+    """A current-week end index past today clamps to Draw 4900 (2025-05-10).
+
+    With "today" pinned to Monday 2025-05-12, ISO week 2025.20 is current and
+    its only Draw 4901 (May 17) is later in the week. An index selecting that
+    later Draw, an index that is not yet available, and an unpublished week
+    with no Draw yet all end at the latest Draw on or before today (4900),
+    without an index warning or fallback note. Draws 4901-4903 and the June
+    datepicker month are never fetched.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 5, 12)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    if unpublished_draw is not None:
+        datepicker_data["resultDates"] = [
+            entry
+            for entry in datepicker_data["resultDates"]
+            if entry["drawNumber"] != unpublished_draw
+        ]
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4900), timeout=30
+    ).and_return(mock_response(draw_data))
+    for later_draw in (4901, 4902, 4903):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=later_draw), timeout=30
+        ).never()
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=6",
+        timeout=30,
+    ).never()
+
+    exit_code = main(["--start-draw", "4900", "--end-week", end_week])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == [
+        "eligible: 13, excluded: 0",
+        "0-10: 1 | 8% | 0% | -8%",
+        "10-20: 4 | 17% | 25% | 8%",
+        "20-30: 15 | 25% | 33% | 8%",
+        "30-40: 10 | 36% | 30% | -6%",
+        "40-50: 3 | 42% | 33% | -9%",
+        "50-60: 5 | 56% | 60% | 4%",
+        "70-80: 1 | 79% | 0% | -79%",
+    ]
+
+
 def test_unindexed_drawless_end_week_resolves_to_latest_preceding_draw(  # noqa: PLR0915
     mock_response, monkeypatch, capsys
 ):
