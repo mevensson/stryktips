@@ -622,6 +622,24 @@ def test_main_cross_year_indexed_end_first_draw_requires_both_months(  # noqa: P
     assert captured.err == ""
 
 
+def test_final_week_draw_matches_shared_distinct_draw_order():
+    """The fallback ends on the distinct Draw the index counted, not response order.
+
+    Unsorted duplicate entries, including two distinct Draws sharing a date, are
+    ordered by draw number, so the fallback does not depend on response order.
+    """
+    monday = date(2024, 12, 30)
+    entries = [
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4881),
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+    ]
+
+    final = stryktips.core._final_week_draw(monday, entries)
+
+    assert final.draw_number == 4882
+
+
 def test_main_indexed_empty_completed_end_week_selects_predecessor_draw(  # noqa: PLR0915
     capsys, monkeypatch
 ):
