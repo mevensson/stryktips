@@ -664,6 +664,53 @@ def test_main_current_week_indexed_end_after_today_clamps_to_latest_draw(  # noq
     assert captured.out.strip() == "eligible: 0, excluded: 0"
 
 
+def test_main_future_indexed_end_week_clamps_to_latest_draw(  # noqa: PLR0915
+    capsys, monkeypatch
+):
+    """--end-week 2025.23.1 wholly in the future clamps to Draw 4900 without warning.
+
+    With today pinned to 2025-05-10, ISO week 2025.23 (June 2-8) is wholly in
+    the future. The indexed end must end at the latest Draw on or before today,
+    4900 (May 10), rather than resolving into the future week. Only the current
+    May month is looked up: future draws need not be published, so the June
+    datepicker is never fetched. Only Draw 4900 is fetched, and the report is
+    empty because it holds no matches.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 5, 10)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
+        2025, 5
+    ).and_return(
+        [
+            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+        ]
+    )
+    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
+        2025, 6
+    ).never()
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).and_return(
+        Draw(
+            draw_number=4900,
+            matches=[],
+            reg_close_time=datetime(2025, 5, 10, 15, 59),
+        )
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4901).never()
+
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.23.1"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
 def test_main_end_week_without_start_rejected(capsys):
     """--end-week without a --start-* is a parser error with exit code 2."""
     with pytest.raises(SystemExit) as exc:
