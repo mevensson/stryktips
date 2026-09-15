@@ -216,8 +216,10 @@ def _resolve_end_week(end_week: str) -> int:
 def _resolve_indexed_end_week(week_str: str) -> int:
     """Resolve an indexed --end-week according to which part of the week it is.
 
-    A week containing today uses the current-week policy; a wholly past or
-    wholly future week keeps the completed/upcoming fallback behaviour.
+    A week containing today uses the current-week policy; a wholly future week
+    clamps to the latest draw on or before today without a lookup into the
+    unpublished future; a wholly past week keeps the completed-week fallback
+    behaviour. The index is validated by ``parse_week`` before dispatch.
     """
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
@@ -225,6 +227,8 @@ def _resolve_indexed_end_week(week_str: str) -> int:
     today = date.today()
     if monday <= today <= sunday:
         return _resolve_current_week_indexed_end(n, monday, today)
+    if monday > today:
+        return _resolve_default_end(today)
     return _resolve_other_indexed_end_week(week_str, n, monday, sunday, today)
 
 
@@ -249,15 +253,14 @@ def _resolve_current_week_indexed_end(n: int, monday: date, today: date) -> int:
 def _resolve_other_indexed_end_week(  # noqa: PLR0915
     week_str: str, n: int, monday: date, sunday: date, today: date
 ) -> int:
-    """Resolve an indexed --end-week falling outside the current week.
+    """Resolve an indexed --end-week for a week that has already completed.
 
-    When the requested index exceeds the draws held by a week that has already
-    completed (its Sunday is before today), the week's final draw is used and a
-    warning is printed. A completed week holding no draws at all instead falls
-    back to the latest draw before the week and warns. Otherwise the
-    excessive-index error is raised, as it is for ``--week`` and
-    ``--start-week``. A non-positive index is still rejected by
-    ``resolve_draw_by_week``.
+    When the requested index exceeds the draws held by the completed week (its
+    Sunday is before today), the week's final draw is used and a warning is
+    printed. A completed week holding no draws at all instead falls back to the
+    latest draw before the week and warns. Otherwise the excessive-index error
+    is raised, as it is for ``--week`` and ``--start-week``. A non-positive
+    index is still rejected by ``resolve_draw_by_week``.
     """
     all_entries: list[DatepickerEntry] = []
     scan_year, scan_month = monday.year, monday.month
