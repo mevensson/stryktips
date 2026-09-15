@@ -81,11 +81,23 @@ def week_monday(week_str: str) -> date:
 def entries_in_week(
     monday: date, entries: list[DatepickerEntry]
 ) -> list[DatepickerEntry]:
-    """Return the entries dated within the ISO week starting on ``monday``, sorted."""
+    """Return one entry per distinct draw dated within the ISO week, chronological.
+
+    Datepicker rows can repeat the same draw, often because overlapping month
+    responses both list it, so entries are collapsed by ``draw_number`` before
+    an ``.N`` index counts them. Draws are ordered by date. If a draw number
+    carries conflicting dates the earliest date wins, which keeps the choice
+    independent of the order the month responses happened to be gathered in.
+    """
     sunday = monday + timedelta(days=6)
-    return sorted(
-        (e for e in entries if monday <= e.date <= sunday), key=lambda e: e.date
+    in_week = sorted(
+        (e for e in entries if monday <= e.date <= sunday),
+        key=lambda e: (e.date, e.draw_number),
     )
+    distinct: dict[int, DatepickerEntry] = {}
+    for entry in in_week:
+        distinct.setdefault(entry.draw_number, entry)
+    return list(distinct.values())
 
 
 def _first_on_or_after(

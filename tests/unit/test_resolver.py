@@ -99,6 +99,22 @@ def test_resolve_draw_by_week_selects_nth_draw():
     )
 
 
+def test_resolve_draw_by_week_selects_nth_distinct_draw_from_duplicates():
+    """An n arg counts distinct draws once when entries repeat and are unsorted."""
+    entries = [
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+        DatepickerEntry(date=date(2024, 12, 30), draw_number=4881),
+        DatepickerEntry(date=date(2024, 12, 30), draw_number=4881),
+        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+    ]
+
+    result = resolve_draw_by_week(date(2024, 12, 30), entries, n=2)
+
+    assert result == ResolveResult(
+        draw_number=4882, exact_match=True, match_date=date(2025, 1, 4)
+    )
+
+
 def test_resolve_draw_by_week_raises_when_n_exceeds_in_week_draws():
     """When n exceeds the number of in-week draws, raise a descriptive ValueError."""
     entries = [

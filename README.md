@@ -96,6 +96,11 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   includes draws 4880 and 4881, as does `--end-week 2024.52.2`;
   `--end-week 2024.52.1` includes only draw 4880. Earlier draws remain included
   subject to the report start.
+- Week indices count distinct draws by draw number in chronological order.
+  For an end week spanning a month or year boundary, both relevant monthly
+  responses are considered. Unsorted entries and overlapping copies of a draw
+  do not change its index, inflate the available count, or duplicate its report
+  contribution.
 - In the current week, an explicit end-week index selecting a draw dated on or
   before today is honored without an index warning, even if a later draw in the
   same week is also dated on or before today. For example, on 2024-12-29,
