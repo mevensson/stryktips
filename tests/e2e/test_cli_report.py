@@ -843,6 +843,81 @@ def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
 
 
 @pytest.mark.parametrize(
+    ("today", "expects_warning"),
+    [
+        pytest.param(date(2024, 12, 29), False, id="sunday-current-week"),
+        pytest.param(date(2024, 12, 30), True, id="monday-completed-week"),
+    ],
+)
+def test_excessive_end_week_index_clamps_silently_only_while_week_is_current(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys, today, expects_warning
+):
+    """--end-week 2024.52.3 falls back to Draw 4881 on the Sunday and Monday.
+
+    ISO week 2024.52 holds Draws 4880 (December 26) and 4881 (December 29).
+    On Sunday 2024-12-29 the week is current, so the excessive index .3 clamps
+    silently to the latest Draw on or before today (4881). On Monday
+    2024-12-30 the week has completed, so the same request warns that it
+    exceeds the draws in the week and falls back to final Draw 4881
+    (2024-12-29). Both aggregate the full [4880, 4881] report, and Draws
+    outside the range and the future January datepicker month are never
+    fetched.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return today
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    for draw_number in (4880, 4881):
+        draw_data = json.loads((_FIXTURES / f"week_{draw_number}.json").read_text())
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).and_return(mock_response(draw_data))
+    for draw_number in (4879, 4882):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=draw_number), timeout=30
+        ).never()
+
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2024_12.json").read_text())
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2024&month=12",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=1",
+        timeout=30,
+    ).never()
+
+    exit_code = main(["--start-draw", "4880", "--end-week", "2024.52.3"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    if not expects_warning:
+        assert captured.err == ""
+    else:
+        assert "Warning" in captured.err
+        assert "2024.52.3" in captured.err
+        assert "4881" in captured.err
+        assert "2024-12-29" in captured.err
+    assert captured.out.splitlines() == [
+        "eligible: 26, excluded: 0",
+        "0-10: 2 | 7% | 0% | -7%",
+        "10-20: 7 | 16% | 29% | 13%",
+        "20-30: 34 | 26% | 26% | 0%",
+        "30-40: 14 | 34% | 29% | -5%",
+        "40-50: 10 | 43% | 40% | -3%",
+        "50-60: 5 | 53% | 60% | 7%",
+        "60-70: 5 | 64% | 60% | -4%",
+        "80-90: 1 | 86% | 100% | 14%",
+    ]
+
+
+@pytest.mark.parametrize(
     ("end_week", "unpublished_draw"),
     [
         pytest.param("2025.20.1", None, id="published-draw-after-today"),

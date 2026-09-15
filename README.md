@@ -112,6 +112,9 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   (2024-12-29) once that week is completed. The warning alone does not cause
   failure: the report exits 0. `--week` and `--start-week` still reject an
   excessive index, and zero or negative indices remain invalid.
+- Sunday still belongs to the current week: an excessive end-week index clamps
+  without a warning on Sunday. On the following Monday, the same week is
+  completed, so that excessive index uses the completed-week warning fallback.
 - If an indexed completed end week contains no draws, the report ends at the
   latest draw before that week. A warning identifies the requested indexed week
   and the fallback draw and date. This uses the bounded backward search and
