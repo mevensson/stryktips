@@ -105,6 +105,9 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   that is not yet available, the report ends at the latest draw on or before
   today without an index warning. This also applies when the current week has
   no draws yet: the end may resolve to a draw from a preceding week.
+- A wholly future end week, with or without an explicit index, ends at the
+  latest draw on or before today without an index warning. Future draws need
+  not be published, and resolution does not look up future months.
 - For a completed week (its Sunday is before today) containing draws, an
   excessive positive `--end-week` index uses the final draw of that week and
   prints a warning to stderr identifying the requested indexed week and the
