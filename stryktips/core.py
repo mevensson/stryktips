@@ -229,7 +229,7 @@ def _resolve_indexed_end_week(week_str: str) -> int:
         return _resolve_current_week_indexed_end(n, monday, today)
     if monday > today:
         return _resolve_default_end(today)
-    return _resolve_other_indexed_end_week(week_str, n, monday, sunday, today)
+    return _resolve_completed_indexed_end_week(week_str, n, monday, sunday, today)
 
 
 def _resolve_current_week_indexed_end(n: int, monday: date, today: date) -> int:
@@ -250,7 +250,7 @@ def _resolve_current_week_indexed_end(n: int, monday: date, today: date) -> int:
     return _latest_draw_number_on_or_before(today, entries)
 
 
-def _resolve_other_indexed_end_week(  # noqa: PLR0915
+def _resolve_completed_indexed_end_week(  # noqa: PLR0915
     week_str: str, n: int, monday: date, sunday: date, today: date
 ) -> int:
     """Resolve an indexed --end-week for a week that has already completed.
