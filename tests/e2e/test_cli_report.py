@@ -1539,3 +1539,138 @@ def test_excessive_end_week_index_resolves_to_final_draw(  # noqa: PLR0915
         "60-70: 5 | 64% | 60% | -4%",
         "80-90: 1 | 86% | 100% | 14%",
     ]
+
+
+_CROSS_YEAR_FIRST_DRAW_REPORT = [
+    "eligible: 13, excluded: 0",
+    "10-20: 6 | 17% | 17% | 0%",
+    "20-30: 16 | 26% | 31% | 5%",
+    "30-40: 6 | 34% | 17% | -17%",
+    "40-50: 4 | 43% | 25% | -18%",
+    "50-60: 3 | 53% | 67% | 14%",
+    "60-70: 4 | 64% | 75% | 11%",
+]
+
+_CROSS_YEAR_BOTH_DRAWS_REPORT = [
+    "eligible: 26, excluded: 0",
+    "10-20: 12 | 16% | 8% | -8%",
+    "20-30: 33 | 25% | 33% | 8%",
+    "30-40: 10 | 34% | 20% | -14%",
+    "40-50: 8 | 43% | 50% | 7%",
+    "50-60: 8 | 54% | 38% | -16%",
+    "60-70: 5 | 63% | 60% | -3%",
+    "70-80: 2 | 73% | 100% | 27%",
+]
+
+
+@pytest.mark.parametrize(
+    ("end_week", "expected_report", "expects_warning"),
+    [
+        pytest.param(
+            "2025.01.1",
+            _CROSS_YEAR_FIRST_DRAW_REPORT,
+            False,
+            id="first-distinct-draw",
+        ),
+        pytest.param(
+            "2025.01.2",
+            _CROSS_YEAR_BOTH_DRAWS_REPORT,
+            False,
+            id="second-distinct-draw",
+        ),
+        pytest.param(
+            "2025.01.3",
+            _CROSS_YEAR_BOTH_DRAWS_REPORT,
+            True,
+            id="excessive-index-fallback",
+        ),
+    ],
+)
+def test_cross_year_end_week_selects_distinct_draws(  # noqa: PLR0913, PLR0915
+    mock_response, monkeypatch, capsys, end_week, expected_report, expects_warning
+):
+    """An end week spanning a year boundary indexes distinct Draws chronologically.
+
+    ISO week 2025.01 runs Mon 2024-12-30 to Sun 2025-01-05 and holds two distinct
+    Draws: 4881 (2024-12-30) and 4882 (2025-01-04). No fixture contains two Draws
+    in a cross-year week, so the real week_4881 Draw is reused with its in-memory
+    ``regCloseTime`` moved from 2024-12-29 to 2024-12-30. The monthly datepicker
+    responses are synthetic, unsorted and overlapping: December 2024 is
+    incomplete (it omits the 2024-12-30 Draw and lists only the later 2025-01-04
+    Draw), so the resolver must fetch January 2025 before it can identify the
+    first Draw. January 2025 repeats the 2024-12-30 Draw and also lists the
+    2025-01-04 Draw already present in December.
+
+    ``.1`` selects only Draw 4881, ``.2`` folds both Draws into one aggregate,
+    and the excessive ``.3`` falls back to the week's final Draw 4882 with a
+    warning naming the request and fallback. Duplicate and overlapping entries
+    must neither advance the index nor duplicate a Draw's report contribution.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 3, 1)
+
+    monkeypatch.setattr(stryktips_core, "date", _FakeDate)
+
+    first_draw: dict[str, Any] = json.loads((_FIXTURES / "week_4881.json").read_text())
+    first_draw["draw"]["regCloseTime"] = "2024-12-30T15:59:00+01:00"
+    second_draw: dict[str, Any] = json.loads((_FIXTURES / "week_4882.json").read_text())
+
+    draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4881), timeout=30
+    ).at_least().once().and_return(mock_response(first_draw))
+    # Draw 4882 may be resolved (``.2``/``.3``) but must not be fetched for ``.1``;
+    # a lenient expectation keeps a wrongly resolved ``.1`` from hitting the network
+    # while the aggregate assertion still proves it contributes nothing.
+    flexmock(requests).should_receive("get").with_args(
+        draw_url.format(n=4882), timeout=30
+    ).and_return(mock_response(second_draw))
+    for out_of_range in (4879, 4880, 4883, 4884):
+        flexmock(requests).should_receive("get").with_args(
+            draw_url.format(n=out_of_range), timeout=30
+        ).never()
+
+    datepicker_url = (
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year={year}&month={month}"
+    )
+    december_entries: dict[str, Any] = {
+        "resultDates": [
+            {"date": "2025-01-04T00:00:00+01:00", "drawNumber": 4882},
+        ]
+    }
+    january_entries: dict[str, Any] = {
+        "resultDates": [
+            {"date": "2025-01-04T00:00:00+01:00", "drawNumber": 4882},
+            {"date": "2024-12-30T00:00:00+01:00", "drawNumber": 4881},
+            {"date": "2024-12-30T00:00:00+01:00", "drawNumber": 4881},
+        ]
+    }
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2024, month=12), timeout=30
+    ).at_least().once().and_return(mock_response(december_entries))
+    flexmock(requests).should_receive("get").with_args(
+        datepicker_url.format(year=2025, month=1), timeout=30
+    ).at_least().once().and_return(mock_response(january_entries))
+
+    # Neither an unrelated month nor the today month (March 2025) may be looked up.
+    for year, month in ((2024, 11), (2025, 2), (2025, 3)):
+        flexmock(requests).should_receive("get").with_args(
+            datepicker_url.format(year=year, month=month), timeout=30
+        ).never()
+
+    exit_code = main(["--start-draw", "4881", "--end-week", end_week])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.splitlines() == expected_report
+    if expects_warning:
+        assert captured.err.splitlines() == [
+            "Warning: --end-week 2025.01.3 exceeds the draws in the week;"
+            " using final draw 4882 (2025-01-04)."
+        ]
+    else:
+        assert captured.err == ""
