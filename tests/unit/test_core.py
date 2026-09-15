@@ -622,22 +622,55 @@ def test_main_cross_year_indexed_end_first_draw_requires_both_months(  # noqa: P
     assert captured.err == ""
 
 
-def test_final_week_draw_matches_shared_distinct_draw_order():
-    """The fallback ends on the distinct Draw the index counted, not response order.
+def test_main_excessive_end_week_same_date_draws_tie_break_by_number(  # noqa: PLR0915
+    capsys, monkeypatch
+):
+    """--end-week 2025.01.4 falls back to the final Draw 4882, not Draw 4881.
 
-    Unsorted duplicate entries, including two distinct Draws sharing a date, are
-    ordered by draw number, so the fallback does not depend on response order.
+    ISO week 2025.01 (Mon 2024-12-30 to Sun 2025-01-05) holds distinct Draws
+    4880, 4881 and 4882. The unsorted December response overlaps January: it
+    lists 4881 then 4882 on the same date 2025-01-04, with 4880 on 2024-12-30,
+    while January repeats 4882. The excessive index .4 warns and falls back to
+    the last distinct Draw in shared chronological order, broken by draw
+    number, so 4882 wins the 2025-01-04 tie over 4881. With today pinned past
+    the week and a single-draw range, only Draw 4882 is fetched and Draw 4881
+    is never fetched.
     """
-    monday = date(2024, 12, 30)
-    entries = [
-        DatepickerEntry(date=date(2025, 1, 4), draw_number=4881),
-        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
-        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
-    ]
 
-    final = stryktips.core._final_week_draw(monday, entries)
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 3, 1)
 
-    assert final.draw_number == 4882
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        if (year, month) == (2024, 12):
+            return [
+                DatepickerEntry(date=date(2025, 1, 4), draw_number=4881),
+                DatepickerEntry(date=date(2024, 12, 30), draw_number=4880),
+                DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+            ]
+        if (year, month) == (2025, 1):
+            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
+        raise AssertionError(f"unexpected month {year}-{month}")
+
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4882).and_return(
+        Draw(
+            draw_number=4882,
+            matches=[],
+            reg_close_time=datetime(2025, 1, 4, 15, 59),
+        )
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4881).never()
+
+    exit_code = stryktips.core.main(["--start-draw", "4882", "--end-week", "2025.01.4"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out.strip() == "eligible: 0, excluded: 0"
+    assert "using final draw 4882 (2025-01-04)" in captured.err
 
 
 def test_main_indexed_empty_completed_end_week_selects_predecessor_draw(  # noqa: PLR0915
