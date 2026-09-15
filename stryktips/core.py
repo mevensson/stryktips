@@ -255,12 +255,15 @@ def _resolve_completed_indexed_end_week(  # noqa: PLR0915
 ) -> int:
     """Resolve an indexed --end-week for a week that has already completed.
 
-    When the requested index exceeds the draws held by the completed week (its
-    Sunday is before today), the week's final draw is used and a warning is
-    printed. A completed week holding no draws at all instead falls back to the
-    latest draw before the week and warns. Otherwise the excessive-index error
-    is raised, as it is for ``--week`` and ``--start-week``. A non-positive
-    index is still rejected by ``resolve_draw_by_week``.
+    Every month the week spans (Monday's through Sunday's) is gathered before
+    the index is selected, so a draw listed only in the week's later month still
+    participates. When the requested index exceeds the draws held by the
+    completed week (its Sunday is before today), the week's final draw is used
+    and a warning is printed. A completed week holding no draws at all instead
+    falls back to the latest draw before the week and warns. Otherwise the
+    excessive-index error is raised, as it is for ``--week`` and
+    ``--start-week``. A non-positive index is still rejected by
+    ``resolve_draw_by_week``.
     """
     all_entries: list[DatepickerEntry] = []
     scan_year, scan_month = monday.year, monday.month
@@ -285,7 +288,7 @@ def _resolve_completed_indexed_end_week(  # noqa: PLR0915
                     return _warn_excessive_end_week(week_str, monday, all_entries)
                 raise ValueError(_week_draw_index_message(exc)) from None
         else:
-            if result.draw_number is not None:
+            if relevant_months_collected and result.draw_number is not None:
                 _print_fallback_note(result, week_str)
                 return _require_draw_number(result)
         scan_year, scan_month = _advance_month(scan_year, scan_month)
