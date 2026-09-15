@@ -464,7 +464,13 @@ def _parse_date(date_str: str) -> date:
 
 
 def _resolve_draw_by_week(week_str: str) -> ResolveResult:  # noqa: PLR0915
-    """Resolve a draw from an ISO week string (YYYY.WW[.N])."""
+    """Resolve a draw from an ISO week string (YYYY.WW[.N]).
+
+    Every month the week spans (Monday's through Sunday's) is gathered before
+    the index is selected, so a draw listed only in the week's later month
+    still participates. An empty week still forward-scans for the next draw,
+    and an index exceeding the gathered in-week draws raises.
+    """
     year, week, n = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
     sunday = monday + timedelta(days=6)
@@ -473,13 +479,17 @@ def _resolve_draw_by_week(week_str: str) -> ResolveResult:  # noqa: PLR0915
 
     for _ in range(MAX_SCAN_MONTHS):
         all_entries.extend(fetch_draws_by_month(scan_year, scan_month))
+        relevant_months_collected = (scan_year, scan_month) >= (
+            sunday.year,
+            sunday.month,
+        )
         try:
             result = resolve_draw_by_week(monday, all_entries, n)
         except WeekDrawIndexError as exc:
-            if (scan_year, scan_month) >= (sunday.year, sunday.month):
+            if relevant_months_collected:
                 raise ValueError(_week_draw_index_message(exc)) from None
         else:
-            if result.draw_number is not None:
+            if relevant_months_collected and result.draw_number is not None:
                 _print_fallback_note(result, week_str)
                 return result
         scan_year, scan_month = _advance_month(scan_year, scan_month)
