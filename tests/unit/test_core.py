@@ -1,10 +1,13 @@
 """Unit tests for stryktips.core orchestration logic."""
 
 import argparse
+import json
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
+import requests
 from flexmock import flexmock
 from requests import RequestException
 
@@ -12,6 +15,8 @@ import stryktips.core
 from stryktips.api import DrawNotFoundError
 from stryktips.models import DatepickerEntry, Draw, Match, Odds, OutcomeProbability
 from stryktips.resolver import DrawNotFound
+
+_FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
 def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: PLR0915
@@ -662,6 +667,68 @@ def test_main_current_week_indexed_end_after_today_clamps_to_latest_draw(  # noq
     assert exit_code == 0
     assert captured.err == ""
     assert captured.out.strip() == "eligible: 0, excluded: 0"
+
+
+def test_main_future_indexed_end_week_clamps_to_latest_draw(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
+    """--end-week 2025.23.1 wholly in the future clamps to Draw 4900 without warning.
+
+    With today pinned to 2025-05-10, ISO week 2025.23 (June 2-8) is wholly in
+    the future. The indexed end must end at the latest Draw on or before today,
+    4900 (May 10), rather than resolving into the future week. Resolution runs
+    for real over the fixture data with only the HTTP IO mocked: the later
+    published May draws 4901-4903 are excluded and the future June datepicker is
+    never fetched, because future draws need not be published.
+    """
+
+    class _FakeDate(date):
+        @classmethod
+        def today(cls):
+            return date(2025, 5, 10)
+
+    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
+    datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
+    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=5",
+        timeout=30,
+    ).and_return(mock_response(datepicker_data))
+
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
+        timeout=30,
+    ).and_return(mock_response(draw_data))
+
+    # The later published May draws and the future June month are never fetched.
+    for later_draw in (4901, 4902, 4903):
+        flexmock(requests).should_receive("get").with_args(
+            f"https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{later_draw}",
+            timeout=30,
+        ).never()
+    flexmock(requests).should_receive("get").with_args(
+        "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
+        "?product=stryktipset&year=2025&month=6",
+        timeout=30,
+    ).never()
+
+    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.23.1"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == [
+        "eligible: 13, excluded: 0",
+        "0-10: 1 | 8% | 0% | -8%",
+        "10-20: 4 | 17% | 25% | 8%",
+        "20-30: 15 | 25% | 33% | 8%",
+        "30-40: 10 | 36% | 30% | -6%",
+        "40-50: 3 | 42% | 33% | -9%",
+        "50-60: 5 | 56% | 60% | 4%",
+        "70-80: 1 | 79% | 0% | -79%",
+    ]
 
 
 def test_main_end_week_without_start_rejected(capsys):
