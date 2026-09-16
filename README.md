@@ -61,6 +61,10 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   (Monday-Sunday) is returned. An optional `.N` suffix selects the N-th draw
   dated within that week (1-indexed). The same month-by-month forward scan
   applies when no entry is found in the anchor month.
+- For `--week`, omitting `.N` is the same as `.1`. A week spanning two months
+  considers both monthly responses before selecting, even when the first
+  response already lists a draw. Overlapping entries count once by draw number;
+  an excessive index exits 1 and reports the distinct available-draw count.
 - When the match is inexact (no draw on the exact date), a note is printed
   to stderr: `Note: No draw found for 2025-01-01, using 2025-01-04 (draw 4882)`.
 - When no draw is found within 12 months, the program exits with code 1 and

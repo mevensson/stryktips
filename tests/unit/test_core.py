@@ -119,6 +119,58 @@ def test_resolve_draw_by_week_returns_draw_number_without_fetching_draw():
     assert result.draw_number == 4900
 
 
+def test_main_week_2025_01_gathers_both_months_before_selecting_earliest(  # noqa: PLR0915
+    capsys,
+):
+    """--week 2025.01 selects the earliest distinct Draw listed only in January.
+
+    ISO week 2025.01 runs Mon 2024-12-30 to Sun 2025-01-05 and holds two Draws:
+    4881 (2024-12-30) and 4882 (2025-01-04). The December response is incomplete:
+    it lists only the later Draw 4882, while the January response adds the earlier
+    Draw 4881. Both month responses must therefore be gathered before the omitted
+    index selects the earliest distinct Draw, so Draw 4881 is fetched and Draw
+    4882 is never fetched.
+    """
+    calls: list[tuple[int, int]] = []
+
+    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
+        calls.append((year, month))
+        if (year, month) == (2024, 12):
+            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
+        if (year, month) == (2025, 1):
+            return [
+                DatepickerEntry(date=date(2024, 12, 30), draw_number=4881),
+                DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+            ]
+        raise AssertionError(f"unexpected month {year}-{month}")
+
+    match = Match(
+        event_number=1,
+        home_team="West Ham",
+        away_team="Brighton",
+        home_score=1,
+        away_score=0,
+    )
+    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4881).and_return(
+        Draw(
+            draw_number=4881,
+            matches=[match],
+            draw_comment="Stryktipset v. 2024-52",
+        )
+    )
+    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4882).never()
+
+    exit_code = stryktips.core.main(["--week", "2025.01"])
+    captured = capsys.readouterr()
+
+    assert calls == [(2024, 12), (2025, 1)]
+    assert exit_code == 0
+    assert "Stryktipset v. 2024-52 (draw 4881)" in captured.out
+    assert "West Ham" in captured.out
+    assert captured.err == ""
+
+
 def test_fetch_draw_from_args_routes_week():
     """A --week argument routes through _resolve_draw_by_week."""
     flexmock(
