@@ -119,7 +119,7 @@ def test_invalid_start_draw_or_end_draw_rejected(args):
 
 def test_start_draw_end_draw_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
     """--start-draw 4900 --end-draw 4900 prints the bucket report for draw 4900."""
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4900",
         timeout=30,
@@ -144,7 +144,7 @@ def test_start_draw_end_draw_4900_reports_buckets(mock_response, capsys):  # noq
 
 def test_start_draw_end_draw_excludes_played_without_odds(mock_response, capsys):
     """--start-draw 4642 --end-draw 4642 counts odds-less played matches as excluded."""
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4642.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,
@@ -169,7 +169,7 @@ def test_start_draw_end_draw_spanning_months_aggregates(mock_response, capsys): 
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4881, 4882, 4883, 4884):
         draw_data: dict[str, Any] = json.loads(
-            (_FIXTURES / f"week_{draw_number}.json").read_text()
+            (_FIXTURES / f"draw_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -225,7 +225,7 @@ def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: P
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4641, 4642):
         draw_data: dict[str, Any] = json.loads(
-            (_FIXTURES / f"week_{draw_number}.json").read_text()
+            (_FIXTURES / f"draw_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -271,7 +271,7 @@ def test_start_draw_end_draw_skips_absent_draw_number(mock_response, capsys):  #
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4882, 4884):
         draw_data: dict[str, Any] = json.loads(
-            (_FIXTURES / f"week_{draw_number}.json").read_text()
+            (_FIXTURES / f"draw_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -324,7 +324,7 @@ def test_start_draw_end_draw_reports_and_skips_fetch_failure(mock_response, caps
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4882, 4884):
         draw_data: dict[str, Any] = json.loads(
-            (_FIXTURES / f"week_{draw_number}.json").read_text()
+            (_FIXTURES / f"draw_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -435,7 +435,7 @@ def test_start_draw_without_end_draw_defaults_to_most_recent_draw(  # noqa: PLR0
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4881, 4882, 4883, 4884):
         draw_data: dict[str, Any] = json.loads(
-            (_FIXTURES / f"week_{draw_number}.json").read_text()
+            (_FIXTURES / f"draw_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -523,7 +523,7 @@ def test_start_draw_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
 def test_start_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     """--start-date 2025-05-10 --end-draw 4900 reuses the date resolver."""
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -570,7 +570,7 @@ def test_end_date_resolves_to_draw(mock_response, monkeypatch, capsys, end_date)
             return date(2025, 6, 1)
 
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -628,7 +628,7 @@ def test_future_end_date_clamps_to_today(mock_response, monkeypatch, capsys):  #
             return date(2025, 5, 10)
 
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -693,7 +693,7 @@ def test_future_end_week_clamps_to_today(  # noqa: PLR0915
 
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
-    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -738,7 +738,7 @@ def test_future_end_week_clamps_to_today(  # noqa: PLR0915
 def test_start_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     """--start-week 2025.19 --end-draw 4900 reuses the week resolver."""
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -791,7 +791,7 @@ def test_end_week_resolves_to_draw(  # noqa: PLR0915
     excluded_draws = (4879, 4881, 4882) if first_only else (4879, 4882)
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in included_draws:
-        draw_data = json.loads((_FIXTURES / f"week_{draw_number}.json").read_text())
+        draw_data = json.loads((_FIXTURES / f"draw_{draw_number}.json").read_text())
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
         ).and_return(mock_response(draw_data))
@@ -866,7 +866,7 @@ def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
 
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
-    draw_data = json.loads((_FIXTURES / "week_4880.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4880.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         draw_url.format(n=4880), timeout=30
     ).and_return(mock_response(draw_data))
@@ -935,7 +935,7 @@ def test_excessive_end_week_index_clamps_silently_only_while_week_is_current(  #
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4880, 4881):
-        draw_data = json.loads((_FIXTURES / f"week_{draw_number}.json").read_text())
+        draw_data = json.loads((_FIXTURES / f"draw_{draw_number}.json").read_text())
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
         ).and_return(mock_response(draw_data))
@@ -1021,7 +1021,7 @@ def test_current_week_later_or_missing_index_clamps_to_latest_draw(  # noqa: PLR
     ).and_return(mock_response(datepicker_data))
 
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
-    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         draw_url.format(n=4900), timeout=30
     ).and_return(mock_response(draw_data))
@@ -1078,7 +1078,7 @@ def test_unindexed_drawless_end_week_resolves_to_latest_preceding_draw(  # noqa:
         timeout=30,
     ).and_return(mock_response(datepicker_data))
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
-    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         draw_url.format(n=4900), timeout=30
     ).and_return(mock_response(draw_data))
@@ -1138,7 +1138,7 @@ def test_indexed_empty_completed_end_week_resolves_to_preceding_draw(  # noqa: P
         timeout=30,
     ).and_return(mock_response(datepicker_data))
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
-    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4900.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         draw_url.format(n=4900), timeout=30
     ).and_return(mock_response(draw_data))
@@ -1218,7 +1218,7 @@ def test_historical_end_bound_searches_back_across_empty_months(  # noqa: PLR091
     ).once().ordered().and_return(mock_response(march_data))
 
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
-    draw_data = json.loads((_FIXTURES / "week_4641.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4641.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         draw_url.format(n=4641), timeout=30
     ).once().and_return(mock_response(draw_data))
@@ -1329,7 +1329,7 @@ def test_mixed_start_date_end_week_aggregates(mock_response, capsys):  # noqa: P
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4882, 4883):
         draw_data: dict[str, Any] = json.loads(
-            (_FIXTURES / f"week_{draw_number}.json").read_text()
+            (_FIXTURES / f"draw_{draw_number}.json").read_text()
         )
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
@@ -1456,7 +1456,7 @@ def test_start_date_forward_scans_across_empty_months(  # noqa: PLR0915
     ).and_return(mock_response(june_data))
 
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
-    draw_data: dict[str, Any] = json.loads((_FIXTURES / "week_4642.json").read_text())
+    draw_data: dict[str, Any] = json.loads((_FIXTURES / "draw_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         draw_url.format(n=4642), timeout=30
     ).and_return(mock_response(draw_data))
@@ -1499,7 +1499,7 @@ def test_excessive_end_week_index_resolves_to_final_draw(  # noqa: PLR0915
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for draw_number in (4880, 4881):
-        draw_data = json.loads((_FIXTURES / f"week_{draw_number}.json").read_text())
+        draw_data = json.loads((_FIXTURES / f"draw_{draw_number}.json").read_text())
         flexmock(requests).should_receive("get").with_args(
             draw_url.format(n=draw_number), timeout=30
         ).and_return(mock_response(draw_data))
@@ -1593,7 +1593,7 @@ def test_cross_year_end_week_selects_distinct_draws(  # noqa: PLR0913, PLR0915
 
     ISO week 2025.01 runs Mon 2024-12-30 to Sun 2025-01-05 and holds two distinct
     Draws: 4881 (2024-12-30) and 4882 (2025-01-04). No fixture contains two Draws
-    in a cross-year week, so the real week_4881 Draw is reused with its in-memory
+    in a cross-year week, so the real draw_4881 Draw is reused with its in-memory
     ``regCloseTime`` moved from 2024-12-29 to 2024-12-30. The monthly datepicker
     responses are synthetic, unsorted and overlapping: December 2024 is
     incomplete (it omits the 2024-12-30 Draw and lists only the later 2025-01-04
@@ -1614,9 +1614,9 @@ def test_cross_year_end_week_selects_distinct_draws(  # noqa: PLR0913, PLR0915
 
     monkeypatch.setattr(stryktips_core, "date", _FakeDate)
 
-    first_draw: dict[str, Any] = json.loads((_FIXTURES / "week_4881.json").read_text())
+    first_draw: dict[str, Any] = json.loads((_FIXTURES / "draw_4881.json").read_text())
     first_draw["draw"]["regCloseTime"] = "2024-12-30T15:59:00+01:00"
-    second_draw: dict[str, Any] = json.loads((_FIXTURES / "week_4882.json").read_text())
+    second_draw: dict[str, Any] = json.loads((_FIXTURES / "draw_4882.json").read_text())
 
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     flexmock(requests).should_receive("get").with_args(
