@@ -176,8 +176,8 @@ def test_format_matches_shows_odds_when_present():
     assert "2.50 - 3.70 - 2.80" in lines[0]
 
 
-def test_format_matches_omits_odds_when_absent():
-    """No odds shown when the match has none."""
+def test_format_matches_omits_odds_and_probabilities_when_both_absent():
+    """Only match details and svenska folket are shown when both are absent."""
     # Arrange
     match = Match(
         event_number=1,
@@ -194,7 +194,7 @@ def test_format_matches_omits_odds_when_absent():
     lines = format_matches([match])
 
     # Assert
-    assert "2.50" not in lines[0]
+    assert lines == ["1. Home - Away | 1 | 50% - 20% - 30%"]
 
 
 def test_format_matches_shows_outcome_probabilities_when_odds_present():
@@ -223,27 +223,6 @@ def test_format_matches_shows_outcome_probabilities_when_odds_present():
 
     # Assert
     assert "39% - 26% - 35%" in lines[0]
-
-
-def test_format_matches_omits_outcome_probabilities_when_odds_absent():
-    """No outcome probabilities shown when the match has no odds."""
-    # Arrange
-    match = Match(
-        event_number=1,
-        home_team="Home",
-        away_team="Away",
-        home_score=1,
-        away_score=0,
-        svenska_folket=SvenskaFolket(
-            one=Decimal("50"), x=Decimal("20"), two=Decimal("30")
-        ),
-    )
-
-    # Act
-    lines = format_matches([match])
-
-    # Assert
-    assert "39%" not in lines[0]
 
 
 def test_format_matches_shows_outcome_probabilities_without_odds():
