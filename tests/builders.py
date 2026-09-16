@@ -71,15 +71,21 @@ def make_draw(
 ) -> Draw:
     """Construct a Draw, overriding the given fields.
 
-    The default Draw is a minimal renderable sample: one fully populated
-    played Match and a fixed close time. ``matches=None`` selects that default;
-    pass ``matches=[]`` for an empty Draw or ``reg_close_time=None`` to drop
-    the close time.
+    The default Draw is a full, renderable sample: thirteen fully populated
+    played Matches numbered 1..13 and a fixed close time, honouring the domain
+    rule that a Draw comprises exactly thirteen Matches. ``matches=None``
+    selects that default; pass ``matches=[]`` for an empty Draw, an arbitrary
+    list for a focused scenario, or ``reg_close_time=None`` to drop the close
+    time.
 
     A supplied ``matches`` list is copied, so the Draw never aliases the
     caller's list, and each default Match is freshly constructed.
     """
-    resolved_matches = [make_match()] if matches is None else list(matches)
+    resolved_matches = (
+        [make_match(event_number=number) for number in range(1, 14)]
+        if matches is None
+        else list(matches)
+    )
     return Draw(
         draw_number=draw_number,
         matches=resolved_matches,

@@ -3,7 +3,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from stryktips.models import Match, Odds, OutcomeProbability
+from stryktips.models import Odds, OutcomeProbability
 from tests.builders import make_draw, make_match
 
 
@@ -33,9 +33,9 @@ def test_make_match_default_odds_and_probability_are_consistent():
 
 
 def test_make_match_derives_probability_from_supplied_odds():
-    """Supplying odds alone derives their overround-free probabilities."""
+    """Odds carrying an overround are normalised, not merely inverted."""
     # Arrange
-    odds = Odds(home=Decimal("4.0"), draw=Decimal("2.0"), away=Decimal("4.0"))
+    odds = Odds(home=Decimal("2.0"), draw=Decimal("1.0"), away=Decimal("2.0"))
 
     # Act
     match = make_match(odds=odds)
@@ -96,26 +96,13 @@ def test_make_match_explicit_probability_is_preserved_without_normalising():
     assert match.outcome_probability == probabilities
 
 
-def test_make_draw_default_is_a_renderable_played_draw():
-    """The default Draw is one complete, renderable played Match."""
+def test_make_draw_default_is_a_full_field_numbered_one_to_thirteen():
+    """The default Draw is a full field of Matches numbered 1..13."""
     # Act
     draw = make_draw()
 
     # Assert
-    assert draw.matches == [
-        Match(
-            event_number=1,
-            home_team="Home",
-            away_team="Away",
-            home_score=1,
-            away_score=0,
-            svenska_folket=None,
-            odds=Odds(home=Decimal("2.0"), draw=Decimal("4.0"), away=Decimal("4.0")),
-            outcome_probability=OutcomeProbability(
-                home=Decimal("0.5"), draw=Decimal("0.25"), away=Decimal("0.25")
-            ),
-        )
-    ]
+    assert [match.event_number for match in draw.matches] == list(range(1, 14))
 
 
 def test_make_draw_default_has_fixed_close_time():
@@ -127,15 +114,17 @@ def test_make_draw_default_has_fixed_close_time():
     assert draw.reg_close_time == datetime(2025, 5, 10, 15, 59)
 
 
-def test_make_draw_default_matches_are_fresh_per_call():
-    """Each default Draw gets its own list and its own Match."""
+def test_make_draw_default_matches_are_fresh_within_and_across_calls():
+    """Each default Match is a distinct object, within a Draw and across Draws."""
     # Act
     first = make_draw()
     second = make_draw()
 
     # Assert
     assert first.matches is not second.matches
-    assert first.matches[0] is not second.matches[0]
+    assert len({id(match) for match in first.matches}) == 13
+    for first_match, second_match in zip(first.matches, second.matches, strict=True):
+        assert first_match is not second_match
 
 
 def test_make_draw_copies_supplied_matches():
