@@ -4,33 +4,12 @@ from decimal import Decimal
 
 import pytest
 
-from stryktips.models import Draw, Match, Odds, OutcomeProbability
+from stryktips.models import Odds, OutcomeProbability
 from stryktips.report import (
     bucket_index,
     format_aggregate_report,
 )
-
-
-def make_match(
-    *,
-    home_score: int | None,
-    away_score: int | None,
-    outcome_probability: OutcomeProbability | None,
-) -> Match:
-    """Construct a Match with only the fields the report reads."""
-    return Match(
-        event_number=1,
-        home_team="Home",
-        away_team="Away",
-        home_score=home_score,
-        away_score=away_score,
-        outcome_probability=outcome_probability,
-    )
-
-
-def make_draw(matches: list[Match]) -> Draw:
-    """Construct a Draw wrapping the given matches."""
-    return Draw(draw_number=1, matches=matches)
+from tests.builders import make_draw, make_match
 
 
 @pytest.mark.parametrize(
@@ -64,7 +43,7 @@ def test_bucket_index_clamps_upper_bound_to_bucket_nine():
 def test_single_draw_aggregate_report_marks_eligible_and_excluded():
     """Eligible matches fill buckets and played-but-odds-less matches are excluded."""
     # Arrange
-    home_win = Match(
+    home_win = make_match(
         event_number=1,
         home_team="Brynäs",
         away_team="Leksand",
@@ -75,7 +54,7 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
             home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
         ),
     )
-    away_win = Match(
+    away_win = make_match(
         event_number=2,
         home_team="AIK",
         away_team="Djurgården",
@@ -86,7 +65,7 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
             home=Decimal("0.65"), draw=Decimal("0.20"), away=Decimal("0.15")
         ),
     )
-    draw_match = Match(
+    draw_match = make_match(
         event_number=3,
         home_team="Frölunda",
         away_team="Färjestad",
@@ -97,12 +76,16 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
             home=Decimal("0.20"), draw=Decimal("0.55"), away=Decimal("0.25")
         ),
     )
-    odds_less = make_match(home_score=1, away_score=0, outcome_probability=None)
-    unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
+    odds_less = make_match(
+        home_score=1, away_score=0, odds=None, outcome_probability=None
+    )
+    unplayed = make_match(
+        home_score=None, away_score=None, odds=None, outcome_probability=None
+    )
 
     # Act
     result = format_aggregate_report(
-        [make_draw([home_win, away_win, draw_match, odds_less, unplayed])]
+        [make_draw(matches=[home_win, away_win, draw_match, odds_less, unplayed])]
     )
 
     # Assert
@@ -120,29 +103,31 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
 def test_single_draw_aggregate_report_prints_count_mean_observed_gap():
     """Each bucket row prints count, mean%, obs% and gap% from three probabilities."""
     # Arrange
-    match_a = Match(
+    match_a = make_match(
         event_number=1,
         home_team="Brynäs",
         away_team="Leksand",
         home_score=2,
         away_score=0,
+        odds=None,
         outcome_probability=OutcomeProbability(
             home=Decimal("0.15"), draw=Decimal("0.25"), away=Decimal("0.60")
         ),
     )
-    match_b = Match(
+    match_b = make_match(
         event_number=2,
         home_team="Frölunda",
         away_team="Färjestad",
         home_score=1,
         away_score=1,
+        odds=None,
         outcome_probability=OutcomeProbability(
             home=Decimal("0.30"), draw=Decimal("0.30"), away=Decimal("0.40")
         ),
     )
 
     # Act
-    result = format_aggregate_report([make_draw([match_a, match_b])])
+    result = format_aggregate_report([make_draw(matches=[match_a, match_b])])
 
     # Assert
     assert result == (
@@ -158,10 +143,12 @@ def test_single_draw_aggregate_report_prints_count_mean_observed_gap():
 def test_single_draw_aggregate_report_with_only_unplayed_matches_is_empty():
     """Unplayed matches are ignored, leaving a zero summary and no buckets."""
     # Arrange
-    unplayed = make_match(home_score=None, away_score=None, outcome_probability=None)
+    unplayed = make_match(
+        home_score=None, away_score=None, odds=None, outcome_probability=None
+    )
 
     # Act
-    result = format_aggregate_report([make_draw([unplayed])])
+    result = format_aggregate_report([make_draw(matches=[unplayed])])
 
     # Assert
     assert result == "eligible: 0, excluded: 0"
@@ -171,10 +158,11 @@ def test_format_aggregate_report_sums_buckets_and_counts_across_draws():
     """Aggregate sums eligible/excluded and merges probability buckets across draws."""
     # Arrange
     draw_one = make_draw(
-        [
+        matches=[
             make_match(
                 home_score=3,
                 away_score=1,
+                odds=None,
                 outcome_probability=OutcomeProbability(
                     home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
                 ),
@@ -182,18 +170,20 @@ def test_format_aggregate_report_sums_buckets_and_counts_across_draws():
             make_match(
                 home_score=1,
                 away_score=1,
+                odds=None,
                 outcome_probability=OutcomeProbability(
                     home=Decimal("0.20"), draw=Decimal("0.55"), away=Decimal("0.25")
                 ),
             ),
-            make_match(home_score=1, away_score=0, outcome_probability=None),
+            make_match(home_score=1, away_score=0, odds=None, outcome_probability=None),
         ]
     )
     draw_two = make_draw(
-        [
+        matches=[
             make_match(
                 home_score=0,
                 away_score=2,
+                odds=None,
                 outcome_probability=OutcomeProbability(
                     home=Decimal("0.05"), draw=Decimal("0.25"), away=Decimal("0.30")
                 ),
@@ -201,6 +191,7 @@ def test_format_aggregate_report_sums_buckets_and_counts_across_draws():
             make_match(
                 home_score=2,
                 away_score=0,
+                odds=None,
                 outcome_probability=OutcomeProbability(
                     home=Decimal("0.15"), draw=Decimal("0.35"), away=Decimal("0.50")
                 ),
@@ -208,11 +199,12 @@ def test_format_aggregate_report_sums_buckets_and_counts_across_draws():
             make_match(
                 home_score=1,
                 away_score=1,
+                odds=None,
                 outcome_probability=OutcomeProbability(
                     home=Decimal("0.20"), draw=Decimal("0.55"), away=Decimal("0.25")
                 ),
             ),
-            make_match(home_score=1, away_score=0, outcome_probability=None),
+            make_match(home_score=1, away_score=0, odds=None, outcome_probability=None),
         ]
     )
 
