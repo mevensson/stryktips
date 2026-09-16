@@ -12,9 +12,37 @@ def test_odds_stores_home_draw_away():
     odds = Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80"))
 
     # Assert
-    assert odds.home == Decimal("2.50")
-    assert odds.draw == Decimal("3.70")
-    assert odds.away == Decimal("2.80")
+    assert (odds.home, odds.draw, odds.away) == (
+        Decimal("2.50"),
+        Decimal("3.70"),
+        Decimal("2.80"),
+    )
+
+
+def test_outcome_probability_stores_home_draw_away():
+    """OutcomeProbability stores all three probability values."""
+    # Act
+    probabilities = OutcomeProbability(
+        home=Decimal("0.3893"),
+        draw=Decimal("0.2631"),
+        away=Decimal("0.3476"),
+    )
+
+    # Assert
+    assert (probabilities.home, probabilities.draw, probabilities.away) == (
+        Decimal("0.3893"),
+        Decimal("0.2631"),
+        Decimal("0.3476"),
+    )
+
+
+def test_datepicker_entry_stores_date_and_draw_number():
+    """DatepickerEntry stores a date and a draw number."""
+    # Act
+    entry = DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
+
+    # Assert
+    assert (entry.date, entry.draw_number) == (date(2025, 5, 10), 4900)
 
 
 def test_match_holds_odds_when_provided():
@@ -53,25 +81,10 @@ def test_match_defaults_odds_to_none():
     assert match.odds is None
 
 
-def test_outcome_probability_stores_home_draw_away():
-    """OutcomeProbability stores all three probability values."""
-    # Act
-    probs = OutcomeProbability(
-        home=Decimal("0.3893"),
-        draw=Decimal("0.2631"),
-        away=Decimal("0.3476"),
-    )
-
-    # Assert
-    assert probs.home == Decimal("0.3893")
-    assert probs.draw == Decimal("0.2631")
-    assert probs.away == Decimal("0.3476")
-
-
 def test_match_holds_outcome_probability_when_provided():
     """Match stores the OutcomeProbability passed to it."""
     # Arrange
-    probs = OutcomeProbability(
+    probabilities = OutcomeProbability(
         home=Decimal("0.3893"),
         draw=Decimal("0.2631"),
         away=Decimal("0.3476"),
@@ -86,11 +99,11 @@ def test_match_holds_outcome_probability_when_provided():
         away_score=0,
         svenska_folket=None,
         odds=Odds(home=Decimal("2.50"), draw=Decimal("3.70"), away=Decimal("2.80")),
-        outcome_probability=probs,
+        outcome_probability=probabilities,
     )
 
     # Assert
-    assert match.outcome_probability == probs
+    assert match.outcome_probability == probabilities
 
 
 def test_match_defaults_outcome_probability_to_none():
@@ -107,13 +120,3 @@ def test_match_defaults_outcome_probability_to_none():
 
     # Assert
     assert match.outcome_probability is None
-
-
-def test_datepicker_entry_stores_date_and_draw_number():
-    """DatepickerEntry stores a date and a draw number."""
-    # Act
-    entry = DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
-
-    # Assert
-    assert entry.date == date(2025, 5, 10)
-    assert entry.draw_number == 4900

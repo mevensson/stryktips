@@ -31,7 +31,7 @@ def test_invalid_week_is_rejected_by_argparse():
 def test_week_2025_19_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
     """--week 2025.19 resolves to the draw for ISO week 19 of 2025."""
     datepicker_data = json.loads((_FIXTURES / "datepicker_2025_05.json").read_text())
-    draw_data = json.loads((_FIXTURES / "week_4900.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4900.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -56,7 +56,7 @@ def test_week_2025_19_finds_draw_4900(mock_response, capsys):  # noqa: PLR0915
 def test_week_2024_52_2_selects_second_draw(mock_response, capsys):  # noqa: PLR0915
     """--week 2024.52.2 resolves to the second draw of ISO week 52 of 2024."""
     datepicker_data = json.loads((_FIXTURES / "datepicker_2024_12.json").read_text())
-    draw_data = json.loads((_FIXTURES / "week_4881.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4881.json").read_text())
 
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/results/datepicker/"
@@ -117,7 +117,7 @@ def test_week_2020_15_forward_scans_to_june(mock_response, capsys):  # noqa: PLR
         timeout=30,
     ).and_return(mock_response(june_data))
 
-    draw_data = json.loads((_FIXTURES / "week_4642.json").read_text())
+    draw_data = json.loads((_FIXTURES / "draw_4642.json").read_text())
     flexmock(requests).should_receive("get").with_args(
         "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/4642",
         timeout=30,
@@ -198,16 +198,16 @@ def test_week_2025_01_shared_across_months(  # noqa: PLR0913, PLR0915
     Draws: 4881 (2024-12-30) and 4882 (2025-01-04). No datepicker fixture holds
     both, so the monthly responses are synthetic, unsorted and overlapping:
     December 2024 lists only the later 4882, while January 2025 repeats 4882 and
-    adds the earlier 4881 twice. The real week_4881 Draw fixture is reused with
+    adds the earlier 4881 twice. The real draw_4881 Draw fixture is reused with
     its in-memory ``regCloseTime`` moved to 2024-12-30 so it is dated inside the
     week. Both monthly responses must be gathered before selecting: omitted
     ``.N`` and ``.1`` select 4881, ``.2`` selects 4882, and the excessive ``.3``
     exits 1 naming the two distinct draws without fetching any Draw. Duplicate
     and overlapping entries must not inflate the distinct count.
     """
-    first_draw: dict[str, Any] = json.loads((_FIXTURES / "week_4881.json").read_text())
+    first_draw: dict[str, Any] = json.loads((_FIXTURES / "draw_4881.json").read_text())
     first_draw["draw"]["regCloseTime"] = "2024-12-30T15:59:00+01:00"
-    second_draw: dict[str, Any] = json.loads((_FIXTURES / "week_4882.json").read_text())
+    second_draw: dict[str, Any] = json.loads((_FIXTURES / "draw_4882.json").read_text())
 
     draw_url = "https://api.spela.svenskaspel.se/draw/1/stryktipset/draws/{n}"
     for number, payload in {4881: first_draw, 4882: second_draw}.items():
