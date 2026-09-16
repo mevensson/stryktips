@@ -44,9 +44,6 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
     """Eligible matches fill buckets and played-but-odds-less matches are excluded."""
     # Arrange
     home_win = make_match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
         home_score=3,
         away_score=1,
         odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
@@ -55,9 +52,6 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
         ),
     )
     away_win = make_match(
-        event_number=2,
-        home_team="AIK",
-        away_team="Djurgården",
         home_score=0,
         away_score=2,
         odds=Odds(home=Decimal("3.0"), draw=Decimal("3.2"), away=Decimal("2.4")),
@@ -66,9 +60,6 @@ def test_single_draw_aggregate_report_marks_eligible_and_excluded():
         ),
     )
     draw_match = make_match(
-        event_number=3,
-        home_team="Frölunda",
-        away_team="Färjestad",
         home_score=1,
         away_score=1,
         odds=Odds(home=Decimal("2.6"), draw=Decimal("3.1"), away=Decimal("2.8")),
@@ -104,9 +95,6 @@ def test_single_draw_aggregate_report_prints_count_mean_observed_gap():
     """Each bucket row prints count, mean%, obs% and gap% from three probabilities."""
     # Arrange
     match_a = make_match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
         home_score=2,
         away_score=0,
         odds=None,
@@ -115,9 +103,6 @@ def test_single_draw_aggregate_report_prints_count_mean_observed_gap():
         ),
     )
     match_b = make_match(
-        event_number=2,
-        home_team="Frölunda",
-        away_team="Färjestad",
         home_score=1,
         away_score=1,
         odds=None,

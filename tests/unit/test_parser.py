@@ -44,8 +44,10 @@ def test_create_parser_accepts_integer_draw():
 
 def test_create_parser_draw_is_required():
     """Invoking the parser with no arguments exits with an error."""
+    # Arrange
     parser = create_parser()
 
+    # Act / Assert
     with pytest.raises(SystemExit):
         parser.parse_args([])
 
@@ -95,8 +97,10 @@ def test_create_parser_has_week_argument():
 )
 def test_create_parser_rejects_invalid_week(argv):
     """--week, --start-week, and --end-week reject malformed values."""
+    # Arrange
     parser = create_parser()
 
+    # Act / Assert
     with pytest.raises(SystemExit):
         parser.parse_args(argv)
 
@@ -112,12 +116,15 @@ def test_create_parser_rejects_invalid_week(argv):
 )
 def test_create_parser_rejects_conflicting_bounds(argv, capsys):
     """Combining mutually exclusive bound flags exits with an error."""
+    # Arrange
     parser = create_parser()
 
+    # Act / Assert
     with pytest.raises(SystemExit):
         parser.parse_args(argv)
     captured = capsys.readouterr()
 
+    # Assert
     assert "not allowed with" in captured.err
 
 

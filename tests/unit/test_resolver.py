@@ -142,6 +142,7 @@ def test_resolve_draw_by_week_raises_when_n_exceeds_in_week_draws():
         DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
     ]
 
+    # Act / Assert
     with pytest.raises(
         WeekDrawIndexError,
         match="Week 2024.52 has 2 draws",
@@ -156,6 +157,7 @@ def test_resolve_draw_by_week_raises_on_non_positive_n():
         DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
     ]
 
+    # Act / Assert
     with pytest.raises(ValueError, match="Draw number must be a positive integer"):
         resolve_draw_by_week(date(2025, 5, 5), entries, n=0)
 

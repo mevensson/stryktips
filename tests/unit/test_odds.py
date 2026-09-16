@@ -82,5 +82,6 @@ def test_remove_overround_gives_favourite_near_certain_probability():
 )
 def test_remove_overround_rejects_non_positive_odds(home_odds, draw_odds, away_odds):
     """Zero or negative odds (e.g. a missing field parsed as 0) raise ValueError."""
+    # Act / Assert
     with pytest.raises(ValueError, match="Odds must be positive"):
         remove_overround(home_odds, draw_odds, away_odds)

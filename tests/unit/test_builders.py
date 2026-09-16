@@ -3,7 +3,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from stryktips.models import Odds, OutcomeProbability
+from stryktips.models import Match, Odds, OutcomeProbability
 from tests.builders import make_draw, make_match
 
 
@@ -35,14 +35,14 @@ def test_make_match_default_odds_and_probability_are_consistent():
 def test_make_match_derives_probability_from_supplied_odds():
     """Supplying odds alone derives their overround-free probabilities."""
     # Arrange
-    odds = Odds(home=Decimal("2.0"), draw=Decimal("4.0"), away=Decimal("4.0"))
+    odds = Odds(home=Decimal("4.0"), draw=Decimal("2.0"), away=Decimal("4.0"))
 
     # Act
     match = make_match(odds=odds)
 
     # Assert
     assert match.outcome_probability == OutcomeProbability(
-        home=Decimal("0.5"), draw=Decimal("0.25"), away=Decimal("0.25")
+        home=Decimal("0.25"), draw=Decimal("0.5"), away=Decimal("0.25")
     )
 
 
@@ -97,17 +97,33 @@ def test_make_match_explicit_probability_is_preserved_without_normalising():
 
 
 def test_make_draw_default_is_a_renderable_played_draw():
-    """The default Draw is one played match with odds, probability and close time."""
+    """The default Draw is one complete, renderable played Match."""
     # Act
     draw = make_draw()
 
     # Assert
-    assert len(draw.matches) == 1
-    match = draw.matches[0]
-    assert match.home_score is not None
-    assert match.away_score is not None
-    assert match.odds is not None
-    assert match.outcome_probability is not None
+    assert draw.matches == [
+        Match(
+            event_number=1,
+            home_team="Home",
+            away_team="Away",
+            home_score=1,
+            away_score=0,
+            svenska_folket=None,
+            odds=Odds(home=Decimal("2.0"), draw=Decimal("4.0"), away=Decimal("4.0")),
+            outcome_probability=OutcomeProbability(
+                home=Decimal("0.5"), draw=Decimal("0.25"), away=Decimal("0.25")
+            ),
+        )
+    ]
+
+
+def test_make_draw_default_has_fixed_close_time():
+    """The default Draw carries a fixed, usable close time."""
+    # Act
+    draw = make_draw()
+
+    # Assert
     assert draw.reg_close_time == datetime(2025, 5, 10, 15, 59)
 
 

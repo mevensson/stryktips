@@ -24,15 +24,15 @@ def mock_api_response():
 
 
 @pytest.fixture
-def mock_draw_4900(mock_api_response, mock_response):
-    """Arrange a mocked API response for draw 4900."""
+def stub_draw_4900_request(mock_api_response, mock_response):
+    """Stub the API request for draw 4900."""
     flexmock(requests).should_receive("get").with_args(
         f"{_API_URL}4900",
         timeout=30,
     ).and_return(mock_response(mock_api_response))
 
 
-def test_fetch_draw_returns_all_13_matches(mock_draw_4900):
+def test_fetch_draw_returns_all_13_matches(stub_draw_4900_request):
     """Fetching draw 4900 returns a draw with 13 matches."""
     # Act
     draw = fetch_draw(4900)
@@ -41,7 +41,7 @@ def test_fetch_draw_returns_all_13_matches(mock_draw_4900):
     assert len(draw.matches) == 13
 
 
-def test_fetch_draw_parses_draw_number(mock_draw_4900):
+def test_fetch_draw_parses_draw_number(stub_draw_4900_request):
     """The API draw number is stored on the Draw."""
     # Act
     draw = fetch_draw(4900)
@@ -50,7 +50,7 @@ def test_fetch_draw_parses_draw_number(mock_draw_4900):
     assert draw.draw_number == 4900
 
 
-def test_fetch_draw_parses_draw_comment(mock_draw_4900):
+def test_fetch_draw_parses_draw_comment(stub_draw_4900_request):
     """drawComment from the API response is stored in Draw.draw_comment."""
     # Act
     draw = fetch_draw(4900)
@@ -59,7 +59,7 @@ def test_fetch_draw_parses_draw_comment(mock_draw_4900):
     assert draw.draw_comment == "Stryktipset v. 2025-19"
 
 
-def test_fetch_draw_parses_reg_close_time(mock_draw_4900):
+def test_fetch_draw_parses_reg_close_time(stub_draw_4900_request):
     """regCloseTime from the API response is stored as a datetime."""
     # Act
     draw = fetch_draw(4900)
@@ -70,7 +70,7 @@ def test_fetch_draw_parses_reg_close_time(mock_draw_4900):
     assert close_time.isoformat() == "2025-05-10T15:59:00+02:00"
 
 
-def test_fetch_draw_parses_start_odds_for_first_match(mock_draw_4900):
+def test_fetch_draw_parses_start_odds_for_first_match(stub_draw_4900_request):
     """First match's startOdds are parsed into an Odds object."""
     # Act
     draw = fetch_draw(4900)
@@ -83,7 +83,7 @@ def test_fetch_draw_parses_start_odds_for_first_match(mock_draw_4900):
     )
 
 
-def test_fetch_draw_parses_outcome_probabilities(mock_draw_4900):
+def test_fetch_draw_parses_outcome_probabilities(stub_draw_4900_request):
     """First match's outcome probability is computed from startOdds."""
     # Act
     draw = fetch_draw(4900)
@@ -101,20 +101,29 @@ def test_fetch_draw_parses_outcome_probabilities(mock_draw_4900):
     )
 
 
-def test_fetch_draw_parses_odds_for_all_matches(mock_draw_4900):
-    """Every match in the draw has parsed odds and outcome probabilities."""
+def test_fetch_draw_parses_odds_for_all_matches(stub_draw_4900_request):
+    """Every match in the draw has parsed odds."""
     # Act
     draw = fetch_draw(4900)
 
     # Assert
     for match in draw.matches:
         assert match.odds is not None, f"Match {match.event_number} has no odds"
+
+
+def test_fetch_draw_derives_probabilities_for_all_matches(stub_draw_4900_request):
+    """Every match in the draw has a derived outcome probability."""
+    # Act
+    draw = fetch_draw(4900)
+
+    # Assert
+    for match in draw.matches:
         assert match.outcome_probability is not None, (
             f"Match {match.event_number} has no outcome probability"
         )
 
 
-def test_fetch_draw_parses_svenska_folket_as_decimal(mock_draw_4900):
+def test_fetch_draw_parses_svenska_folket_as_decimal(stub_draw_4900_request):
     """svenskaFolket percentages are parsed into Decimal values."""
     # Act
     draw = fetch_draw(4900)
@@ -204,6 +213,7 @@ def test_fetch_draw_raises_on_missing_participants(mock_response, participants):
         timeout=30,
     ).and_return(mock_response(bad_event))
 
+    # Act / Assert
     with pytest.raises(ValueError, match="participants"):
         fetch_draw(5000)
 
@@ -216,6 +226,7 @@ def test_fetch_draw_raises_draw_not_found_on_404(mock_response):
         timeout=30,
     ).and_return(mock_response({}, status_code=404))
 
+    # Act / Assert
     with pytest.raises(DrawNotFoundError):
         fetch_draw(4900)
 
@@ -228,6 +239,7 @@ def test_fetch_draw_raises_draw_not_found_on_null_draw(mock_response):
         timeout=30,
     ).and_return(mock_response({"draw": None}))
 
+    # Act / Assert
     with pytest.raises(DrawNotFoundError):
         fetch_draw(4971)
 
