@@ -23,13 +23,23 @@ week text and derives its year, week, and index, so a selector cannot hold
 contradictory state; the raw spelling is retained for diagnostics and an
 omitted index stays distinct from an explicit `.1`.
 
-The public services currently live in `stryktips/core.py` to avoid a circular
-import between the CLI and the services. That placement is transitional: #102
-extracts date/week/start/end resolution, and #103 extracts anchor fetching,
-month traversal, and inclusive Period collection; the selectors,
-`Dependencies`, and services can then move to their own modules and the CLI
-reduces to parse/validate, invoke, render, and map errors. The migration was
-staged deliberately — public delegating façades first, then test migration,
-then algorithm extraction — so behavior and tests were never rewritten at the
-same time. Tests already target the public contracts through injected fakes and
-a fixed clock, so moving a private helper no longer breaks them.
+The contracts now live in dedicated modules. `stryktips/dependencies.py` holds
+the `FetchDraw`, `FetchMonthEntries`, `Clock`, and `Diagnostic` aliases plus the
+`Dependencies` object; `stryktips/resolution.py` holds the typed selectors, the
+`resolve_draw`/`resolve_end` services, and the forward date/week, backward
+default-end, and current/completed/future indexed end-week policies.
+`stryktips/core.py` remains the composition root: `create_dependencies()` and
+its concrete API, `date.today`, and stderr defaults stay there, alongside CLI
+parsing/rendering and the Period collector (`collect_period` and its
+algorithms), which #103 will extract. `stryktips/months.py` holds the shared
+month arithmetic and the scan-window constant so resolution and collection step
+months identically, but their policies stay distinct: resolution gathers every
+month an ISO week spans before selecting an index, while collection walks
+inclusive draw numbers; the two are not blended. The public services reach for
+the network, clock, and output only through the injected `Dependencies`, so
+resolution is deterministic and side-effect-free apart from the diagnostic
+callback. The current scan limits are unchanged (`MAX_SCAN_MONTHS = 12`). The
+migration was staged deliberately — public delegating façades first, then test
+migration, then algorithm extraction — so behavior and tests were never
+rewritten at the same time. Tests target the public contracts through injected
+fakes and a fixed clock, so moving a private helper no longer breaks them.
