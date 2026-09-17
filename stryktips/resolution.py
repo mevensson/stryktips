@@ -6,7 +6,7 @@ typed selector and a ``Dependencies`` object; they never reach for the concrete
 API, clock, or output stream, and this module does not import the CLI.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import cast
@@ -120,9 +120,7 @@ def _parse_date(date_str: str) -> date:
         raise ValueError(f"Invalid date: {date_str}") from None
 
 
-def _resolve_draw_by_week(  # noqa: PLR0915
-    week_str: str, dependencies: Dependencies
-) -> ResolveResult:
+def _resolve_draw_by_week(week_str: str, dependencies: Dependencies) -> ResolveResult:
     """Resolve a draw from an ISO week string (YYYY.WW[.N]).
 
     Every month the week spans (Monday's through Sunday's) is gathered before
@@ -130,30 +128,56 @@ def _resolve_draw_by_week(  # noqa: PLR0915
     still participates. An empty week still forward-scans for the next draw,
     and an index exceeding the gathered in-week draws raises.
     """
-    year, week, n = parse_week(week_str)
+    year, week, draw_index = parse_week(week_str)
     monday = date.fromisocalendar(year, week, 1)
     sunday = monday + timedelta(days=6)
-    all_entries: list[DatepickerEntry] = []
-    scan_year, scan_month = monday.year, monday.month
-
-    for _ in range(MAX_SCAN_MONTHS):
-        all_entries.extend(dependencies.fetch_month_entries(scan_year, scan_month))
-        relevant_months_collected = (scan_year, scan_month) >= (
-            sunday.year,
-            sunday.month,
+    for entries, week_months_collected in _week_month_scan(
+        monday, sunday, dependencies
+    ):
+        result = _resolve_week_scan_step(
+            monday, entries, draw_index, week_months_collected
         )
-        try:
-            result = resolve_draw_by_week(monday, all_entries, n)
-        except WeekDrawIndexError as exc:
-            if relevant_months_collected:
-                raise ValueError(_week_draw_index_message(exc)) from None
-        else:
-            if relevant_months_collected and result.draw_number is not None:
-                _print_fallback_note(result, week_str, dependencies.diagnostic)
-                return result
-        scan_year, scan_month = advance_month(scan_year, scan_month)
-
+        if result is not None:
+            _print_fallback_note(result, week_str, dependencies.diagnostic)
+            return result
     raise DrawNotFound(week_str)
+
+
+def _week_month_scan(
+    monday: date, sunday: date, dependencies: Dependencies
+) -> Iterator[tuple[list[DatepickerEntry], bool]]:
+    """Yield accumulated entries month-by-month from Monday's month.
+
+    Each yield carries every entry gathered so far and whether the week's final
+    month (Sunday's) has been reached, so a caller can defer week selection
+    until both cross-month responses are present. Yields at most
+    ``MAX_SCAN_MONTHS`` times, letting an empty week keep scanning forward.
+    """
+    entries: list[DatepickerEntry] = []
+    year, month = monday.year, monday.month
+    for _ in range(MAX_SCAN_MONTHS):
+        entries.extend(dependencies.fetch_month_entries(year, month))
+        week_months_collected = (year, month) >= (sunday.year, sunday.month)
+        yield entries, week_months_collected
+        year, month = advance_month(year, month)
+
+
+def _resolve_week_scan_step(
+    monday: date,
+    entries: list[DatepickerEntry],
+    draw_index: int,
+    week_months_collected: bool,
+) -> ResolveResult | None:
+    """Try one forward-scan step, deferring until the whole week is gathered."""
+    try:
+        result = resolve_draw_by_week(monday, entries, draw_index)
+    except WeekDrawIndexError as exc:
+        if week_months_collected:
+            raise ValueError(_week_draw_index_message(exc)) from None
+        return None
+    if week_months_collected and result.draw_number is not None:
+        return result
+    return None
 
 
 def _week_draw_index_message(exc: WeekDrawIndexError) -> str:
@@ -195,7 +219,7 @@ def _resolve_end_week(selector: DrawByWeek, dependencies: Dependencies) -> int:
 class _WeekContext:
     """Resolved ISO-week boundaries and index for the report end policy."""
 
-    n: int
+    draw_index: int
     monday: date
     sunday: date
     today: date
@@ -211,7 +235,7 @@ def _resolve_indexed_end_week(selector: DrawByWeek, dependencies: Dependencies) 
     """
     monday = date.fromisocalendar(selector.year, selector.week, 1)
     context = _WeekContext(
-        n=cast(int, selector.index),
+        draw_index=cast(int, selector.index),
         monday=monday,
         sunday=monday + timedelta(days=6),
         today=dependencies.clock(),
@@ -235,7 +259,7 @@ def _resolve_current_week_indexed_end(
     """
     entries = _entries_from_month_to_month(context.monday, context.today, dependencies)
     try:
-        result = resolve_draw_by_week(context.monday, entries, context.n)
+        result = resolve_draw_by_week(context.monday, entries, context.draw_index)
     except WeekDrawIndexError:
         return _latest_draw_number_on_or_before(context.today, entries, dependencies)
     if result.match_date is not None and result.match_date <= context.today:
@@ -243,54 +267,45 @@ def _resolve_current_week_indexed_end(
     return _latest_draw_number_on_or_before(context.today, entries, dependencies)
 
 
-def _resolve_completed_indexed_end_week(  # noqa: PLR0915
+def _resolve_completed_indexed_end_week(
     selector: DrawByWeek,
     context: _WeekContext,
     dependencies: Dependencies,
 ) -> int:
     """Resolve an indexed --end-week for a week that has already completed.
 
-    Every month the week spans (Monday's through Sunday's) is gathered before
-    the index is selected, so a draw listed only in the week's later month still
-    participates. When the requested index exceeds the draws held by the
-    completed week (its Sunday is before today), the week's final draw is used
-    and a warning is printed. A completed week holding no draws at all instead
-    falls back to the latest draw before the week and warns. Otherwise the
-    excessive-index error is raised, as it is for ``--week`` and
-    ``--start-week``. A non-positive index is still rejected by
-    ``resolve_draw_by_week``.
+    Reached only when the week's Sunday is before today. Every month the week
+    spans (Monday's through Sunday's) is gathered before the index is selected,
+    so a draw listed only in the week's later month still participates. When the
+    requested index exceeds the draws held by the week, the week's final draw is
+    used and a warning is printed; a week holding no draws at all falls back to
+    the latest draw before the week and warns.
     """
-    all_entries: list[DatepickerEntry] = []
-    scan_year, scan_month = context.monday.year, context.monday.month
-
-    for _ in range(MAX_SCAN_MONTHS):
-        all_entries.extend(dependencies.fetch_month_entries(scan_year, scan_month))
-        relevant_months_collected = (scan_year, scan_month) >= (
-            context.sunday.year,
-            context.sunday.month,
-        )
-        if (
-            relevant_months_collected
-            and context.sunday < context.today
-            and not entries_in_week(context.monday, all_entries)
-        ):
-            return _warn_empty_end_week(selector.value, context.monday, dependencies)
-        try:
-            result = resolve_draw_by_week(context.monday, all_entries, context.n)
-        except WeekDrawIndexError as exc:
-            if relevant_months_collected:
-                if context.sunday < context.today:
-                    return _warn_excessive_end_week(
-                        selector.value, context.monday, all_entries, dependencies
-                    )
-                raise ValueError(_week_draw_index_message(exc)) from None
-        else:
-            if relevant_months_collected and result.draw_number is not None:
-                _print_fallback_note(result, selector.value, dependencies.diagnostic)
-                return _require_draw_number(result)
-        scan_year, scan_month = advance_month(scan_year, scan_month)
-
+    for entries, week_months_collected in _week_month_scan(
+        context.monday, context.sunday, dependencies
+    ):
+        if week_months_collected:
+            return _select_completed_end_week(selector, context, entries, dependencies)
     raise DrawNotFound(selector.value)
+
+
+def _select_completed_end_week(
+    selector: DrawByWeek,
+    context: _WeekContext,
+    entries: list[DatepickerEntry],
+    dependencies: Dependencies,
+) -> int:
+    """Select the index or fallback once the completed week's months are gathered."""
+    if not entries_in_week(context.monday, entries):
+        return _warn_empty_end_week(selector.value, context.monday, dependencies)
+    try:
+        result = resolve_draw_by_week(context.monday, entries, context.draw_index)
+    except WeekDrawIndexError:
+        return _warn_excessive_end_week(
+            selector.value, context.monday, entries, dependencies
+        )
+    _print_fallback_note(result, selector.value, dependencies.diagnostic)
+    return _require_draw_number(result)
 
 
 def _entries_from_month_to_month(

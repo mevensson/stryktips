@@ -243,15 +243,6 @@ def _has_end_bound(args: argparse.Namespace) -> bool:
     )
 
 
-def _display_selector(args: argparse.Namespace) -> DrawSelector:
-    """Build the single-Draw selector from parsed arguments."""
-    if args.draw is not None:
-        return DrawByNumber(args.draw)
-    if args.date is not None:
-        return DrawByDate(args.date)
-    return DrawByWeek(cast(str, args.week))
-
-
 def _start_selector(args: argparse.Namespace) -> DrawSelector:
     """Build the report start selector from parsed arguments."""
     if args.start_draw is not None:
@@ -270,6 +261,31 @@ def _end_selector(args: argparse.Namespace) -> DrawSelector | None:
     if args.end_draw is not None:
         return DrawByNumber(args.end_draw)
     return None
+
+
+def _display_report(draws: list[Draw]) -> None:
+    print(format_aggregate_report(draws))  # noqa: T201
+
+
+def _fetch_draw_from_args(args: argparse.Namespace, dependencies: Dependencies) -> Draw:
+    return dependencies.fetch_draw(resolve_draw(_display_selector(args), dependencies))
+
+
+def _display_selector(args: argparse.Namespace) -> DrawSelector:
+    """Build the single-Draw selector from parsed arguments."""
+    if args.draw is not None:
+        return DrawByNumber(args.draw)
+    if args.date is not None:
+        return DrawByDate(args.date)
+    return DrawByWeek(cast(str, args.week))
+
+
+def _display(draw: Draw) -> int:
+    header = format_header(draw)
+    lines = format_matches(draw.matches)
+    joined = "\n".join([header, *lines])
+    print(joined)  # noqa: T201
+    return 0
 
 
 def _fetch_report_draws(start: int, end: int, dependencies: Dependencies) -> list[Draw]:
@@ -305,22 +321,6 @@ def _draw_month(draw: Draw) -> tuple[int, int]:
     if draw.reg_close_time is None:
         raise ValueError(f"Draw {draw.draw_number} has no close time")
     return draw.reg_close_time.year, draw.reg_close_time.month
-
-
-def _display_report(draws: list[Draw]) -> None:
-    print(format_aggregate_report(draws))  # noqa: T201
-
-
-def _fetch_draw_from_args(args: argparse.Namespace, dependencies: Dependencies) -> Draw:
-    return dependencies.fetch_draw(resolve_draw(_display_selector(args), dependencies))
-
-
-def _display(draw: Draw) -> int:
-    header = format_header(draw)
-    lines = format_matches(draw.matches)
-    joined = "\n".join([header, *lines])
-    print(joined)  # noqa: T201
-    return 0
 
 
 def _draw_numbers_in_range(

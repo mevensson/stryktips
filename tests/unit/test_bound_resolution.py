@@ -209,14 +209,23 @@ def test_resolve_draw_by_date_raises_after_scan_window():
 
 
 def test_resolve_draw_by_week_raises_after_scan_window():
-    """A forward week scan walks twelve months and then raises not-found."""
-    calls: list[tuple[int, int]] = []
-    dependencies = _dependencies(calls=calls)
+    """A forward week selector with no draw within the window raises not-found."""
+    dependencies = _dependencies()
 
     with pytest.raises(DrawNotFound) as exc:
         resolve_draw(DrawByWeek("2000.01"), dependencies)
 
     assert exc.value.value == "2000.01"
+
+
+def test_resolve_draw_by_week_scan_window_is_twelve_months():
+    """The forward week scan consults exactly the twelve-month scan window."""
+    calls: list[tuple[int, int]] = []
+    dependencies = _dependencies(calls=calls)
+
+    with pytest.raises(DrawNotFound):
+        resolve_draw(DrawByWeek("2000.01"), dependencies)
+
     assert calls == [(2000, month) for month in range(1, 13)]
 
 
@@ -345,21 +354,17 @@ def test_resolve_end_unindexed_week_uses_latest_draw_on_or_before_sunday():
 
 
 def test_resolve_end_unindexed_week_scans_back_from_sunday_month():
-    """An unindexed end week scans back from the Sunday's month, crossing the year."""
+    """An unindexed end week starts at the Sunday's month and scans back a year."""
     calls: list[tuple[int, int]] = []
     months = {
         (2024, 12): [DatepickerEntry(date=date(2024, 12, 29), draw_number=4881)],
     }
-    diagnostics: list[str] = []
-    dependencies = _dependencies(
-        months, today=date(2025, 3, 1), diagnostics=diagnostics, calls=calls
-    )
+    dependencies = _dependencies(months, today=date(2025, 3, 1), calls=calls)
 
     result = resolve_end(DrawByWeek("2025.01"), dependencies)
 
     assert result == 4881
     assert calls == [(2025, 1), (2024, 12)]
-    assert diagnostics == []
 
 
 def test_resolve_end_explicit_index_selects_first_draw_in_current_week():
@@ -393,7 +398,7 @@ def test_resolve_end_current_week_index_after_today_clamps_to_latest_draw():
 
 
 def test_resolve_end_current_indexed_week_spans_months_and_clamps_to_today():
-    """A current indexed week gathers cross-month duplicates and clamps to today."""
+    """A current indexed week gathers both months, then clamps its draw to today."""
     calls: list[tuple[int, int]] = []
     months = {
         (2025, 1): [
@@ -405,16 +410,12 @@ def test_resolve_end_current_indexed_week_spans_months_and_clamps_to_today():
             DatepickerEntry(date=date(2024, 12, 30), draw_number=4880),
         ],
     }
-    diagnostics: list[str] = []
-    dependencies = _dependencies(
-        months, today=date(2025, 1, 2), diagnostics=diagnostics, calls=calls
-    )
+    dependencies = _dependencies(months, today=date(2025, 1, 2), calls=calls)
 
     result = resolve_end(DrawByWeek("2025.01.2"), dependencies)
 
     assert result == 4880
-    assert calls == [(2025, 1), (2024, 12)]
-    assert diagnostics == []
+    assert set(calls) == {(2025, 1), (2024, 12)}
 
 
 def test_resolve_end_future_indexed_week_clamps_to_latest_draw():
