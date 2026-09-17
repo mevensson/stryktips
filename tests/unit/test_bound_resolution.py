@@ -1,4 +1,4 @@
-"""Public contract tests for bound resolution in stryktips.core.
+"""Public contract tests for bound resolution in stryktips.resolution.
 
 Resolution is exercised through ``resolve_draw`` and ``resolve_end`` with
 directly constructed ``Dependencies``, so failures point at the resolver rather
@@ -10,15 +10,15 @@ from datetime import date
 
 import pytest
 
-from stryktips.core import (
-    Dependencies,
+from stryktips.dependencies import Dependencies
+from stryktips.models import DatepickerEntry, Draw
+from stryktips.resolution import (
     DrawByDate,
     DrawByNumber,
     DrawByWeek,
     resolve_draw,
     resolve_end,
 )
-from stryktips.models import DatepickerEntry, Draw
 from stryktips.resolver import DrawNotFound
 from tests.builders import make_draw
 

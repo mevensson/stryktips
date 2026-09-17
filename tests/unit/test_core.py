@@ -12,7 +12,7 @@ from flexmock import flexmock
 from requests import RequestException
 
 import stryktips.core
-from stryktips.core import Dependencies
+from stryktips.dependencies import Dependencies
 from stryktips.models import DatepickerEntry, Draw
 from tests.builders import make_draw
 
