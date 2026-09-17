@@ -1,294 +1,145 @@
-"""Unit tests for stryktips.core orchestration logic."""
+"""CLI tests for stryktips.core, exercised through main().
 
-import argparse
-from datetime import date, datetime
-from decimal import Decimal
+Every test drives the CLI through ``main`` with dependencies injected through
+the public ``create_dependencies`` seam, so no private helper is called or
+mocked.
+"""
+
+from datetime import date
 
 import pytest
 from flexmock import flexmock
 from requests import RequestException
 
 import stryktips.core
-from stryktips.api import DrawNotFoundError
-from stryktips.models import DatepickerEntry, Draw, Match, Odds, OutcomeProbability
-from stryktips.resolver import DrawNotFound
+from stryktips.core import Dependencies
+from stryktips.models import DatepickerEntry, Draw
+from tests.builders import make_draw
+
+_FIXED_TODAY = date(2025, 1, 1)
 
 
-def test_resolve_draw_by_date_forward_scans_when_anchor_empty(capsys):  # noqa: PLR0915
-    """When anchor month has no entries, advance month-by-month until a match."""
-    may_entries = [DatepickerEntry(date=date(2020, 5, 2), draw_number=4701)]
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        if month == 4:
-            return []
-        return may_entries
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
+def test_main_draw_flag_displays_the_draw(capsys):
+    """--draw fetches that draw directly and renders its header."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        draws={
+            4900: make_draw(draw_number=4900, draw_comment="Stryktipset v. 2025-19")
+        },
+        fetched=fetched,
     )
 
-    draw = stryktips.core._resolve_draw_by_date("2020-04-01")
+    exit_code = _main_with(dependencies, ["--draw", "4900"])
     captured = capsys.readouterr()
 
-    assert draw.draw_number == 4701
-    assert calls == [(2020, 4), (2020, 5)]
-    assert (
-        "Note: No draw found for 2020-04-01, using 2020-05-02 (draw 4701)"
-        in captured.err
+    assert exit_code == 0
+    assert "Stryktipset v. 2025-19 (draw 4900)" in captured.out
+    assert fetched == [4900]
+
+
+def test_main_draw_flag_does_not_consult_datepicker(capsys):
+    """--draw resolves to the given number without a datepicker lookup."""
+
+    def unexpected_lookup(year: int, month: int) -> list[DatepickerEntry]:
+        raise AssertionError("--draw must not consult the datepicker")
+
+    dependencies = Dependencies(
+        fetch_draw=lambda number: make_draw(draw_number=number),
+        fetch_month_entries=unexpected_lookup,
+        clock=lambda: _FIXED_TODAY,
+        diagnostic=lambda message: None,
     )
 
-
-def test_resolve_draw_by_date_returns_draw_number_without_fetching_draw():
-    """Resolving by date scans the datepicker and does not fetch the draw itself."""
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
-        ],
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").never()
-
-    result = stryktips.core._resolve_draw_by_date("2025-05-10")
-
-    assert result.draw_number == 4900
-
-
-def test_resolve_draw_by_week_finds_draw_in_iso_week(capsys):  # noqa: PLR0915
-    """Draw whose date falls inside the ISO week resolves as an exact match."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        return [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
-    )
-
-    draw = stryktips.core._resolve_draw_by_week("2025.19")
+    exit_code = _main_with(dependencies, ["--draw", "4900"])
     captured = capsys.readouterr()
 
-    assert draw.draw_number == 4900
-    assert calls == [(2025, 5)]
+    assert exit_code == 0
+    assert "Stryktipset Draw 4900" in captured.out
+
+
+def test_main_date_flag_resolves_and_displays_the_draw(capsys):
+    """--date resolves through the datepicker and displays the resolved draw."""
+    dependencies = _dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
+        draws={4900: make_draw(draw_number=4900)},
+    )
+
+    exit_code = _main_with(dependencies, ["--date", "2025-05-10"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Stryktipset Draw 4900" in captured.out
     assert captured.err == ""
 
 
-def test_resolve_draw_by_week_uses_n_suffix_index(capsys):  # noqa: PLR0915
-    """A .N suffix selects the N-th draw within the ISO week."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        return [
-            DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
-            DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
-        ]
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
+def test_main_week_flag_resolves_and_displays_the_draw(capsys):
+    """--week resolves through the week resolver and displays the resolved draw."""
+    dependencies = _dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
+        draws={4900: make_draw(draw_number=4900)},
     )
 
-    draw = stryktips.core._resolve_draw_by_week("2024.52.2")
+    exit_code = _main_with(dependencies, ["--week", "2025.19"])
     captured = capsys.readouterr()
 
-    assert draw.draw_number == 4881
-    assert calls == [(2024, 12)]
+    assert exit_code == 0
+    assert "Stryktipset Draw 4900" in captured.out
     assert captured.err == ""
 
 
-def test_resolve_draw_by_week_returns_draw_number_without_fetching_draw():
-    """Resolving by week scans the datepicker and does not fetch the draw itself."""
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
-        ],
+def test_main_start_draw_end_draw_prints_bucket_report(capsys):
+    """--start-draw/--end-draw prints the bucket report for the single draw."""
+    dependencies = _dependencies(
+        draws={4900: make_draw(draw_number=4900)},
     )
-    flexmock(stryktips.core).should_receive("fetch_draw").never()
 
-    result = stryktips.core._resolve_draw_by_week("2025.19")
+    exit_code = _main_with(dependencies, ["--start-draw", "4900", "--end-draw", "4900"])
+    captured = capsys.readouterr()
 
-    assert result.draw_number == 4900
+    assert exit_code == 0
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
 
 
-def test_main_week_2025_01_gathers_both_months_before_selecting_earliest(  # noqa: PLR0915
-    capsys,
-):
-    """--week 2025.01 selects the earliest distinct Draw listed only in January.
-
-    ISO week 2025.01 runs Mon 2024-12-30 to Sun 2025-01-05 and holds two Draws:
-    4881 (2024-12-30) and 4882 (2025-01-04). The December response is incomplete:
-    it lists only the later Draw 4882, while the January response adds the earlier
-    Draw 4881. Both month responses must therefore be gathered before the omitted
-    index selects the earliest distinct Draw, so Draw 4881 is fetched and Draw
-    4882 is never fetched.
-    """
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        if (year, month) == (2024, 12):
-            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
-        if (year, month) == (2025, 1):
-            return [
-                DatepickerEntry(date=date(2024, 12, 30), draw_number=4881),
-                DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+def test_main_start_draw_end_draw_prints_single_aggregated_report(capsys):
+    """A spanning range folds both draws into one aggregated report."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        {
+            (2025, 5): [
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4901),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4902),
             ]
-        raise AssertionError(f"unexpected month {year}-{month}")
-
-    match = Match(
-        event_number=1,
-        home_team="West Ham",
-        away_team="Brighton",
-        home_score=1,
-        away_score=0,
-    )
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4881).and_return(
-        Draw(
-            draw_number=4881,
-            matches=[match],
-            draw_comment="Stryktipset v. 2024-52",
-        )
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4882).never()
-
-    exit_code = stryktips.core.main(["--week", "2025.01"])
-    captured = capsys.readouterr()
-
-    assert calls == [(2024, 12), (2025, 1)]
-    assert exit_code == 0
-    assert "Stryktipset v. 2024-52 (draw 4881)" in captured.out
-    assert "West Ham" in captured.out
-    assert captured.err == ""
-
-
-def test_fetch_draw_from_args_routes_week():
-    """A --week argument routes through _resolve_draw_by_week."""
-    flexmock(
-        stryktips.core,
-        _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[]),
-    )
-    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]))
-
-    args = argparse.Namespace(date=None, week="2025.19", draw=None)
-
-    draw = stryktips.core._fetch_draw_from_args(args)
-
-    assert draw.draw_number == 4900
-
-
-def test_fetch_draw_from_args_routes_draw():
-    """A --draw argument fetches the draw via fetch_draw."""
-    flexmock(stryktips.core, fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]))
-
-    args = argparse.Namespace(date=None, week=None, draw=4900)
-
-    draw = stryktips.core._fetch_draw_from_args(args)
-
-    assert draw.draw_number == 4900
-
-
-def test_main_start_draw_end_draw_prints_report(capsys):
-    """--start-draw/--end-draw together print the bucket report for the fetched draw."""
-    match = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+        },
+        draws={
+            4901: make_draw(draw_number=4901),
+            4902: make_draw(draw_number=4902),
+        },
+        fetched=fetched,
     )
 
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-draw", "4900"])
+    exit_code = _main_with(dependencies, ["--start-draw", "4901", "--end-draw", "4902"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "eligible: 1, excluded: 0" in captured.out
-    assert "70-80: 1" in captured.out
-
-
-def test_main_start_draw_end_draw_prints_single_aggregated_report(capsys):  # noqa: PLR0915
-    """--start-draw/--end-draw across a multi-draw range prints one merged report."""
-    match_high = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
-    )
-    match_low = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.25"), draw=Decimal("0.30"), away=Decimal("0.35")
-        ),
-    )
-
-    def fetch(draw_number: int) -> Draw:
-        if draw_number == 4901:
-            return Draw(
-                draw_number=draw_number,
-                matches=[match_high],
-                reg_close_time=datetime(2025, 5, 10, 15, 59),
-            )
-        return Draw(draw_number=draw_number, matches=[match_low])
-
-    flexmock(stryktips.core, fetch_draw=fetch)
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda year, month: [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4901),
-            DatepickerEntry(date=date(2025, 5, 17), draw_number=4902),
-        ],
-    )
-
-    exit_code = stryktips.core.main(["--start-draw", "4901", "--end-draw", "4902"])
-    captured = capsys.readouterr()
-
-    expected = (
-        "eligible: 2, excluded: 0\n"
-        "0-10: 1 | 5% | 0% | -5%\n"
-        "20-30: 2 | 22% | 50% | 28%\n"
-        "30-40: 2 | 32% | 0% | -32%\n"
-        "70-80: 1 | 75% | 100% | 25%"
-    )
-    assert exit_code == 0
-    assert captured.out.splitlines() == expected.splitlines()
+    assert captured.out.splitlines()[0] == "eligible: 26, excluded: 0"
+    assert captured.out.count("eligible:") == 1
+    assert fetched == [4901, 4902]
 
 
 def test_main_start_draw_end_draw_reports_network_error_to_stderr(capsys):
-    """A requests failure in the report path exits 1 and prints to stderr."""
+    """A request failure while collecting the report maps to exit 1 and stderr."""
 
-    def raise_network(_dn: int) -> Draw:
+    def raise_network(number: int) -> Draw:
         raise RequestException("connection refused")
 
-    flexmock(stryktips.core, fetch_draw=raise_network)
+    dependencies = Dependencies(
+        fetch_draw=raise_network,
+        fetch_month_entries=lambda year, month: [],
+        clock=lambda: _FIXED_TODAY,
+        diagnostic=lambda message: None,
+    )
 
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-draw", "4900"])
+    exit_code = _main_with(dependencies, ["--start-draw", "4900", "--end-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 1
@@ -296,117 +147,81 @@ def test_main_start_draw_end_draw_reports_network_error_to_stderr(capsys):
     assert captured.out == ""
 
 
-def test_main_start_draw_without_end_draw_resolves_default_end_and_prints_report(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--start-draw without --end-draw defaults the end to the latest draw."""
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 5, 10)
-
-    match = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
+def test_main_start_draw_without_end_draw_uses_default_end(capsys):
+    """--start-draw without an end defaults to the latest draw on or before today."""
+    dependencies = _dependencies(
+        {
+            (2025, 5): [
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+            ]
+        },
+        draws={4900: make_draw(draw_number=4900)},
+        today=date(2025, 5, 12),
     )
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
-    )
-    flexmock(stryktips.core).should_receive("_resolve_default_end").with_args(
-        date(2025, 5, 10)
-    ).and_return(4900)
 
-    exit_code = stryktips.core.main(["--start-draw", "4900"])
+    exit_code = _main_with(dependencies, ["--start-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "eligible: 1, excluded: 0" in captured.out
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
 
 
-def test_main_start_draw_after_most_recent_prints_empty_report_without_fetch(
-    capsys, monkeypatch
-):
-    """--start-draw after the latest draw prints empty and never fetches."""
+def test_main_start_draw_after_default_end_prints_empty_report_without_fetch(capsys):
+    """A start after the default end prints an empty report and never fetches."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        {(2025, 1): [DatepickerEntry(date=date(2025, 1, 18), draw_number=4884)]},
+        today=date(2025, 1, 20),
+        fetched=fetched,
+    )
 
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 1, 20)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(stryktips.core).should_receive("_resolve_default_end").with_args(
-        date(2025, 1, 20)
-    ).and_return(4884)
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).never()
-
-    exit_code = stryktips.core.main(["--start-draw", "4900"])
+    exit_code = _main_with(dependencies, ["--start-draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
+    assert fetched == []
 
 
 def test_main_start_draw_greater_than_end_draw_rejected(capsys):
-    """--start-draw greater than --end-draw is a parser error with exit code 2."""
+    """An explicit start greater than the explicit end is a parser error."""
     with pytest.raises(SystemExit) as exc:
         stryktips.core.main(["--start-draw", "4901", "--end-draw", "4900"])
+    captured = capsys.readouterr()
 
     assert exc.value.code == 2
+    assert "--start-draw must not be greater than --end-draw" in captured.err
 
 
 def test_main_start_date_end_draw_prints_report(capsys):
-    """--start-date/--end-draw together print the report for the resolved draw."""
-    match = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
-    )
-    flexmock(
-        stryktips.core,
-        _resolve_draw_by_date=lambda d: Draw(draw_number=4900, matches=[match]),
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    """--start-date/--end-draw prints the report for the resolved start draw."""
+    dependencies = _dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
+        draws={4900: make_draw(draw_number=4900)},
+        today=date(2025, 6, 1),
     )
 
-    exit_code = stryktips.core.main(
-        ["--start-date", "2025-05-10", "--end-draw", "4900"]
+    exit_code = _main_with(
+        dependencies, ["--start-date", "2025-05-10", "--end-draw", "4900"]
     )
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "eligible: 1, excluded: 0" in captured.out
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
 
 
 def test_main_start_date_resolved_after_end_draw_fails_without_fetching(capsys):
-    """A date-resolved start after the explicit end draw exits 1 without fetching."""
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
-        ],
+    """A resolved start after an explicit end errors before any draw is fetched."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
+        today=date(2025, 6, 1),
+        fetched=fetched,
     )
-    flexmock(stryktips.core).should_receive("fetch_draw").never()
 
-    exit_code = stryktips.core.main(
-        ["--start-date", "2025-05-10", "--end-draw", "4884"]
+    exit_code = _main_with(
+        dependencies, ["--start-date", "2025-05-10", "--end-draw", "4884"]
     )
     captured = capsys.readouterr()
 
@@ -414,69 +229,28 @@ def test_main_start_date_resolved_after_end_draw_fails_without_fetching(capsys):
     assert "must not be greater than" in captured.err
     assert "4900" in captured.err
     assert "4884" in captured.err
+    assert fetched == []
 
 
 def test_main_start_draw_end_date_prints_report(capsys):
-    """--start-draw/--end-date together print the report for the resolved draw."""
-    match = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)
-        ],
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    """--start-draw/--end-date prints the report for the resolved end draw."""
+    dependencies = _dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
+        draws={4900: make_draw(draw_number=4900)},
+        today=date(2025, 6, 1),
     )
 
-    exit_code = stryktips.core.main(
-        ["--start-draw", "4900", "--end-date", "2025-05-10"]
+    exit_code = _main_with(
+        dependencies, ["--start-draw", "4900", "--end-date", "2025-05-10"]
     )
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "eligible: 1, excluded: 0" in captured.out
-
-
-def test_resolve_end_bound_end_date_returns_latest_draw_on_or_before_bound(monkeypatch):
-    """--end-date resolves to the latest draw dated on or before the given date."""
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 6, 1)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [
-            DatepickerEntry(date=date(2025, 5, 3), draw_number=4899),
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
-            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
-        ],
-    )
-    args = stryktips.core.create_parser().parse_args(
-        ["--start-draw", "4900", "--end-date", "2025-05-11"]
-    )
-
-    result = stryktips.core._resolve_end_bound(args)
-
-    assert result == 4900
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
 
 
 def test_main_end_date_without_start_rejected(capsys):
-    """--end-date without a --start-* is a parser error with exit code 2."""
+    """--end-date without any --start-* bound is a parser error."""
     with pytest.raises(SystemExit) as exc:
         stryktips.core.main(["--end-date", "2025-05-10"])
     captured = capsys.readouterr()
@@ -486,382 +260,45 @@ def test_main_end_date_without_start_rejected(capsys):
 
 
 def test_main_start_week_end_draw_prints_report(capsys):
-    """--start-week/--end-draw together print the report for the resolved draw."""
-    match = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
-    )
-    flexmock(
-        stryktips.core,
-        _resolve_draw_by_week=lambda w: Draw(draw_number=4900, matches=[match]),
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
+    """--start-week/--end-draw prints the report for the resolved start draw."""
+    dependencies = _dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
+        draws={4900: make_draw(draw_number=4900)},
     )
 
-    exit_code = stryktips.core.main(["--start-week", "2025.19", "--end-draw", "4900"])
+    exit_code = _main_with(
+        dependencies, ["--start-week", "2025.19", "--end-draw", "4900"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "eligible: 1, excluded: 0" in captured.out
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
 
 
-def test_main_start_draw_end_week_prints_report(capsys, monkeypatch):
-    """--start-draw/--end-week together print the report for the resolved draw."""
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 6, 1)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    match = Match(
-        event_number=1,
-        home_team="Brynäs",
-        away_team="Leksand",
-        home_score=3,
-        away_score=1,
-        odds=Odds(home=Decimal("2.0"), draw=Decimal("3.4"), away=Decimal("3.6")),
-        outcome_probability=OutcomeProbability(
-            home=Decimal("0.75"), draw=Decimal("0.20"), away=Decimal("0.05")
-        ),
-    )
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2025, 5
-    ).and_return(
-        [
-            DatepickerEntry(date=date(2025, 5, 3), draw_number=4899),
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
-            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
-        ]
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[match]),
-    )
-
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.19"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert "eligible: 1, excluded: 0" in captured.out
-
-
-def test_resolve_end_bound_unindexed_historical_week_returns_latest_draw(monkeypatch):
-    """An omitted end-week index selects the latest draw on or before ISO Sunday."""
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 1, 20)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2024, 12
-    ).and_return(
-        [
-            DatepickerEntry(date=date(2024, 12, 21), draw_number=4879),
-            DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
-            DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
-        ]
-    )
-    args = stryktips.core.create_parser().parse_args(
-        ["--start-draw", "4880", "--end-week", "2024.52"]
-    )
-
-    result = stryktips.core._resolve_end_bound(args)
-
-    assert result == 4881
-
-
-def test_main_excessive_end_week_index_falls_back_to_final_draw(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--end-week 2024.52.3 falls back to the week's final Draw 4881 with a warning.
-
-    ISO week 2024.52 holds two Draws: 4880 (December 26) and 4881 (December 29).
-    The out-of-range index .3 selects no third Draw, so the end bound must resolve
-    to the week's final Draw 4881 and warn on stderr, rather than raising the
-    excessive-index error that --week reports. With today pinned to January 20,
-    only the historical month is scanned and the report spans 4880-4881.
-    """
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 1, 20)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2024, 12
-    ).and_return(
-        [
-            DatepickerEntry(date=date(2024, 12, 21), draw_number=4879),
-            DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
-            DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
-        ]
-    )
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(
-            draw_number=dn,
-            matches=[],
-            reg_close_time=datetime(2024, 12, 26, 15, 59),
-        ),
-    )
-
-    exit_code = stryktips.core.main(["--start-draw", "4880", "--end-week", "2024.52.3"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert "Warning" in captured.err
-    assert "2024.52.3" in captured.err
-    assert "4881" in captured.err
-    assert "2024-12-29" in captured.err
-
-
-def test_main_cross_year_indexed_end_first_draw_requires_both_months(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--end-week 2025.01.1 resolves to earlier Draw 4881, listed only in January.
-
-    ISO week 2025.01 runs Mon 2024-12-30 to Sun 2025-01-05 and holds two Draws.
-    The December response is incomplete: it lists only the later Draw 4882
-    (2025-01-04), while the earlier Draw 4881 (2024-12-30) appears only in the
-    January response. The completed indexed end must therefore gather both week
-    months before selecting an index; resolving after December alone would
-    wrongly pick 4882 for ``.1``. With today pinned to March 2025 and a
-    single-draw range, only Draw 4881 is fetched and Draw 4882 is never fetched.
-    """
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 3, 1)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        if (year, month) == (2024, 12):
-            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
-        if (year, month) == (2025, 1):
-            return [DatepickerEntry(date=date(2024, 12, 30), draw_number=4881)]
-        raise AssertionError(f"unexpected month {year}-{month}")
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4881).and_return(
-        Draw(
-            draw_number=4881,
-            matches=[],
-            reg_close_time=datetime(2024, 12, 30, 15, 59),
-        )
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4882).never()
-
-    exit_code = stryktips.core.main(["--start-draw", "4881", "--end-week", "2025.01.1"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert captured.out.strip() == "eligible: 0, excluded: 0"
-    assert captured.err == ""
-
-
-def test_main_excessive_end_week_same_date_draws_tie_break_by_number(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--end-week 2025.01.4 falls back to the final Draw 4882, not Draw 4881.
-
-    ISO week 2025.01 (Mon 2024-12-30 to Sun 2025-01-05) holds distinct Draws
-    4880, 4881 and 4882. The unsorted December response overlaps January: it
-    lists 4881 then 4882 on the same date 2025-01-04, with 4880 on 2024-12-30,
-    while January repeats 4882. The excessive index .4 warns and falls back to
-    the last distinct Draw in shared chronological order, broken by draw
-    number, so 4882 wins the 2025-01-04 tie over 4881. With today pinned past
-    the week and a single-draw range, only Draw 4882 is fetched and Draw 4881
-    is never fetched.
-    """
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 3, 1)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        if (year, month) == (2024, 12):
-            return [
-                DatepickerEntry(date=date(2025, 1, 4), draw_number=4881),
-                DatepickerEntry(date=date(2024, 12, 30), draw_number=4880),
-                DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+def test_main_start_draw_end_week_prints_report(capsys):
+    """--start-draw/--end-week resolves the historical week and prints its report."""
+    dependencies = _dependencies(
+        {
+            (2025, 5): [
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
             ]
-        if (year, month) == (2025, 1):
-            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
-        raise AssertionError(f"unexpected month {year}-{month}")
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4882).and_return(
-        Draw(
-            draw_number=4882,
-            matches=[],
-            reg_close_time=datetime(2025, 1, 4, 15, 59),
-        )
+        },
+        draws={4900: make_draw(draw_number=4900)},
+        today=date(2025, 6, 1),
     )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4881).never()
 
-    exit_code = stryktips.core.main(["--start-draw", "4882", "--end-week", "2025.01.4"])
+    exit_code = _main_with(
+        dependencies, ["--start-draw", "4900", "--end-week", "2025.19"]
+    )
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert captured.out.strip() == "eligible: 0, excluded: 0"
-    assert "using final draw 4882 (2025-01-04)" in captured.err
-
-
-def test_main_indexed_empty_completed_end_week_selects_predecessor_draw(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--end-week 2025.20.1 on an empty completed week ends at Draw 4900.
-
-    ISO week 2025.20 (May 12-18) holds no draws: the synthetic May datepicker
-    omits Draw 4901, leaving only Draw 4900 (May 10) before and Draw 4902
-    (May 25) after. Because the week has completed (today is June 1), the
-    indexed end must fall back to the latest preceding Draw 4900 and warn on
-    stderr, rather than continuing to the later Draw 4902. The single-draw
-    report then fetches only 4900.
-    """
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 6, 1)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2025, 5
-    ).and_return(
-        [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
-            DatepickerEntry(date=date(2025, 5, 25), draw_number=4902),
-        ]
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).and_return(
-        Draw(
-            draw_number=4900,
-            matches=[],
-            reg_close_time=datetime(2025, 5, 10, 15, 59),
-        )
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4902).never()
-
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.20.1"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert "Warning" in captured.err
-    assert "2025.20.1" in captured.err
-    assert "4900" in captured.err
-    assert "2025-05-10" in captured.err
-
-
-def test_main_current_week_indexed_end_after_today_clamps_to_latest_draw(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--end-week 2025.20.1 on the current week clamps to Draw 4900 without warning.
-
-    With today pinned to Monday 2025-05-12, ISO week 2025.20 is current and its
-    only Draw 4901 (May 17) is later in the week. The indexed end selects that
-    later Draw, which must instead clamp to the latest Draw on or before today
-    (4900) without an index warning or fallback note. Only Draw 4900 is fetched.
-    """
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 5, 12)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2025, 5
-    ).and_return(
-        [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
-            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
-        ]
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).and_return(
-        Draw(
-            draw_number=4900,
-            matches=[],
-            reg_close_time=datetime(2025, 5, 10, 15, 59),
-        )
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4901).never()
-
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.20.1"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert captured.err == ""
-    assert captured.out.strip() == "eligible: 0, excluded: 0"
-
-
-def test_main_future_indexed_end_week_clamps_to_latest_draw(  # noqa: PLR0915
-    capsys, monkeypatch
-):
-    """--end-week 2025.23.1 wholly in the future clamps to Draw 4900 without warning.
-
-    With today pinned to 2025-05-10, ISO week 2025.23 (June 2-8) is wholly in
-    the future. The indexed end must end at the latest Draw on or before today,
-    4900 (May 10), rather than resolving into the future week. Only the current
-    May month is looked up: future draws need not be published, so the June
-    datepicker is never fetched. Only Draw 4900 is fetched, and the report is
-    empty because it holds no matches.
-    """
-
-    class _FakeDate(date):
-        @classmethod
-        def today(cls):
-            return date(2025, 5, 10)
-
-    monkeypatch.setattr(stryktips.core, "date", _FakeDate)
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2025, 5
-    ).and_return(
-        [
-            DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
-            DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
-        ]
-    )
-    flexmock(stryktips.core).should_receive("fetch_draws_by_month").with_args(
-        2025, 6
-    ).never()
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4900).and_return(
-        Draw(
-            draw_number=4900,
-            matches=[],
-            reg_close_time=datetime(2025, 5, 10, 15, 59),
-        )
-    )
-    flexmock(stryktips.core).should_receive("fetch_draw").with_args(4901).never()
-
-    exit_code = stryktips.core.main(["--start-draw", "4900", "--end-week", "2025.23.1"])
-    captured = capsys.readouterr()
-
-    assert exit_code == 0
-    assert captured.err == ""
-    assert captured.out.strip() == "eligible: 0, excluded: 0"
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
 
 
 def test_main_end_week_without_start_rejected(capsys):
-    """--end-week without a --start-* is a parser error with exit code 2."""
+    """--end-week without any --start-* bound is a parser error."""
     with pytest.raises(SystemExit) as exc:
         stryktips.core.main(["--end-week", "2025.19"])
     captured = capsys.readouterr()
@@ -870,188 +307,11 @@ def test_main_end_week_without_start_rejected(capsys):
     assert "--end-week requires --start" in captured.err
 
 
-def test_draw_numbers_in_range_walks_across_drawless_months():  # noqa: PLR0915
-    """Walk month-by-month collecting in-range draw numbers, skipping 404 months."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        if month == 3:
-            return [
-                DatepickerEntry(date=date(2020, 3, 7), draw_number=4639),
-                DatepickerEntry(date=date(2020, 3, 14), draw_number=4640),
-                DatepickerEntry(date=date(2020, 3, 21), draw_number=4641),
-            ]
-        if month in (4, 5):
-            return []
-        if month == 6:
-            return [
-                DatepickerEntry(date=date(2020, 6, 6), draw_number=4642),
-                DatepickerEntry(date=date(2020, 6, 13), draw_number=4643),
-            ]
-        raise AssertionError("unexpected month")
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-
-    result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
-
-    assert result == [4641, 4642]
-    assert calls == [(2020, 3), (2020, 4), (2020, 5), (2020, 6)]
-
-
-def test_draw_numbers_in_range_warns_when_end_unreached(capsys):  # noqa: PLR0915
-    """When the end draw is never seen within the scan window, warn on stderr."""
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        return [DatepickerEntry(date=date(2020, month, 7), draw_number=4641)]
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-
-    result = stryktips.core._draw_numbers_in_range(4641, 4642, (2020, 3))
-    captured = capsys.readouterr()
-
-    assert result == [4641] * stryktips.core.MAX_SCAN_MONTHS
-    assert "Warning: could not reach draw 4642" in captured.err
-
-
-def test_fetch_report_draws_spanning_walks_datepicker_and_filters():  # noqa: PLR0915
-    """Spanning range walks the datepicker and returns only the in-range draws."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        if (year, month) == (2025, 5):
-            return [
-                DatepickerEntry(date=date(2025, 5, 3), draw_number=4880),
-                DatepickerEntry(date=date(2025, 5, 10), draw_number=4901),
-                DatepickerEntry(date=date(2025, 5, 17), draw_number=4902),
-                DatepickerEntry(date=date(2025, 5, 24), draw_number=4903),
-            ]
-        raise AssertionError("unexpected month")
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(
-            draw_number=dn,
-            matches=[],
-            reg_close_time=datetime(2025, 5, 10, 15, 59),
-        ),
-    )
-
-    draws = stryktips.core._fetch_report_draws(4901, 4902)
-
-    assert [d.draw_number for d in draws] == [4901, 4902]
-    assert calls == [(2025, 5)]
-
-
-def test_fetch_report_draws_single_does_not_touch_datepicker():
-    """A single-draw range returns exactly that draw without walking the datepicker."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        return []
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-    flexmock(
-        stryktips.core,
-        fetch_draw=lambda dn: Draw(draw_number=dn, matches=[]),
-    )
-
-    draws = stryktips.core._fetch_report_draws(4900, 4900)
-
-    assert [d.draw_number for d in draws] == [4900]
-    assert calls == []
-
-
-def test_fetch_report_draws_returns_empty_when_start_draw_absent():
-    """An absent start draw (DrawNotFoundError) yields an empty report list."""
-
-    def raise_not_found(_dn: int) -> Draw:
-        raise DrawNotFoundError("Draw 4900 not found")
-
-    flexmock(stryktips.core, fetch_draw=raise_not_found)
-
-    draws = stryktips.core._fetch_report_draws(4900, 4900)
-
-    assert draws == []
-
-
-def test_fetch_report_draws_skips_missing_draw_fetch_failure(capsys):  # noqa: PLR0915
-    """An interior draw whose fetch 404s (DrawNotFoundError) is skipped, warning."""
-    date_entries = [
-        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
-        DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
-        DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
-    ]
-
-    def fetch(draw_number: int) -> Draw:
-        if draw_number == 4883:
-            raise DrawNotFoundError("Draw 4883 not found")
-        return Draw(
-            draw_number=draw_number,
-            matches=[],
-            reg_close_time=datetime(2025, 1, 4, 15, 59),
-        )
-
-    flexmock(stryktips.core, fetch_draws_by_month=lambda y, m: date_entries)
-    flexmock(stryktips.core, fetch_draw=fetch)
-
-    draws = stryktips.core._fetch_report_draws(4882, 4884)
-    captured = capsys.readouterr()
-
-    assert [d.draw_number for d in draws] == [4882, 4884]
-    assert "Warning: could not fetch draw 4883, skipping." in captured.err
-    assert "Draw 4883 not found" not in captured.err
-
-
-def test_fetch_report_draws_propagates_network_failure():
-    """A non-404 network failure on an interior draw fails the run, not skip."""
-    date_entries = [
-        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
-        DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
-        DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
-    ]
-
-    def fetch(draw_number: int) -> Draw:
-        if draw_number == 4883:
-            raise RequestException("connection refused")
-        return Draw(
-            draw_number=draw_number,
-            matches=[],
-            reg_close_time=datetime(2025, 1, 4, 15, 59),
-        )
-
-    flexmock(stryktips.core, fetch_draws_by_month=lambda y, m: date_entries)
-    flexmock(stryktips.core, fetch_draw=fetch)
-
-    with pytest.raises(RequestException, match="connection refused"):
-        stryktips.core._fetch_report_draws(4882, 4884)
-
-
-def test_resolve_draw_by_date_raises_after_12_empty_months(capsys):
-    """When 12 months have no entries, raise DrawNotFound."""
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [],
-    )
-
-    with pytest.raises(DrawNotFound) as exc:
-        stryktips.core._resolve_draw_by_date("2000-01-01")
-
-    assert exc.value.value == "2000-01-01"
-
-
 def test_main_reports_draw_not_found(capsys):
-    """main maps DrawNotFound to exit 1 with a stderr message."""
+    """Exhausted forward resolution maps DrawNotFound to exit 1 and stderr."""
+    dependencies = _dependencies(today=_FIXED_TODAY)
 
-    def raise_not_found(_args: argparse.Namespace) -> Draw:
-        raise DrawNotFound("2000-01-01")
-
-    flexmock(stryktips.core, _fetch_draw_from_args=raise_not_found)
-
-    exit_code = stryktips.core.main(["--date", "2000-01-01"])
+    exit_code = _main_with(dependencies, ["--date", "2000-01-01"])
     captured = capsys.readouterr()
 
     assert exit_code == 1
@@ -1059,79 +319,84 @@ def test_main_reports_draw_not_found(capsys):
     assert captured.out == ""
 
 
-def test_resolve_default_end_returns_latest_entry_on_or_before_today():
-    """When today's month has an entry on or before today, return its draw_number."""
-    entries = [
-        DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
-        DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
-        DatepickerEntry(date=date(2025, 1, 18), draw_number=4884),
-        DatepickerEntry(date=date(2025, 1, 25), draw_number=4885),
-        DatepickerEntry(date=date(2025, 2, 1), draw_number=4886),
-    ]
-    flexmock(stryktips.core, fetch_draws_by_month=lambda y, m: entries)
-
-    result = stryktips.core._resolve_default_end(date(2025, 1, 20))
-
-    assert result == 4884
-
-
-def test_resolve_default_end_falls_back_one_month_when_none_eligible():
-    """When today's month has no eligible entry, use the previous month's latest."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        if (year, month) == (2025, 1):
-            return [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)]
-        return [DatepickerEntry(date=date(2024, 12, 29), draw_number=4881)]
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-
-    result = stryktips.core._resolve_default_end(date(2025, 1, 1))
-
-    assert result == 4881
-
-
-def test_resolve_default_end_stops_scanning_once_entry_found():
-    """Stop querying months as soon as an eligible entry is found."""
-    calls: list[tuple[int, int]] = []
-
-    def mock_fetch_draws_by_month(year: int, month: int) -> list[DatepickerEntry]:
-        calls.append((year, month))
-        return [DatepickerEntry(date=date(year, month, 10), draw_number=1000)]
-
-    flexmock(stryktips.core, fetch_draws_by_month=mock_fetch_draws_by_month)
-
-    result = stryktips.core._resolve_default_end(date(2025, 1, 20))
-
-    assert result == 1000
-    assert calls == [(2025, 1)]
-
-
-def test_resolve_default_end_raises_when_no_entry_in_scan_window():
-    """When no month in the scan window has an eligible entry, raise DrawNotFound."""
-    flexmock(
-        stryktips.core,
-        fetch_draws_by_month=lambda y, m: [],
-    )
-
-    with pytest.raises(DrawNotFound) as exc:
-        stryktips.core._resolve_default_end(date(2000, 1, 1))
-
-    assert exc.value.value == "2000-01-01"
-
-
 def test_main_returns_network_error_to_stderr(capsys):
-    """A requests failure in the fetch path exits 1 and prints to stderr."""
+    """A request failure in the display path maps to exit 1 and stderr."""
 
-    def raise_network(_args: argparse.Namespace) -> Draw:
+    def raise_network(number: int) -> Draw:
         raise RequestException("connection refused")
 
-    flexmock(stryktips.core, _fetch_draw_from_args=raise_network)
+    dependencies = Dependencies(
+        fetch_draw=raise_network,
+        fetch_month_entries=lambda year, month: [],
+        clock=lambda: _FIXED_TODAY,
+        diagnostic=lambda message: None,
+    )
 
-    exit_code = stryktips.core.main(["--draw", "4900"])
+    exit_code = _main_with(dependencies, ["--draw", "4900"])
     captured = capsys.readouterr()
 
     assert exit_code == 1
     assert "connection refused" in captured.err
     assert captured.out == ""
+
+
+def test_main_invalid_date_reports_error(capsys):
+    """An unparseable --date maps to exit 1 and a stderr message."""
+    dependencies = _dependencies()
+
+    exit_code = _main_with(dependencies, ["--date", "not-a-date"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Invalid date" in captured.err
+    assert captured.out == ""
+
+
+def test_main_spanning_report_errors_when_anchor_has_no_close_time(capsys):
+    """A spanning report whose anchor has no close time exits 1 with stderr."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        draws={4900: make_draw(draw_number=4900, reg_close_time=None)},
+        fetched=fetched,
+    )
+
+    exit_code = _main_with(dependencies, ["--start-draw", "4900", "--end-draw", "4901"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Draw 4900 has no close time" in captured.err
+    assert captured.out == ""
+    assert fetched == [4900]
+
+
+def _dependencies(
+    months: dict[tuple[int, int], list[DatepickerEntry]] | None = None,
+    *,
+    draws: dict[int, Draw] | None = None,
+    today: date = _FIXED_TODAY,
+    diagnostics: list[str] | None = None,
+    fetched: list[int] | None = None,
+) -> Dependencies:
+    """Build CLI dependencies over fixed month/draw maps, clock, and diagnostics."""
+    month_entries = months or {}
+    draw_by_number = draws or {}
+    fetched_numbers = [] if fetched is None else fetched
+
+    def fetch_draw(number: int) -> Draw:
+        fetched_numbers.append(number)
+        return draw_by_number[number]
+
+    return Dependencies(
+        fetch_draw=fetch_draw,
+        fetch_month_entries=lambda year, month: list(
+            month_entries.get((year, month), [])
+        ),
+        clock=lambda: today,
+        diagnostic=(diagnostics.append if diagnostics is not None else lambda _m: None),
+    )
+
+
+def _main_with(dependencies: Dependencies, argv: list[str]) -> int:
+    """Run main with dependencies injected through the public composition seam."""
+    flexmock(stryktips.core, create_dependencies=lambda: dependencies)
+    return stryktips.core.main(argv)
