@@ -20,7 +20,7 @@ from stryktips.resolution import (
     resolve_end,
 )
 from stryktips.resolver import DrawNotFound
-from tests.builders import make_draw
+from tests.builders import make_dependencies
 
 
 def test_draw_by_week_unindexed_derives_fields_and_keeps_spelling():
@@ -66,7 +66,7 @@ def test_resolve_draw_by_number_does_not_consult_datepicker():
         raise AssertionError("draw number must not consult the datepicker")
 
     dependencies = Dependencies(
-        fetch_draw=lambda number: make_draw(draw_number=number),
+        fetch_draw=_no_fetch_draw(),
         fetch_month_entries=unexpected_lookup,
         clock=lambda: date(2025, 1, 1),
         diagnostic=lambda message: None,
@@ -110,7 +110,7 @@ def test_resolve_draw_by_date_returns_exact_match():
     """An entry dated exactly on the target resolves without a fallback note."""
     entries = [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]
     diagnostics: list[str] = []
-    dependencies = _dependencies({(2025, 5): entries}, diagnostics=diagnostics)
+    dependencies = make_dependencies({(2025, 5): entries}, diagnostics=diagnostics)
 
     result = resolve_draw(DrawByDate("2025-05-10"), dependencies)
 
@@ -125,7 +125,7 @@ def test_resolve_draw_by_date_forward_scans_empty_months():
     months = {
         (2020, 6): [DatepickerEntry(date=date(2020, 6, 20), draw_number=4642)],
     }
-    dependencies = _dependencies(months, calls=calls, diagnostics=diagnostics)
+    dependencies = make_dependencies(months, month_calls=calls, diagnostics=diagnostics)
 
     result = resolve_draw(DrawByDate("2020-04-01"), dependencies)
 
@@ -143,7 +143,7 @@ def test_resolve_draw_by_week_selects_explicit_index():
         DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
     ]
     diagnostics: list[str] = []
-    dependencies = _dependencies({(2024, 12): entries}, diagnostics=diagnostics)
+    dependencies = make_dependencies({(2024, 12): entries}, diagnostics=diagnostics)
 
     result = resolve_draw(DrawByWeek("2024.52.2"), dependencies)
 
@@ -158,7 +158,7 @@ def test_resolve_draw_by_week_omitted_index_selects_first_distinct():
         DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
         DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
     ]
-    dependencies = _dependencies({(2024, 12): entries})
+    dependencies = make_dependencies({(2024, 12): entries})
 
     result = resolve_draw(DrawByWeek("2024.52"), dependencies)
 
@@ -174,7 +174,7 @@ def test_resolve_draw_by_week_gathers_both_months_before_selecting():
             DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
         ],
     }
-    dependencies = _dependencies(months)
+    dependencies = make_dependencies(months)
 
     result = resolve_draw(DrawByWeek("2025.01"), dependencies)
 
@@ -187,7 +187,7 @@ def test_resolve_draw_by_week_excessive_index_reports_options():
         DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
         DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
     ]
-    dependencies = _dependencies({(2024, 12): entries})
+    dependencies = make_dependencies({(2024, 12): entries})
 
     with pytest.raises(ValueError) as exc:
         resolve_draw(DrawByWeek("2024.52.3"), dependencies)
@@ -200,7 +200,7 @@ def test_resolve_draw_by_week_excessive_index_reports_options():
 
 def test_resolve_draw_by_date_raises_after_scan_window():
     """A forward selector with no entry within the scan window raises not-found."""
-    dependencies = _dependencies()
+    dependencies = make_dependencies()
 
     with pytest.raises(DrawNotFound) as exc:
         resolve_draw(DrawByDate("2000-01-01"), dependencies)
@@ -210,7 +210,7 @@ def test_resolve_draw_by_date_raises_after_scan_window():
 
 def test_resolve_draw_by_week_raises_after_scan_window():
     """A forward week selector with no draw within the window raises not-found."""
-    dependencies = _dependencies()
+    dependencies = make_dependencies()
 
     with pytest.raises(DrawNotFound) as exc:
         resolve_draw(DrawByWeek("2000.01"), dependencies)
@@ -221,7 +221,7 @@ def test_resolve_draw_by_week_raises_after_scan_window():
 def test_resolve_draw_by_week_scan_window_is_twelve_months():
     """The forward week scan consults exactly the twelve-month scan window."""
     calls: list[tuple[int, int]] = []
-    dependencies = _dependencies(calls=calls)
+    dependencies = make_dependencies(month_calls=calls)
 
     with pytest.raises(DrawNotFound):
         resolve_draw(DrawByWeek("2000.01"), dependencies)
@@ -236,7 +236,7 @@ def test_resolve_end_explicit_draw_returns_it_verbatim():
         raise AssertionError("an explicit end draw must not consult the datepicker")
 
     dependencies = Dependencies(
-        fetch_draw=lambda number: make_draw(draw_number=number),
+        fetch_draw=_no_fetch_draw(),
         fetch_month_entries=unexpected_lookup,
         clock=lambda: date(2025, 1, 1),
         diagnostic=lambda message: None,
@@ -254,7 +254,7 @@ def test_resolve_end_date_returns_latest_draw_on_or_before_bound():
         DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
         DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
     ]
-    dependencies = _dependencies({(2025, 5): entries}, today=date(2025, 6, 1))
+    dependencies = make_dependencies({(2025, 5): entries}, today=date(2025, 6, 1))
 
     result = resolve_end(DrawByDate("2025-05-11"), dependencies)
 
@@ -264,7 +264,7 @@ def test_resolve_end_date_returns_latest_draw_on_or_before_bound():
 def test_resolve_end_date_clamps_future_bound_to_today():
     """A future end date is clamped to today before resolving."""
     entries = [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]
-    dependencies = _dependencies({(2025, 5): entries}, today=date(2025, 5, 10))
+    dependencies = make_dependencies({(2025, 5): entries}, today=date(2025, 5, 10))
 
     result = resolve_end(DrawByDate("2025-06-01"), dependencies)
 
@@ -274,7 +274,7 @@ def test_resolve_end_date_clamps_future_bound_to_today():
 def test_resolve_end_defaults_to_latest_draw_on_or_before_today():
     """Without an end selector the latest draw on or before today is used."""
     entries = [DatepickerEntry(date=date(2025, 1, 18), draw_number=4884)]
-    dependencies = _dependencies({(2025, 1): entries}, today=date(2025, 1, 20))
+    dependencies = make_dependencies({(2025, 1): entries}, today=date(2025, 1, 20))
 
     result = resolve_end(None, dependencies)
 
@@ -288,7 +288,7 @@ def test_resolve_end_default_scans_back_across_year_boundary():
         (2025, 1): [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)],
         (2024, 12): [DatepickerEntry(date=date(2024, 12, 29), draw_number=4881)],
     }
-    dependencies = _dependencies(months, today=date(2025, 1, 1), calls=calls)
+    dependencies = make_dependencies(months, today=date(2025, 1, 1), month_calls=calls)
 
     result = resolve_end(None, dependencies)
 
@@ -305,7 +305,7 @@ def test_resolve_end_default_stops_scanning_once_entry_found():
         return [DatepickerEntry(date=date(year, month, 10), draw_number=1000)]
 
     dependencies = Dependencies(
-        fetch_draw=lambda number: make_draw(draw_number=number),
+        fetch_draw=_no_fetch_draw(),
         fetch_month_entries=fetch_month_entries,
         clock=lambda: date(2025, 1, 20),
         diagnostic=lambda message: None,
@@ -319,7 +319,7 @@ def test_resolve_end_default_stops_scanning_once_entry_found():
 
 def test_resolve_end_default_raises_after_scan_window():
     """The default end raises not-found once the backward window is exhausted."""
-    dependencies = _dependencies(today=date(2000, 1, 1))
+    dependencies = make_dependencies(today=date(2000, 1, 1))
 
     with pytest.raises(DrawNotFound) as exc:
         resolve_end(None, dependencies)
@@ -333,7 +333,7 @@ def test_resolve_end_unindexed_week_clamps_future_sunday_to_today():
         DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
         DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
     ]
-    dependencies = _dependencies({(2025, 5): entries}, today=date(2025, 5, 14))
+    dependencies = make_dependencies({(2025, 5): entries}, today=date(2025, 5, 14))
 
     result = resolve_end(DrawByWeek("2025.20"), dependencies)
 
@@ -346,7 +346,7 @@ def test_resolve_end_unindexed_week_uses_latest_draw_on_or_before_sunday():
         DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
         DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
     ]
-    dependencies = _dependencies({(2024, 12): entries}, today=date(2025, 1, 20))
+    dependencies = make_dependencies({(2024, 12): entries}, today=date(2025, 1, 20))
 
     result = resolve_end(DrawByWeek("2024.52"), dependencies)
 
@@ -359,7 +359,7 @@ def test_resolve_end_unindexed_week_scans_back_from_sunday_month():
     months = {
         (2024, 12): [DatepickerEntry(date=date(2024, 12, 29), draw_number=4881)],
     }
-    dependencies = _dependencies(months, today=date(2025, 3, 1), calls=calls)
+    dependencies = make_dependencies(months, today=date(2025, 3, 1), month_calls=calls)
 
     result = resolve_end(DrawByWeek("2025.01"), dependencies)
 
@@ -373,7 +373,7 @@ def test_resolve_end_explicit_index_selects_first_draw_in_current_week():
         DatepickerEntry(date=date(2024, 12, 26), draw_number=4880),
         DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
     ]
-    dependencies = _dependencies({(2024, 12): entries}, today=date(2024, 12, 29))
+    dependencies = make_dependencies({(2024, 12): entries}, today=date(2024, 12, 29))
 
     result = resolve_end(DrawByWeek("2024.52.1"), dependencies)
 
@@ -387,7 +387,7 @@ def test_resolve_end_current_week_index_after_today_clamps_to_latest_draw():
         DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
     ]
     diagnostics: list[str] = []
-    dependencies = _dependencies(
+    dependencies = make_dependencies(
         {(2025, 5): entries}, today=date(2025, 5, 12), diagnostics=diagnostics
     )
 
@@ -410,7 +410,7 @@ def test_resolve_end_current_indexed_week_spans_months_and_clamps_to_today():
             DatepickerEntry(date=date(2024, 12, 30), draw_number=4880),
         ],
     }
-    dependencies = _dependencies(months, today=date(2025, 1, 2), calls=calls)
+    dependencies = make_dependencies(months, today=date(2025, 1, 2), month_calls=calls)
 
     result = resolve_end(DrawByWeek("2025.01.2"), dependencies)
 
@@ -421,7 +421,7 @@ def test_resolve_end_current_indexed_week_spans_months_and_clamps_to_today():
 def test_resolve_end_future_indexed_week_clamps_to_latest_draw():
     """A wholly future indexed week clamps to the latest draw on or before today."""
     entries = [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]
-    dependencies = _dependencies({(2025, 5): entries}, today=date(2025, 5, 10))
+    dependencies = make_dependencies({(2025, 5): entries}, today=date(2025, 5, 10))
 
     result = resolve_end(DrawByWeek("2025.23.1"), dependencies)
 
@@ -435,7 +435,7 @@ def test_resolve_end_completed_excessive_index_warns_and_returns_final_draw():
         DatepickerEntry(date=date(2024, 12, 29), draw_number=4881),
     ]
     diagnostics: list[str] = []
-    dependencies = _dependencies(
+    dependencies = make_dependencies(
         {(2024, 12): entries}, today=date(2025, 1, 20), diagnostics=diagnostics
     )
 
@@ -459,7 +459,7 @@ def test_resolve_end_excessive_index_tie_breaks_same_date_draws_by_number():
         (2025, 1): [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)],
     }
     diagnostics: list[str] = []
-    dependencies = _dependencies(
+    dependencies = make_dependencies(
         months, today=date(2025, 3, 1), diagnostics=diagnostics
     )
 
@@ -481,7 +481,7 @@ def test_resolve_end_empty_completed_indexed_week_warns_and_returns_predecessor(
         ]
     }
     diagnostics: list[str] = []
-    dependencies = _dependencies(
+    dependencies = make_dependencies(
         months, today=date(2025, 6, 1), diagnostics=diagnostics
     )
 
@@ -501,7 +501,7 @@ def test_resolve_end_indexed_week_gathers_both_months_before_selecting():
         (2024, 12): [DatepickerEntry(date=date(2025, 1, 4), draw_number=4882)],
         (2025, 1): [DatepickerEntry(date=date(2024, 12, 30), draw_number=4881)],
     }
-    dependencies = _dependencies(months, today=date(2025, 3, 1), calls=calls)
+    dependencies = make_dependencies(months, today=date(2025, 3, 1), month_calls=calls)
 
     result = resolve_end(DrawByWeek("2025.01.1"), dependencies)
 
@@ -511,35 +511,12 @@ def test_resolve_end_indexed_week_gathers_both_months_before_selecting():
 
 def test_resolve_end_without_preceding_draw_raises_after_scan_window():
     """An end bound with no predecessor raises within the backward scan window."""
-    dependencies = _dependencies(today=date(2025, 6, 1))
+    dependencies = make_dependencies(today=date(2025, 6, 1))
 
     with pytest.raises(DrawNotFound) as exc:
         resolve_end(DrawByDate("2025-05-15"), dependencies)
 
     assert exc.value.value == "2025-05-15"
-
-
-def _dependencies(
-    months: dict[tuple[int, int], list[DatepickerEntry]] | None = None,
-    *,
-    today: date = date(2025, 1, 1),
-    diagnostics: list[str] | None = None,
-    calls: list[tuple[int, int]] | None = None,
-) -> Dependencies:
-    """Build deterministic dependencies over a month-entry map and fixed clock."""
-    month_entries = months or {}
-    calls_log = [] if calls is None else calls
-
-    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
-        calls_log.append((year, month))
-        return list(month_entries.get((year, month), []))
-
-    return Dependencies(
-        fetch_draw=lambda number: make_draw(draw_number=number),
-        fetch_month_entries=fetch_month_entries,
-        clock=lambda: today,
-        diagnostic=(diagnostics.append if diagnostics is not None else lambda _m: None),
-    )
 
 
 def _no_fetch_draw() -> Callable[[int], Draw]:
