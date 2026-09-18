@@ -1,10 +1,12 @@
-"""Contract tests for the shared Match and Draw test builders."""
+"""Contract tests for the shared Match, Draw, and Dependencies test builders."""
 
 from datetime import datetime
 from decimal import Decimal
 
+import pytest
+
 from stryktips.models import Odds, OutcomeProbability
-from tests.builders import make_draw, make_match
+from tests.builders import make_dependencies, make_draw, make_match
 
 
 def test_make_match_defaults_are_fresh_per_call():
@@ -157,3 +159,26 @@ def test_make_draw_supports_explicit_none_close_time():
 
     # Assert
     assert draw.reg_close_time is None
+
+
+def test_make_dependencies_serves_a_registered_draw():
+    """A Draw registered by number is served unchanged."""
+    # Arrange
+    registered = make_draw(draw_number=4900, draw_comment="registered")
+    dependencies = make_dependencies(draws={4900: registered})
+
+    # Act
+    served = dependencies.fetch_draw(4900)
+
+    # Assert
+    assert served is registered
+
+
+def test_make_dependencies_rejects_an_unregistered_draw():
+    """An unregistered Draw number raises rather than being synthesised."""
+    # Arrange
+    dependencies = make_dependencies(draws={4900: make_draw(draw_number=4900)})
+
+    # Act / Assert
+    with pytest.raises(KeyError):
+        dependencies.fetch_draw(4901)

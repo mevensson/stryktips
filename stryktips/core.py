@@ -1,11 +1,15 @@
 import argparse
 import sys
 from datetime import date
-from typing import cast
 
 from requests import RequestException
 
-from stryktips.api import fetch_draw, fetch_draws_by_month
+from stryktips.api import (
+    fetch_draw as api_fetch_draw,
+)
+from stryktips.api import (
+    fetch_draws_by_month as api_fetch_month_entries,
+)
 from stryktips.collection import collect_period
 from stryktips.dependencies import (
     Clock,
@@ -46,14 +50,14 @@ def create_dependencies(
     override exactly the seam it needs.
     """
     return Dependencies(
-        fetch_draw=fetch_draw if fetch_draw is not None else _default_fetch_draw(),
+        fetch_draw=api_fetch_draw if fetch_draw is None else fetch_draw,
         fetch_month_entries=(
-            fetch_month_entries
-            if fetch_month_entries is not None
-            else _default_fetch_month_entries()
+            api_fetch_month_entries
+            if fetch_month_entries is None
+            else fetch_month_entries
         ),
-        clock=clock if clock is not None else _default_clock(),
-        diagnostic=diagnostic if diagnostic is not None else _diagnostic_to_stderr,
+        clock=date.today if clock is None else clock,
+        diagnostic=_diagnostic_to_stderr if diagnostic is None else diagnostic,
     )
 
 
@@ -75,13 +79,21 @@ def main(argv: list[str] | None = None) -> int:
         return _report_error(e)
 
 
-def create_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
+def create_parser() -> argparse.ArgumentParser:
     """Create and return the argument parser for the stryktips CLI."""
     parser = argparse.ArgumentParser(
         prog="stryktips.py",
         description="Stryktips command line interface.",
     )
-    group = parser.add_mutually_exclusive_group(required=True)
+    display_or_start = parser.add_mutually_exclusive_group(required=True)
+    _add_display_arguments(display_or_start)
+    _add_start_arguments(display_or_start)
+    _add_end_arguments(parser)
+    return parser
+
+
+def _add_display_arguments(group: argparse._MutuallyExclusiveGroup) -> None:
+    """Add the single-draw ``--draw``/``--date``/``--week`` options."""
     group.add_argument(
         "--draw",
         type=int,
@@ -97,6 +109,10 @@ def create_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
         type=_parse_week,
         help="ISO week (YYYY.WW[.N]) of the draw",
     )
+
+
+def _add_start_arguments(group: argparse._MutuallyExclusiveGroup) -> None:
+    """Add the report-start ``--start-*`` options to the shared exclusive group."""
     group.add_argument(
         "--start-draw",
         type=int,
@@ -112,6 +128,10 @@ def create_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
         type=_parse_week,
         help="ISO week (YYYY.WW[.N]) of the report start draw",
     )
+
+
+def _add_end_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the separately accepted report-end ``--end-*`` options."""
     parser.add_argument(
         "--end-draw",
         type=int,
@@ -127,27 +147,14 @@ def create_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
         type=_parse_week,
         help="ISO week (YYYY.WW[.N]) of the report end draw",
     )
-    return parser
 
 
-def _default_fetch_draw() -> FetchDraw:
-    """Return the module's concrete draw fetch, resolved at call time."""
-    return fetch_draw
-
-
-def _default_fetch_month_entries() -> FetchMonthEntries:
-    """Return the module's concrete month lookup, resolved at call time."""
-    return fetch_draws_by_month
-
-
-def _default_clock() -> Clock:
-    """Return the module's date source, resolved at call time."""
-    return date.today
-
-
-def _diagnostic_to_stderr(message: str) -> None:
-    """Write a diagnostic message to stderr."""
-    print(message, file=sys.stderr)  # noqa: T201
+def _parse_week(value: str) -> str:
+    try:
+        week_monday(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from None
+    return value
 
 
 def _end_bound_without_start(argv: list[str] | None) -> str | None:
@@ -175,27 +182,6 @@ def _run(args: argparse.Namespace, dependencies: Dependencies) -> int:
         return 0
     draw = _fetch_draw_from_args(args, dependencies)
     return _display(draw)
-
-
-def _report_draw_not_found(exc: DrawNotFound) -> int:
-    print(  # noqa: T201
-        f"No draw found within {MAX_SCAN_MONTHS} months of {exc.value}",
-        file=sys.stderr,
-    )
-    return 1
-
-
-def _report_error(exc: Exception) -> int:
-    print(exc, file=sys.stderr)  # noqa: T201
-    return 1
-
-
-def _parse_week(value: str) -> str:
-    try:
-        week_monday(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(str(exc)) from None
-    return value
 
 
 def _display_report_if_start(
@@ -239,7 +225,7 @@ def _start_selector(args: argparse.Namespace) -> DrawSelector:
         return DrawByNumber(args.start_draw)
     if args.start_date is not None:
         return DrawByDate(args.start_date)
-    return DrawByWeek(cast(str, args.start_week))
+    return DrawByWeek(args.start_week)
 
 
 def _end_selector(args: argparse.Namespace) -> DrawSelector | None:
@@ -267,7 +253,7 @@ def _display_selector(args: argparse.Namespace) -> DrawSelector:
         return DrawByNumber(args.draw)
     if args.date is not None:
         return DrawByDate(args.date)
-    return DrawByWeek(cast(str, args.week))
+    return DrawByWeek(args.week)
 
 
 def _display(draw: Draw) -> int:
@@ -276,3 +262,21 @@ def _display(draw: Draw) -> int:
     joined = "\n".join([header, *lines])
     print(joined)  # noqa: T201
     return 0
+
+
+def _diagnostic_to_stderr(message: str) -> None:
+    """Write a diagnostic message to stderr."""
+    print(message, file=sys.stderr)  # noqa: T201
+
+
+def _report_draw_not_found(exc: DrawNotFound) -> int:
+    print(  # noqa: T201
+        f"No draw found within {MAX_SCAN_MONTHS} months of {exc.value}",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def _report_error(exc: Exception) -> int:
+    print(exc, file=sys.stderr)  # noqa: T201
+    return 1

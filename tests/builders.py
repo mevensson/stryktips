@@ -1,9 +1,17 @@
 """Typed constructor-style builders for domain objects used across tests."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from stryktips.models import Draw, Match, Odds, OutcomeProbability, SvenskaFolket
+from stryktips.dependencies import Dependencies
+from stryktips.models import (
+    DatepickerEntry,
+    Draw,
+    Match,
+    Odds,
+    OutcomeProbability,
+    SvenskaFolket,
+)
 from stryktips.odds import remove_overround
 
 
@@ -14,6 +22,7 @@ class _Unset:
 _UNSET = _Unset()
 
 _DEFAULT_CLOSE_TIME = datetime(2025, 5, 10, 15, 59)
+_DEFAULT_TODAY = date(2025, 1, 1)
 
 
 def make_match(  # noqa: PLR0913 (mirrors every Match field as an override)
@@ -91,6 +100,45 @@ def make_draw(
         matches=resolved_matches,
         draw_comment=draw_comment,
         reg_close_time=reg_close_time,
+    )
+
+
+def make_dependencies(  # noqa: PLR0913 (mirrors each overridable dependency seam)
+    months: dict[tuple[int, int], list[DatepickerEntry]] | None = None,
+    *,
+    draws: dict[int, Draw] | None = None,
+    today: date = _DEFAULT_TODAY,
+    diagnostics: list[str] | None = None,
+    fetched: list[int] | None = None,
+    month_calls: list[tuple[int, int]] | None = None,
+) -> Dependencies:
+    """Construct deterministic Dependencies over fixed maps, clock, and call logs.
+
+    ``fetch_draw`` serves only Draws registered in ``draws``, raising ``KeyError``
+    for any other number, so an unexpected fetch fails loudly. ``fetch_month_entries``
+    serves the registered months and empty lists for unregistered ones. ``fetched``
+    and ``month_calls`` record lookups, and ``diagnostics`` collects the emitted
+    warning and fallback lines.
+    """
+    month_entries = months or {}
+    draw_by_number = draws or {}
+    fetched_numbers = [] if fetched is None else fetched
+    month_lookups = [] if month_calls is None else month_calls
+    diagnostic_lines = [] if diagnostics is None else diagnostics
+
+    def fetch_draw(number: int) -> Draw:
+        fetched_numbers.append(number)
+        return draw_by_number[number]
+
+    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
+        month_lookups.append((year, month))
+        return list(month_entries.get((year, month), []))
+
+    return Dependencies(
+        fetch_draw=fetch_draw,
+        fetch_month_entries=fetch_month_entries,
+        clock=lambda: today,
+        diagnostic=diagnostic_lines.append,
     )
 
 
