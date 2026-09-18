@@ -5,7 +5,8 @@ from typing import cast
 
 from requests import RequestException
 
-from stryktips.api import DrawNotFoundError, fetch_draw, fetch_draws_by_month
+from stryktips.api import fetch_draw, fetch_draws_by_month
+from stryktips.collection import collect_period
 from stryktips.dependencies import (
     Clock,
     Dependencies,
@@ -15,7 +16,7 @@ from stryktips.dependencies import (
 )
 from stryktips.display import format_header, format_matches
 from stryktips.models import Draw
-from stryktips.months import MAX_SCAN_MONTHS, advance_month
+from stryktips.months import MAX_SCAN_MONTHS
 from stryktips.report import format_aggregate_report
 from stryktips.resolution import (
     DrawByDate,
@@ -72,17 +73,6 @@ def main(argv: list[str] | None = None) -> int:
         return _report_draw_not_found(e)
     except (ValueError, RequestException) as e:
         return _report_error(e)
-
-
-def collect_period(start: int, end: int, dependencies: Dependencies) -> list[Draw]:
-    """Collect every Draw in the inclusive ``[start, end]`` Period.
-
-    A single-draw Period fetches only that Draw. A spanning Period walks the
-    datepicker by month, skips Draws that return not-found (reported through
-    ``dependencies.diagnostic``), and warns when the end is not reached within
-    the scan window. A missing anchor yields an empty Period.
-    """
-    return _fetch_report_draws(start, end, dependencies)
 
 
 def create_parser() -> argparse.ArgumentParser:  # noqa: PLR0915
@@ -286,70 +276,3 @@ def _display(draw: Draw) -> int:
     joined = "\n".join([header, *lines])
     print(joined)  # noqa: T201
     return 0
-
-
-def _fetch_report_draws(start: int, end: int, dependencies: Dependencies) -> list[Draw]:
-    """Fetch every draw in [start, end] by walking the datepicker month-by-month."""
-    try:
-        anchor = dependencies.fetch_draw(start)
-    except DrawNotFoundError:
-        return []
-    draws = [anchor]
-    if start != end:
-        draws.extend(_interior_draws(start, end, _draw_month(anchor), dependencies))
-    return draws
-
-
-def _interior_draws(
-    start: int, end: int, anchor_month: tuple[int, int], dependencies: Dependencies
-) -> list[Draw]:
-    """Fetch the non-anchor draws in [start, end], skipping draws that fail."""
-    draws: list[Draw] = []
-    seen = {start}
-    for number in _draw_numbers_in_range(start, end, anchor_month, dependencies):
-        if number not in seen:
-            try:
-                draws.append(dependencies.fetch_draw(number))
-                seen.add(number)
-            except DrawNotFoundError:
-                _warn_skipped_draw(number, dependencies.diagnostic)
-    return draws
-
-
-def _draw_month(draw: Draw) -> tuple[int, int]:
-    """Return the (year, month) of a draw's registration close time."""
-    if draw.reg_close_time is None:
-        raise ValueError(f"Draw {draw.draw_number} has no close time")
-    return draw.reg_close_time.year, draw.reg_close_time.month
-
-
-def _draw_numbers_in_range(
-    start: int, end: int, anchor_month: tuple[int, int], dependencies: Dependencies
-) -> list[int]:
-    """Walk the datepicker month-by-month, collecting draw numbers in [start, end]."""
-    numbers: list[int] = []
-    year, month = anchor_month
-    for _ in range(MAX_SCAN_MONTHS):
-        entries = dependencies.fetch_month_entries(year, month)
-        numbers.extend(
-            entry.draw_number for entry in entries if start <= entry.draw_number <= end
-        )
-        if any(entry.draw_number >= end for entry in entries):
-            break
-        year, month = advance_month(year, month)
-    else:
-        _warn_truncated_range(start, end, dependencies.diagnostic)
-    return numbers
-
-
-def _warn_truncated_range(start: int, end: int, diagnostic: Diagnostic) -> None:
-    """Warn that the end draw was not reached, so the report may be truncated."""
-    diagnostic(
-        f"Warning: could not reach draw {end} within {MAX_SCAN_MONTHS} months"
-        f" of {start}, report may be truncated."
-    )
-
-
-def _warn_skipped_draw(number: int, diagnostic: Diagnostic) -> None:
-    """Print a warning that a draw could not be fetched and was skipped."""
-    diagnostic(f"Warning: could not fetch draw {number}, skipping.")

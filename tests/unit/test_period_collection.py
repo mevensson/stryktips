@@ -1,4 +1,4 @@
-"""Public contract tests for Period collection in stryktips.core.
+"""Public contract tests for Period collection in stryktips.collection.
 
 Collection is exercised through ``collect_period`` with directly constructed
 ``Dependencies``, so failures point at the collector rather than CLI wiring.
@@ -10,7 +10,7 @@ import pytest
 from requests import RequestException
 
 from stryktips.api import DrawNotFoundError
-from stryktips.core import collect_period
+from stryktips.collection import collect_period
 from stryktips.dependencies import Dependencies, FetchDraw, FetchMonthEntries
 from stryktips.models import DatepickerEntry, Draw
 from tests.builders import make_draw
