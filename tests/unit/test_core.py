@@ -369,6 +369,112 @@ def test_main_spanning_report_errors_when_anchor_has_no_close_time(capsys):
     assert fetched == [4900]
 
 
+def test_main_end_without_start_precedes_malformed_end_value(capsys):
+    """--end-draw without a start rejects before the malformed value is parsed."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main(["--end-draw", "abc"])
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 2
+    assert "--end-draw requires --start-draw" in captured.err
+    assert "invalid int value" not in captured.err
+
+
+def test_main_end_without_start_precedes_help(capsys):
+    """--end-draw without a start rejects before --help can print usage."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main(["--end-draw", "4900", "--help"])
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 2
+    assert "--end-draw requires --start-draw" in captured.err
+    assert captured.out == ""
+
+
+@pytest.mark.parametrize(
+    "flag",
+    ["--end-draw=4900", "--end-date=2025-05-10", "--end-week=2025.19"],
+    ids=["draw", "date", "week"],
+)
+def test_main_end_without_start_detected_in_equals_form(flag, capsys):
+    """An --end-* flag in equals form still requires a --start-* bound."""
+    with pytest.raises(SystemExit) as exc:
+        stryktips.core.main([flag])
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 2
+    assert "requires --start-draw" in captured.err
+
+
+def test_main_end_date_takes_precedence_over_end_week_and_end_draw(capsys):
+    """When all three end flags are given, the date bound selects the end."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        {
+            (2025, 5): [
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+                DatepickerEntry(date=date(2025, 5, 25), draw_number=4902),
+            ]
+        },
+        draws={
+            4900: make_draw(draw_number=4900),
+            4901: make_draw(draw_number=4901),
+            4902: make_draw(draw_number=4902),
+        },
+        today=date(2025, 6, 1),
+        fetched=fetched,
+    )
+
+    exit_code = _main_with(
+        dependencies,
+        [
+            "--start-draw",
+            "4900",
+            "--end-date",
+            "2025-05-25",
+            "--end-week",
+            "2025.19",
+            "--end-draw",
+            "4900",
+        ],
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert fetched == [4900, 4901, 4902]
+    assert captured.out.splitlines()[0] == "eligible: 39, excluded: 0"
+
+
+def test_main_end_week_takes_precedence_over_end_draw(capsys):
+    """When --end-week and --end-draw compete, the week bound selects the end."""
+    fetched: list[int] = []
+    dependencies = _dependencies(
+        {
+            (2025, 5): [
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+            ]
+        },
+        draws={
+            4900: make_draw(draw_number=4900),
+            4901: make_draw(draw_number=4901),
+        },
+        today=date(2025, 6, 1),
+        fetched=fetched,
+    )
+
+    exit_code = _main_with(
+        dependencies,
+        ["--start-draw", "4900", "--end-week", "2025.19", "--end-draw", "4901"],
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert fetched == [4900]
+    assert captured.out.splitlines()[0] == "eligible: 13, excluded: 0"
+
+
 def _dependencies(
     months: dict[tuple[int, int], list[DatepickerEntry]] | None = None,
     *,
