@@ -10,7 +10,8 @@ import pytest
 from requests import RequestException
 
 from stryktips.api import DrawNotFoundError
-from stryktips.core import Dependencies, collect_period
+from stryktips.core import collect_period
+from stryktips.dependencies import Dependencies
 from stryktips.models import DatepickerEntry, Draw
 from tests.builders import make_draw
 

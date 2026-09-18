@@ -100,6 +100,20 @@ def entries_in_week(
     return list(distinct.values())
 
 
+def parse_week(value: str) -> tuple[int, int, int]:
+    """Parse an ISO week string ``YYYY.WW[.N]`` into ``(year, week, draw_index)``."""
+    parts = value.split(".")
+    if len(parts) not in (_WEEK_PARTS, _WEEK_PARTS_WITH_INDEX) or not all(
+        p.isdigit() for p in parts
+    ):
+        raise ValueError(f"Invalid week: {value}")
+    year, week, *draw = (int(p) for p in parts)
+    draw_index = draw[0] if draw else 1
+    if draw_index < 1 or not _valid_week_date(year, week):
+        raise ValueError(f"Invalid week: {value}")
+    return year, week, draw_index
+
+
 def _first_on_or_after(
     target: date, entries: list[DatepickerEntry]
 ) -> ResolveResult | None:
@@ -117,20 +131,6 @@ def _first_on_or_after(
 def _not_found() -> ResolveResult:
     """Return the ResolveResult shape used when no entry satisfies the query."""
     return ResolveResult(draw_number=None, exact_match=False, match_date=None)
-
-
-def parse_week(value: str) -> tuple[int, int, int]:
-    """Parse an ISO week string ``YYYY.WW[.N]`` into ``(year, week, draw_index)``."""
-    parts = value.split(".")
-    if len(parts) not in (_WEEK_PARTS, _WEEK_PARTS_WITH_INDEX) or not all(
-        p.isdigit() for p in parts
-    ):
-        raise ValueError(f"Invalid week: {value}")
-    year, week, *draw = (int(p) for p in parts)
-    draw_index = draw[0] if draw else 1
-    if draw_index < 1 or not _valid_week_date(year, week):
-        raise ValueError(f"Invalid week: {value}")
-    return year, week, draw_index
 
 
 def _valid_week_date(year: int, week: int) -> bool:
