@@ -4,6 +4,10 @@ import subprocess
 import sys
 
 import pytest
+import requests
+from flexmock import flexmock
+
+from stryktips import main
 
 
 def test_help_shows_start_draw_end_draw_usage():
@@ -111,3 +115,41 @@ def test_end_without_start_rejected(args):
 
     assert result.returncode == 2
     assert "requires --start-draw" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "end_week",
+    [
+        pytest.param("2025-20", id="bad-separator"),
+        pytest.param("2025.xx", id="nonnumeric"),
+        pytest.param("2025", id="missing-segments"),
+        pytest.param("2025.20.1.2", id="excess-segments"),
+        pytest.param("2025.0", id="week-zero"),
+        pytest.param("2025.54", id="week-fifty-four"),
+        pytest.param("2025.53", id="week-fifty-three-not-in-2025"),
+        pytest.param("2025.20.0", id="zero-index"),
+        pytest.param("2025.20.-1", id="negative-index"),
+    ],
+)
+def test_invalid_end_week_rejected_before_resolution(end_week, capsys):
+    """A malformed or out-of-range --end-week is a parser error, never an HTTP call.
+
+    With a valid numeric --start-draw 4880, every invalid week value is rejected
+    by the argument parser (exit 2) with an --end-week message and no fallback
+    warning. The rejection happens before draw resolution, so the process exits
+    without printing anything and without any request leaving the machine.
+    """
+    # Arrange: any HTTP request would fail the test.
+    flexmock(requests).should_receive("get").never()
+
+    # Act
+    with pytest.raises(SystemExit) as exc:
+        main(["--start-draw", "4880", "--end-week", end_week])
+    captured = capsys.readouterr()
+
+    # Assert
+    assert exc.value.code == 2
+    assert "--end-week" in captured.err
+    assert "Invalid week" in captured.err
+    assert "Warning" not in captured.err
+    assert captured.out == ""
