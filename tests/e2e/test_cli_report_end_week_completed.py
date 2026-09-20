@@ -42,6 +42,21 @@ _CROSS_YEAR_BOTH_DRAWS_REPORT = [
     "70-80: 2 | 73% | 100% | 27%",
 ]
 
+_DRAW_4881_ONLY_REPORT = [
+    "eligible: 13, excluded: 0",
+    "10-20: 6 | 17% | 17% | 0%",
+    "20-30: 16 | 26% | 31% | 5%",
+    "30-40: 6 | 34% | 17% | -17%",
+    "40-50: 4 | 43% | 25% | -18%",
+    "50-60: 3 | 53% | 67% | 14%",
+    "60-70: 4 | 64% | 75% | 11%",
+]
+
+_FIRST_DRAW_AFTER_START_ERROR = (
+    "--start bound resolved to draw 4881, which must not be"
+    " greater than --end bound (draw 4880)"
+)
+
 
 @pytest.mark.parametrize("end_week", ["2024.52", "2024.52.1", "2024.52.2"])
 def test_end_week_resolves_to_draw(mock_response, capsys, end_week):  # noqa: PLR0915
@@ -503,3 +518,68 @@ def test_cross_year_end_week_selects_distinct_draws(  # noqa: PLR0913, PLR0915
         ]
     else:
         assert captured.err == ""
+
+
+@pytest.mark.parametrize(
+    ("end_week", "expected_error"),
+    [
+        pytest.param("2024.52", None, id="omitted-index"),
+        pytest.param("2024.52.2", None, id="second-index"),
+        pytest.param(
+            "2024.52.1", _FIRST_DRAW_AFTER_START_ERROR, id="first-index-before-start"
+        ),
+    ],
+)
+def test_second_draw_start_bounds_completed_end_week(  # noqa: PLR0915
+    mock_response, capsys, end_week, expected_error
+):
+    """Starting at the second Draw of completed week 2024.52 bounds the report.
+
+    ISO week 2024.52 holds two Draws: 4880 (December 26) and 4881 (December 29).
+    With today pinned to January 20, the week is wholly historical. Starting at
+    the second Draw 4881, both ``--end-week 2024.52`` (index omitted) and
+    ``2024.52.2`` resolve the end to 4881, so the report covers only that Draw
+    and fetches no first or outside Draw. The explicit ``2024.52.1`` resolves
+    the end to 4880, before the start, so the tool exits 1 with an ordering error
+    naming both resolved numbers and fetches no report Draw at all.
+    """
+    inject_clock(date(2025, 1, 20))
+
+    start_draw = (
+        flexmock(requests)
+        .should_receive("get")
+        .with_args(DRAW_URL.format(n=4881), timeout=30)
+    )
+    if expected_error is None:
+        start_draw.once().and_return(mock_response(load_fixture("draw_4881.json")))
+    else:
+        start_draw.never()
+
+    # The week's first Draw 4880 and any Draw outside it must not be fetched.
+    for draw_number in (4879, 4880, 4882, 4883):
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=draw_number), timeout=30
+        ).never()
+
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2024, month=12), timeout=30
+    ).at_least().once().and_return(
+        mock_response(load_fixture("datepicker_2024_12.json"))
+    )
+
+    # The today month (January 2025) is never needed for the historical week.
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=1), timeout=30
+    ).never()
+
+    exit_code = main(["--start-draw", "4881", "--end-week", end_week])
+    captured = capsys.readouterr()
+
+    if expected_error is None:
+        assert exit_code == 0
+        assert captured.err == ""
+        assert captured.out.splitlines() == _DRAW_4881_ONLY_REPORT
+    else:
+        assert exit_code == 1
+        assert captured.err.splitlines() == [expected_error]
+        assert captured.out == ""
