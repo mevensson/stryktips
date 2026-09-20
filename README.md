@@ -129,6 +129,10 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   (2024-12-29) once that week is completed. The warning alone does not cause
   failure: the report exits 0. `--week` and `--start-week` still reject an
   excessive index, and zero or negative indices remain invalid.
+- `--end-week` must use `YYYY.WW[.N]` with a valid ISO year/week and a positive
+  index when supplied. Malformed syntax, nonexistent ISO weeks, and zero or
+  negative indices are argument errors: exit code 2, an error on stderr, and no
+  API requests. These inputs never trigger the end-week fallback rules.
 - Sunday still belongs to the current week: an excessive end-week index clamps
   without a warning on Sunday. On the following Monday, the same week is
   completed, so that excessive index uses the completed-week warning fallback.
