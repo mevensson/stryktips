@@ -1,6 +1,8 @@
 import argparse
 import sys
+from collections.abc import Callable
 from datetime import date
+from typing import cast
 
 from requests import RequestException
 
@@ -34,6 +36,14 @@ from stryktips.resolver import DrawNotFound, week_monday
 
 _START_BOUND_FLAGS = ("--start-draw", "--start-date", "--start-week")
 _END_BOUND_FLAGS = ("--end-draw", "--end-date", "--end-week")
+
+_SELECTOR_FACTORIES: dict[str, Callable[[object], DrawSelector]] = {
+    "draw": lambda value: DrawByNumber(cast(int, value)),
+    "date": lambda value: DrawByDate(cast(str, value)),
+    "week": lambda value: DrawByWeek(cast(str, value)),
+}
+_FORWARD_SELECTOR_ORDER = ("draw", "date", "week")
+_END_SELECTOR_ORDER = ("date", "week", "draw")
 
 
 def create_dependencies(
@@ -221,22 +231,12 @@ def _has_end_bound(args: argparse.Namespace) -> bool:
 
 def _start_selector(args: argparse.Namespace) -> DrawSelector:
     """Build the report start selector from parsed arguments."""
-    if args.start_draw is not None:
-        return DrawByNumber(args.start_draw)
-    if args.start_date is not None:
-        return DrawByDate(args.start_date)
-    return DrawByWeek(args.start_week)
+    return _required_selector(args, "start_", _FORWARD_SELECTOR_ORDER)
 
 
 def _end_selector(args: argparse.Namespace) -> DrawSelector | None:
     """Build the report end selector, honouring date, week, then draw order."""
-    if args.end_date is not None:
-        return DrawByDate(args.end_date)
-    if args.end_week is not None:
-        return DrawByWeek(args.end_week)
-    if args.end_draw is not None:
-        return DrawByNumber(args.end_draw)
-    return None
+    return _optional_selector(args, "end_", _END_SELECTOR_ORDER)
 
 
 def _display_report(draws: list[Draw]) -> None:
@@ -249,11 +249,28 @@ def _fetch_draw_from_args(args: argparse.Namespace, dependencies: Dependencies) 
 
 def _display_selector(args: argparse.Namespace) -> DrawSelector:
     """Build the single-Draw selector from parsed arguments."""
-    if args.draw is not None:
-        return DrawByNumber(args.draw)
-    if args.date is not None:
-        return DrawByDate(args.date)
-    return DrawByWeek(args.week)
+    return _required_selector(args, "", _FORWARD_SELECTOR_ORDER)
+
+
+def _required_selector(
+    args: argparse.Namespace, prefix: str, order: tuple[str, ...]
+) -> DrawSelector:
+    """Build a mandatory selector, raising if no bound in ``order`` is present."""
+    selector = _optional_selector(args, prefix, order)
+    if selector is None:
+        raise ValueError(f"No {prefix.rstrip('_')} bound given")
+    return selector
+
+
+def _optional_selector(
+    args: argparse.Namespace, prefix: str, order: tuple[str, ...]
+) -> DrawSelector | None:
+    """Return the selector for the first bound present in ``order``, else None."""
+    for kind in order:
+        value = getattr(args, f"{prefix}{kind}")
+        if value is not None:
+            return _SELECTOR_FACTORIES[kind](value)
+    return None
 
 
 def _display(draw: Draw) -> int:
