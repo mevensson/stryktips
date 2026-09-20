@@ -1,7 +1,6 @@
 # ADR 0003: Orchestration Boundaries
 
-Status: accepted. #103 completes this design on the
-`issue-103-period-collection` branch (not yet merged).
+Status: accepted. Completed by #103, merged in PR #108.
 
 The CLI module (`stryktips.core`) had grown to mix argument parsing, bound
 resolution policy, month traversal, report collection, and rendering, with
