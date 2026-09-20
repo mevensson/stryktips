@@ -36,7 +36,7 @@ def _interior_draws(
     """Fetch the non-anchor draws in [start, end], skipping draws that fail."""
     draws: list[Draw] = []
     seen = {start}
-    for number in _draw_numbers_in_range(start, end, anchor_month, dependencies):
+    for number in _draw_numbers_in_period(start, end, anchor_month, dependencies):
         if number not in seen:
             try:
                 draws.append(dependencies.fetch_draw(number))
@@ -53,10 +53,10 @@ def _draw_month(draw: Draw) -> tuple[int, int]:
     return draw.reg_close_time.year, draw.reg_close_time.month
 
 
-def _draw_numbers_in_range(
+def _draw_numbers_in_period(
     start: int, end: int, anchor_month: tuple[int, int], dependencies: Dependencies
 ) -> list[int]:
-    """Walk the datepicker month-by-month, collecting draw numbers in [start, end]."""
+    """Walk the datepicker month-by-month, collecting draw numbers in the Period."""
     numbers: list[int] = []
     year, month = anchor_month
     for _ in range(MAX_SCAN_MONTHS):
@@ -68,11 +68,11 @@ def _draw_numbers_in_range(
             break
         year, month = advance_month(year, month)
     else:
-        _warn_truncated_range(start, end, dependencies.diagnostic)
+        _warn_truncated_period(start, end, dependencies.diagnostic)
     return numbers
 
 
-def _warn_truncated_range(start: int, end: int, diagnostic: Diagnostic) -> None:
+def _warn_truncated_period(start: int, end: int, diagnostic: Diagnostic) -> None:
     """Warn that the end draw was not reached, so the report may be truncated."""
     diagnostic(
         f"Warning: could not reach draw {end} within {MAX_SCAN_MONTHS} months"
