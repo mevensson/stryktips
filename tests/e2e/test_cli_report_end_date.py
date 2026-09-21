@@ -332,38 +332,139 @@ def test_end_date_without_preceding_draw_errors_after_backward_window(  # noqa: 
     assert captured.out == ""
 
 
+_UNFETCHED_REPORT_DRAWS = (4884, 4899, 4900, 4901, 4902, 4903)
+
+
 @pytest.mark.parametrize(
-    "start_args",
+    (
+        "clock",
+        "start_args",
+        "end_args",
+        "expected_start",
+        "expected_end",
+        "ends_empty_week",
+    ),
     [
-        ["--start-date", "2025-05-10"],
-        ["--start-week", "2025.19"],
+        pytest.param(
+            date(2025, 6, 1),
+            ["--start-date", "2025-05-10"],
+            ["--end-draw", "4884"],
+            4900,
+            4884,
+            False,
+            id="start-date-before-draw-end",
+        ),
+        pytest.param(
+            date(2025, 6, 1),
+            ["--start-week", "2025.19"],
+            ["--end-draw", "4884"],
+            4900,
+            4884,
+            False,
+            id="start-week-before-draw-end",
+        ),
+        pytest.param(
+            date(2025, 6, 1),
+            ["--start-draw", "4901"],
+            ["--end-date", "2025-05-11"],
+            4901,
+            4900,
+            False,
+            id="date-end-falls-back-to-previous-draw",
+        ),
+        pytest.param(
+            date(2025, 6, 1),
+            ["--start-draw", "4902"],
+            ["--end-week", "2025.20"],
+            4902,
+            4900,
+            True,
+            id="unindexed-empty-week-falls-back",
+        ),
+        pytest.param(
+            date(2025, 5, 10),
+            ["--start-draw", "4902"],
+            ["--end-date", "2025-06-01"],
+            4902,
+            4900,
+            False,
+            id="future-date-end-clamps-to-today",
+        ),
+        pytest.param(
+            date(2025, 5, 10),
+            ["--start-draw", "4902"],
+            ["--end-week", "2025.23"],
+            4902,
+            4900,
+            False,
+            id="future-week-end-clamps-to-today",
+        ),
+        pytest.param(
+            date(2025, 6, 1),
+            ["--start-draw", "4902"],
+            ["--end-week", "2025.20.1"],
+            4902,
+            4900,
+            True,
+            id="indexed-empty-week-warns-then-errors",
+        ),
     ],
 )
-def test_resolved_start_after_end_errors(  # noqa: PLR0915
-    mock_response, capsys, start_args
+def test_resolved_start_after_end_errors(  # noqa: PLR0913, PLR0915
+    mock_response,
+    capsys,
+    clock,
+    start_args,
+    end_args,
+    expected_start,
+    expected_end,
+    ends_empty_week,
 ):
-    """A date/week start resolving after the end errors (exit 1), no draws fetched.
+    """A resolved start after a resolved explicit end errors (exit 1), no draws fetched.
 
-    Both --start-date 2025-05-10 and --start-week 2025.19 resolve to draw 4900,
-    which is later than --end-draw 4884. The bounds must resolve via the
-    datepicker only; no draw may be fetched before the runtime error is raised.
+    Both start selectors (--start-date 2025-05-10, --start-week 2025.19) resolve
+    to draw 4900, later than --end-draw 4884. Explicit date and week ends are
+    covered too: a non-draw date falls back to previous draw 4900, and a
+    historical week whose synthetic datepicker drops draw 4901 falls back to
+    4900. A future date or week end clamps to the pinned today, and an indexed
+    end week that has completed but holds no draws warns before the ordering
+    error. Every bound resolves against real datepicker fixtures (no resolver
+    mocks), the clock is pinned through the composition seam, and no report draw
+    is fetched because ordering fails before collection.
     """
+    inject_clock(clock)
+
+    datepicker_data = load_fixture("datepicker_2025_05.json")
+    if ends_empty_week:
+        datepicker_data["resultDates"] = [
+            entry
+            for entry in datepicker_data["resultDates"]
+            if entry["drawNumber"] != 4901
+        ]
     flexmock(requests).should_receive("get").with_args(
         DATEPICKER_URL.format(year=2025, month=5), timeout=30
-    ).and_return(mock_response(load_fixture("datepicker_2025_05.json")))
+    ).and_return(mock_response(datepicker_data))
 
-    for draw_number in (4884, 4900):
+    # The today month (June) is never looked up, even for a future bound.
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=6), timeout=30
+    ).never()
+
+    # No report Draw may be fetched before the ordering error is raised.
+    for draw_number in _UNFETCHED_REPORT_DRAWS:
         flexmock(requests).should_receive("get").with_args(
             DRAW_URL.format(n=draw_number), timeout=30
         ).never()
 
-    exit_code = main([*start_args, "--end-draw", "4884"])
+    exit_code = main([*start_args, *end_args])
     captured = capsys.readouterr()
 
     assert exit_code == 1
-    assert "must not be greater than" in captured.err
-    assert "4900" in captured.err
-    assert "4884" in captured.err
+    assert captured.err.splitlines()[-1] == (
+        f"--start bound resolved to draw {expected_start}, which must not be"
+        f" greater than --end bound (draw {expected_end})"
+    )
+    assert captured.out == ""
 
 
 def test_start_date_forward_scans_across_empty_months(  # noqa: PLR0915
