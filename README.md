@@ -155,6 +155,9 @@ use the same backward on-or-before search as the default end; bounds may be mixe
   draw), the tool exits with code 1 and prints `--start bound resolved to draw
   <start>, which must not be greater than --end bound (draw <end>)` to stderr
   without fetching any draw.
+  This also applies when an explicit date/week end resolves backward to a
+  preceding draw or is capped at today: resolution does not turn an explicit
+  end into the implicit-end empty-report case.
 - `--start-draw`/`--end-draw` may span a range of draws. The tool walks the
   datepicker
   month-by-month from the start draw to collect every draw number within
