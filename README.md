@@ -50,6 +50,9 @@ bounds are mutually exclusive with the other selectors. Start date/week bounds r
 the `--date`/`--week` resolvers, while `--end-date` and unindexed `--end-week`
 use the same backward on-or-before search as the default end; bounds may be mixed with draw-number bounds
 (e.g. `--start-week 2025.01 --end-draw 4884`).
+Date and week bounds can also be mixed: once ISO week 2025.02 is completed,
+`--start-date 2025-01-04 --end-week 2025.02` aggregates draws 4882 and 4883
+into one report.
 
 ## Behavior
 
