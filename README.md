@@ -88,6 +88,8 @@ into one report.
   before the resolved start (the start is after the most recent draw), the tool
   prints an empty report (`eligible: 0, excluded: 0`) and exits 0 without fetching
   the start draw.
+  Successful implicit-end resolution itself emits no stderr message, including
+  when a start after that end produces an empty report.
 - A `--start-date` bound resolves to the draw on or after the given date using
   the same month-by-month forward scan as `--date` (see above). A `--end-date`
   bound resolves to the latest draw dated on or before `min(today, date)`,
