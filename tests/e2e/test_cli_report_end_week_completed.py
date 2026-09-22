@@ -329,12 +329,14 @@ def test_end_week_without_preceding_draw_errors_after_backward_window(  # noqa: 
 def test_mixed_start_date_end_week_aggregates(mock_response, capsys):  # noqa: PLR0915
     """--start-date 2025-01-04 --end-week 2025.02 mixes formats and aggregates.
 
-    The start date resolves to draw 4882 (dated 2025-01-04) and the end week
-    resolves to draw 4883 (dated 2025-01-11, inside ISO week 2025.02). Both
-    resolutions are exact matches, so no fallback note is printed. The report
-    folds draws 4882 + 4883 into a single aggregate and fetches nothing outside
-    the range.
+    With today pinned to January 20, week 2025.02 (Mon 2025-01-06 to Sun
+    2025-01-12) is a historical completed week. The start date resolves to draw
+    4882 (dated 2025-01-04) and the week end resolves to the latest draw no
+    later than Sunday 2025-01-12, draw 4883 (dated 2025-01-11). No fallback note
+    is printed. The report folds draws 4882 + 4883 into a single aggregate and
+    fetches nothing outside the range.
     """
+    inject_clock(date(2025, 1, 20))
     for draw_number in (4882, 4883):
         flexmock(requests).should_receive("get").with_args(
             DRAW_URL.format(n=draw_number), timeout=30
