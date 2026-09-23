@@ -16,6 +16,7 @@ from stryktips.resolution import (
     DrawByDate,
     DrawByNumber,
     DrawByWeek,
+    resolve_default_end,
     resolve_draw,
     resolve_end,
 )
@@ -279,6 +280,41 @@ def test_resolve_end_defaults_to_latest_draw_on_or_before_today():
     result = resolve_end(None, dependencies)
 
     assert result == 4884
+
+
+@pytest.mark.parametrize(
+    ("limit", "first_month", "expected"),
+    [
+        pytest.param(
+            date(2025, 5, 11), (2025, 5), 4900, id="past-limit-searches-from-bound"
+        ),
+        pytest.param(None, (2025, 6), 4901, id="omitted-limit-searches-from-today"),
+        pytest.param(
+            date(2025, 6, 15), (2025, 6), 4901, id="future-limit-clamps-to-today"
+        ),
+    ],
+)
+def test_resolve_default_end_searches_from_earlier_of_today_and_limit(
+    limit, first_month, expected
+):
+    """The implicit end searches from min(today, limit), or today when omitted."""
+    # Arrange
+    calls: list[tuple[int, int]] = []
+    entries = [
+        DatepickerEntry(date=date(2025, 5, 3), draw_number=4899),
+        DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+        DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+    ]
+    dependencies = make_dependencies(
+        {(2025, 5): entries}, today=date(2025, 6, 1), month_calls=calls
+    )
+
+    # Act
+    result = resolve_default_end(dependencies, limit)
+
+    # Assert
+    assert result == expected
+    assert calls[0] == first_month
 
 
 def test_resolve_end_default_scans_back_across_year_boundary():

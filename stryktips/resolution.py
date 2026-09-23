@@ -103,6 +103,21 @@ def resolve_end(selector: DrawSelector | None, dependencies: Dependencies) -> in
     return selector.number
 
 
+def resolve_default_end(dependencies: Dependencies, limit: date | None = None) -> int:
+    """Resolve the implicit report end to a draw number.
+
+    The backward search starts from the earlier of today and ``limit``; an
+    omitted ``limit`` searches from today, so the no-limit behaviour and its
+    bounded scan window are unchanged.
+
+    STUB: this new public unit seam is deliberately not implemented yet. It
+    ignores ``limit`` and delegates to ``_resolve_default_end`` with today, so
+    the past-limit unit test is red for the selected draw rather than for a
+    missing import. Step 3 replaces the delegation with the clamped anchor.
+    """
+    return _resolve_default_end(dependencies.clock(), dependencies)
+
+
 def _resolve_draw_by_date(date_str: str, dependencies: Dependencies) -> ResolveResult:
     target = _parse_date(date_str)
     return _forward_scan(
