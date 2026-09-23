@@ -53,6 +53,7 @@ def test_start_draw_without_end_draw_defaults_to_most_recent_draw(  # noqa: PLR0
     captured = capsys.readouterr()
 
     assert exit_code == 0
+    assert captured.err == ""
     lines = captured.out.strip().split("\n")
     assert "eligible: 47, excluded: 0" in lines[0]
     assert len(lines) == 9
@@ -92,6 +93,7 @@ def test_start_draw_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
     captured = capsys.readouterr()
 
     assert exit_code == 0
+    assert captured.err == ""
     assert captured.out.strip() == "eligible: 0, excluded: 0"
 
 
