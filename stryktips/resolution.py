@@ -94,13 +94,25 @@ def resolve_end(selector: DrawSelector | None, dependencies: Dependencies) -> in
     precedence lives in ``_end_selector``, which builds the single selector.
     """
     if selector is None:
-        return _resolve_default_end(dependencies.clock(), dependencies)
+        return resolve_default_end(dependencies)
     if isinstance(selector, DrawByDate):
-        bound = min(_parse_date(selector.value), dependencies.clock())
-        return _resolve_default_end(bound, dependencies)
+        return resolve_default_end(dependencies, _parse_date(selector.value))
     if isinstance(selector, DrawByWeek):
         return _resolve_end_week(selector, dependencies)
     return selector.number
+
+
+def resolve_default_end(dependencies: Dependencies, limit: date | None = None) -> int:
+    """Resolve the implicit report end to a draw number.
+
+    The backward search starts from the earlier of today and ``limit``; an
+    omitted ``limit`` searches from today, so the no-limit behaviour and its
+    bounded scan window are unchanged.
+    """
+    anchor = dependencies.clock()
+    if limit is not None:
+        anchor = min(anchor, limit)
+    return _latest_entry_on_or_before(anchor, dependencies).draw_number
 
 
 def _resolve_draw_by_date(date_str: str, dependencies: Dependencies) -> ResolveResult:
@@ -211,7 +223,7 @@ def _resolve_end_week(selector: DrawByWeek, dependencies: Dependencies) -> int:
     """Resolve an --end-week, indexed or not, to a draw number."""
     if selector.index is None:
         sunday = week_monday(selector.value) + timedelta(days=6)
-        return _resolve_default_end(min(sunday, dependencies.clock()), dependencies)
+        return resolve_default_end(dependencies, sunday)
     return _resolve_indexed_end_week(selector, dependencies)
 
 
@@ -243,7 +255,7 @@ def _resolve_indexed_end_week(selector: DrawByWeek, dependencies: Dependencies) 
     if context.monday <= context.today <= context.sunday:
         return _resolve_current_week_indexed_end(context, dependencies)
     if context.monday > context.today:
-        return _resolve_default_end(context.today, dependencies)
+        return resolve_default_end(dependencies, context.today)
     return _resolve_completed_indexed_end_week(selector, context, dependencies)
 
 
@@ -331,7 +343,7 @@ def _latest_draw_number_on_or_before(
     )
     if latest is not None:
         return latest.draw_number
-    return _resolve_default_end(today, dependencies)
+    return resolve_default_end(dependencies, today)
 
 
 def _warn_empty_end_week(
@@ -369,11 +381,6 @@ def _final_week_draw(monday: date, entries: list[DatepickerEntry]) -> Datepicker
     index counted, regardless of duplicate or unsorted datepicker responses.
     """
     return entries_in_week(monday, entries)[-1]
-
-
-def _resolve_default_end(today: date, dependencies: Dependencies) -> int:
-    """Return the draw number of the most recent draw on or before today."""
-    return _latest_entry_on_or_before(today, dependencies).draw_number
 
 
 def _latest_entry_on_or_before(

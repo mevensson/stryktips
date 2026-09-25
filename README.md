@@ -90,6 +90,9 @@ into one report.
   the start draw.
   Successful implicit-end resolution itself emits no stderr message, including
   when a start after that end produces an empty report.
+  Date and unindexed-week ends use that same bounded backward search with an
+  optional date limit: search from the earlier of today and the limit, or from
+  today when the limit is omitted.
 - A `--start-date` bound resolves to the draw on or after the given date using
   the same month-by-month forward scan as `--date` (see above). A `--end-date`
   bound resolves to the latest draw dated on or before `min(today, date)`,
