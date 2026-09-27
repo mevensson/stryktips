@@ -116,9 +116,9 @@ def test_start_week_2025_01_selects_report_start(  # noqa: PLR0913, PLR0915
     ``.3`` exits 1 naming the two distinct Draws without fetching any Draw.
     Duplicate and overlapping entries must not advance the index, inflate the
     available count, or duplicate a Draw's report contribution. Today is pinned
-    even though the fixed end bound never consults it.
+    after both Draws so the numeric end remains in range.
     """
-    inject_clock(date(2025, 3, 1))
+    inject_clock(date(2025, 1, 5))
 
     first_draw = load_fixture("draw_4881.json")
     first_draw["draw"]["regCloseTime"] = "2024-12-30T15:59:00+01:00"
@@ -146,7 +146,7 @@ def test_start_week_2025_01_selects_report_start(  # noqa: PLR0913, PLR0915
         DATEPICKER_URL.format(year=2025, month=1), timeout=30
     ).at_least().once().and_return(mock_response(_JANUARY_2025_WEEK_2025_01))
 
-    # Neither an unrelated month nor the today month (March 2025) may be looked up.
+    # Unrelated months may not be looked up.
     for year, month in ((2024, 11), (2025, 2), (2025, 3)):
         flexmock(requests).should_receive("get").with_args(
             DATEPICKER_URL.format(year=year, month=month), timeout=30

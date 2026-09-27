@@ -230,17 +230,11 @@ def test_resolve_draw_by_week_scan_window_is_twelve_months():
     assert calls == [(2000, month) for month in range(1, 13)]
 
 
-def test_resolve_end_explicit_draw_returns_it_verbatim():
-    """An explicit end draw is used as given, without a datepicker lookup."""
-
-    def unexpected_lookup(year: int, month: int) -> list[DatepickerEntry]:
-        raise AssertionError("an explicit end draw must not consult the datepicker")
-
-    dependencies = Dependencies(
-        fetch_draw=_no_fetch_draw(),
-        fetch_month_entries=unexpected_lookup,
-        clock=lambda: date(2025, 1, 1),
-        diagnostic=lambda message: None,
+def test_resolve_end_explicit_draw_within_available_data_returns_it_verbatim():
+    """An explicit end draw within the available data remains unchanged."""
+    dependencies = make_dependencies(
+        {(2025, 1): [DatepickerEntry(date=date(2025, 1, 18), draw_number=4884)]},
+        today=date(2025, 1, 20),
     )
 
     result = resolve_end(DrawByNumber(4884), dependencies)
