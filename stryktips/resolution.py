@@ -99,7 +99,7 @@ def resolve_end(selector: DrawSelector | None, dependencies: Dependencies) -> in
         return resolve_default_end(dependencies, _parse_date(selector.value))
     if isinstance(selector, DrawByWeek):
         return _resolve_end_week(selector, dependencies)
-    return selector.number
+    return min(selector.number, resolve_default_end(dependencies))
 
 
 def resolve_default_end(dependencies: Dependencies, limit: date | None = None) -> int:
