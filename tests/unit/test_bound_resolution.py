@@ -242,6 +242,23 @@ def test_resolve_end_explicit_draw_within_available_data_returns_it_verbatim():
     assert result == 4884
 
 
+def test_resolve_end_future_draw_clamps_to_latest_draw_on_or_before_today():
+    """A future numeric end excludes published entries dated after today."""
+    dependencies = make_dependencies(
+        {
+            (2025, 5): [
+                DatepickerEntry(date=date(2025, 5, 10), draw_number=4900),
+                DatepickerEntry(date=date(2025, 5, 17), draw_number=4901),
+            ]
+        },
+        today=date(2025, 5, 12),
+    )
+
+    result = resolve_end(DrawByNumber(4999), dependencies)
+
+    assert result == 4900
+
+
 def test_resolve_end_date_returns_latest_draw_on_or_before_bound():
     """An end date resolves to the latest draw on or before the bound."""
     entries = [
