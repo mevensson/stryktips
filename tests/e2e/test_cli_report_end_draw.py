@@ -9,6 +9,7 @@ from stryktips import main
 from tests.e2e.report_support import (
     DATEPICKER_URL,
     DRAW_URL,
+    DRAWS_4881_TO_4884_REPORT,
     inject_clock,
     load_fixture,
 )
@@ -45,14 +46,4 @@ def test_future_end_draw_clamps_to_latest_available_draw(  # noqa: PLR0915
 
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out.splitlines() == [
-        "eligible: 47, excluded: 0",
-        "0-10: 1 | 8% | 100% | 92%",
-        "10-20: 24 | 16% | 8% | -8%",
-        "20-30: 57 | 26% | 30% | 4%",
-        "30-40: 19 | 35% | 37% | 2%",
-        "40-50: 14 | 44% | 50% | 6%",
-        "50-60: 14 | 55% | 36% | -19%",
-        "60-70: 9 | 65% | 67% | 2%",
-        "70-80: 3 | 74% | 67% | -7%",
-    ]
+    assert captured.out.splitlines() == DRAWS_4881_TO_4884_REPORT

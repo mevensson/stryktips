@@ -17,6 +17,7 @@ from tests.e2e.report_support import (
     BACKWARD_MONTHS_FROM_MAY_2025,
     DATEPICKER_URL,
     DRAW_URL,
+    DRAWS_4881_TO_4884_REPORT,
     inject_clock,
     load_fixture,
 )
@@ -57,16 +58,7 @@ def test_start_draw_without_end_draw_defaults_to_most_recent_draw(  # noqa: PLR0
     lines = captured.out.strip().split("\n")
     assert "eligible: 47, excluded: 0" in lines[0]
     assert len(lines) == 9
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 100% | 92%",
-        "10-20: 24 | 16% | 8% | -8%",
-        "20-30: 57 | 26% | 30% | 4%",
-        "30-40: 19 | 35% | 37% | 2%",
-        "40-50: 14 | 44% | 50% | 6%",
-        "50-60: 14 | 55% | 36% | -19%",
-        "60-70: 9 | 65% | 67% | 2%",
-        "70-80: 3 | 74% | 67% | -7%",
-    ]
+    assert lines[1:] == DRAWS_4881_TO_4884_REPORT[1:]
 
 
 def test_start_draw_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
