@@ -15,6 +15,47 @@ from tests.e2e.report_support import (
 )
 
 
+def test_end_draw_below_latest_stops_spanning_report_inclusively(  # noqa: PLR0915
+    mock_response, capsys
+):
+    """An explicit end at 4883 includes it but excludes eligible draw 4884."""
+    inject_clock(date(2025, 1, 20))
+    for draw_number in (4881, 4882, 4883):
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=draw_number), timeout=30
+        ).and_return(mock_response(load_fixture(f"draw_{draw_number}.json")))
+
+    for year, month in ((2024, 12), (2025, 1)):
+        flexmock(requests).should_receive("get").with_args(
+            DATEPICKER_URL.format(year=year, month=month), timeout=30
+        ).and_return(mock_response(load_fixture(f"datepicker_{year}_{month:02d}.json")))
+
+    # Neither the latest eligible draw nor published future draws belong here.
+    for out_of_range in (4884, 4885, 4886):
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=out_of_range), timeout=30
+        ).never()
+
+    exit_code = main(["--start-draw", "4881", "--end-draw", "4883"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    # Fixture full-time results and normalized inverse start odds: 34 matches,
+    # 102 outcome samples; deltas subtract the displayed rounded percentages.
+    assert captured.out.splitlines() == [
+        "eligible: 34, excluded: 0",
+        "0-10: 1 | 8% | 100% | 92%",
+        "10-20: 19 | 16% | 5% | -11%",
+        "20-30: 40 | 25% | 35% | 10%",
+        "30-40: 11 | 34% | 27% | -7%",
+        "40-50: 10 | 43% | 40% | -3%",
+        "50-60: 11 | 55% | 36% | -19%",
+        "60-70: 7 | 64% | 71% | 7%",
+        "70-80: 3 | 74% | 67% | -7%",
+    ]
+
+
 def test_future_end_draw_clamps_to_latest_available_draw(  # noqa: PLR0915
     mock_response, capsys
 ):
