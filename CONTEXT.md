@@ -53,5 +53,5 @@ A played Match without `startOdds`, so no `OutcomeProbability` exists; counted i
 _Avoid_: Dropped match, odds-less match
 
 **Period**:
-A contiguous span of Draws (a start Draw to an end Draw) treated as a single statistical sample.
+Draws within inclusive numeric bounds, from a start Draw through an upper draw-number bound, treated as a single statistical sample. Gaps are allowed; the upper bound need not identify an existing Draw.
 _Avoid_: Backtest, window, range

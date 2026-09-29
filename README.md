@@ -100,6 +100,13 @@ into one report.
   when that draw is 4884, `--end-draw 4999` resolves to 4884. If the search
   finds no draw, the tool exits 1 with an error on stderr before fetching any
   report draws.
+- If `--end-draw N` is below the latest available draw, N remains the inclusive
+  numeric upper bound even when no Draw numbered N exists; an exact end Draw
+  is not required. For a hypothetical January 2025 datepicker containing draws
+  4882 and 4884 but no 4883, with 4884 the latest draw on January 20,
+  `--start-draw 4882 --end-draw 4883` includes only 4882. It succeeds without a
+  warning, fetching neither the absent 4883 nor the first draw above the bound,
+  4884, and stops without looking up a later month.
 - A `--start-date` bound resolves to the draw on or after the given date using
   the same month-by-month forward scan as `--date` (see above). A `--end-date`
   bound resolves to the latest draw dated on or before `min(today, date)`,
