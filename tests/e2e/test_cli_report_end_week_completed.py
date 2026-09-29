@@ -16,7 +16,10 @@ from stryktips import main
 from tests.e2e.report_support import (
     BACKWARD_MONTHS_FROM_MAY_2025,
     DATEPICKER_URL,
+    DRAW_4880_REPORT,
+    DRAW_4900_REPORT,
     DRAW_URL,
+    DRAWS_4880_TO_4881_REPORT,
     inject_clock,
     load_fixture,
 )
@@ -86,31 +89,7 @@ def test_end_week_resolves_to_draw(mock_response, capsys, end_week):  # noqa: PL
         DATEPICKER_URL.format(year=2025, month=1), timeout=30
     ).never()
 
-    expected_lines = (
-        [
-            "eligible: 13, excluded: 0",
-            "0-10: 2 | 7% | 0% | -7%",
-            "10-20: 1 | 15% | 100% | 85%",
-            "20-30: 18 | 26% | 22% | -4%",
-            "30-40: 8 | 35% | 38% | 3%",
-            "40-50: 6 | 43% | 50% | 7%",
-            "50-60: 2 | 54% | 50% | -4%",
-            "60-70: 1 | 65% | 0% | -65%",
-            "80-90: 1 | 86% | 100% | 14%",
-        ]
-        if first_only
-        else [
-            "eligible: 26, excluded: 0",
-            "0-10: 2 | 7% | 0% | -7%",
-            "10-20: 7 | 16% | 29% | 13%",
-            "20-30: 34 | 26% | 26% | 0%",
-            "30-40: 14 | 34% | 29% | -5%",
-            "40-50: 10 | 43% | 40% | -3%",
-            "50-60: 5 | 53% | 60% | 7%",
-            "60-70: 5 | 64% | 60% | -4%",
-            "80-90: 1 | 86% | 100% | 14%",
-        ]
-    )
+    expected_lines = DRAW_4880_REPORT if first_only else DRAWS_4880_TO_4881_REPORT
 
     exit_code = main(["--start-draw", "4880", "--end-week", end_week])
     captured = capsys.readouterr()
@@ -153,16 +132,7 @@ def test_unindexed_drawless_end_week_resolves_to_latest_preceding_draw(  # noqa:
 
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out.splitlines() == [
-        "eligible: 13, excluded: 0",
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert captured.out.splitlines() == DRAW_4900_REPORT
 
 
 def test_indexed_empty_completed_end_week_resolves_to_preceding_draw(  # noqa: PLR0915
@@ -204,16 +174,7 @@ def test_indexed_empty_completed_end_week_resolves_to_preceding_draw(  # noqa: P
     assert "2025.20.1" in captured.err
     assert "4900" in captured.err
     assert "2025-05-10" in captured.err
-    assert captured.out.splitlines() == [
-        "eligible: 13, excluded: 0",
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert captured.out.splitlines() == DRAW_4900_REPORT
 
 
 def test_historical_end_week_searches_back_across_empty_months(  # noqa: PLR0915

@@ -88,7 +88,9 @@ def test_main_week_flag_resolves_and_displays_the_draw(capsys):
 def test_main_start_draw_end_draw_prints_bucket_report(capsys):
     """--start-draw/--end-draw prints the bucket report for the single draw."""
     dependencies = make_dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
         draws={4900: make_draw(draw_number=4900)},
+        today=date(2025, 5, 20),
     )
 
     exit_code = run_main(dependencies, ["--start-draw", "4900", "--end-draw", "4900"])
@@ -112,6 +114,7 @@ def test_main_start_draw_end_draw_prints_single_aggregated_report(capsys):
             4901: make_draw(draw_number=4901),
             4902: make_draw(draw_number=4902),
         },
+        today=date(2025, 5, 20),
         fetched=fetched,
     )
 
@@ -132,8 +135,10 @@ def test_main_start_draw_end_draw_reports_network_error_to_stderr(capsys):
 
     dependencies = Dependencies(
         fetch_draw=raise_network,
-        fetch_month_entries=lambda year, month: [],
-        clock=lambda: _FIXED_TODAY,
+        fetch_month_entries=make_dependencies(
+            {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]}
+        ).fetch_month_entries,
+        clock=lambda: date(2025, 5, 20),
         diagnostic=lambda message: None,
     )
 
@@ -242,6 +247,7 @@ def test_main_start_week_end_draw_prints_report(capsys):
     dependencies = make_dependencies(
         {(2025, 5): [DatepickerEntry(date=date(2025, 5, 10), draw_number=4900)]},
         draws={4900: make_draw(draw_number=4900)},
+        today=date(2025, 5, 20),
     )
 
     exit_code = run_main(
@@ -324,7 +330,9 @@ def test_main_spanning_report_errors_when_anchor_has_no_close_time(capsys):
     """A spanning report whose anchor has no close time exits 1 with stderr."""
     fetched: list[int] = []
     dependencies = make_dependencies(
+        {(2025, 5): [DatepickerEntry(date=date(2025, 5, 17), draw_number=4901)]},
         draws={4900: make_draw(draw_number=4900, reg_close_time=None)},
+        today=date(2025, 5, 20),
         fetched=fetched,
     )
 

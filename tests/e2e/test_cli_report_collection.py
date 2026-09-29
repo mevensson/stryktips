@@ -4,17 +4,28 @@ These tests mock at the requests boundary so the concrete API adapter and
 parser run for real against JSON fixtures.
 """
 
+from datetime import date
 from typing import Any
 
 import requests
 from flexmock import flexmock
 
 from stryktips import main
-from tests.e2e.report_support import DATEPICKER_URL, DRAW_URL, load_fixture
+from tests.e2e.report_support import (
+    DATEPICKER_URL,
+    DRAW_URL,
+    DRAWS_4881_TO_4884_REPORT,
+    inject_clock,
+    load_fixture,
+)
 
 
 def test_start_draw_end_draw_4900_reports_buckets(mock_response, capsys):  # noqa: PLR0915
     """--start-draw 4900 --end-draw 4900 prints the bucket report for draw 4900."""
+    inject_clock(date(2025, 5, 20))
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=5), timeout=30
+    ).and_return(mock_response(load_fixture("datepicker_2025_05.json")))
     flexmock(requests).should_receive("get").with_args(
         DRAW_URL.format(n=4900), timeout=30
     ).and_return(mock_response(load_fixture("draw_4900.json")))
@@ -38,6 +49,10 @@ def test_start_draw_end_draw_4900_reports_buckets(mock_response, capsys):  # noq
 
 def test_start_draw_end_draw_excludes_played_without_odds(mock_response, capsys):
     """--start-draw 4642 --end-draw 4642 counts odds-less played matches as excluded."""
+    inject_clock(date(2020, 6, 20))
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2020, month=6), timeout=30
+    ).and_return(mock_response(load_fixture("datepicker_2020_06.json")))
     flexmock(requests).should_receive("get").with_args(
         DRAW_URL.format(n=4642), timeout=30
     ).and_return(mock_response(load_fixture("draw_4642.json")))
@@ -58,6 +73,7 @@ def test_start_draw_end_draw_spanning_months_aggregates(mock_response, capsys): 
     single aggregated summary (eligible/excluded summed) plus merged bucket rows;
     no draw outside [4881, 4884] is fetched.
     """
+    inject_clock(date(2025, 1, 20))
     for draw_number in (4881, 4882, 4883, 4884):
         flexmock(requests).should_receive("get").with_args(
             DRAW_URL.format(n=draw_number), timeout=30
@@ -81,16 +97,7 @@ def test_start_draw_end_draw_spanning_months_aggregates(mock_response, capsys): 
     lines = captured.out.strip().split("\n")
     assert "eligible: 47, excluded: 0" in lines[0]
     assert len(lines) == 9
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 100% | 92%",
-        "10-20: 24 | 16% | 8% | -8%",
-        "20-30: 57 | 26% | 30% | 4%",
-        "30-40: 19 | 35% | 37% | 2%",
-        "40-50: 14 | 44% | 50% | 6%",
-        "50-60: 14 | 55% | 36% | -19%",
-        "60-70: 9 | 65% | 67% | 2%",
-        "70-80: 3 | 74% | 67% | -7%",
-    ]
+    assert lines[1:] == DRAWS_4881_TO_4884_REPORT[1:]
 
 
 def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: PLR0915
@@ -103,6 +110,7 @@ def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: P
     every month in between and collect only the draws in [4641, 4642], fetching
     nothing outside that range.
     """
+    inject_clock(date(2020, 6, 20))
     for draw_number in (4641, 4642):
         flexmock(requests).should_receive("get").with_args(
             DRAW_URL.format(n=draw_number), timeout=30
@@ -112,7 +120,7 @@ def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: P
     for year, month in ((2020, 3), (2020, 6)):
         flexmock(requests).should_receive("get").with_args(
             DATEPICKER_URL.format(year=year, month=month), timeout=30
-        ).once().and_return(
+        ).at_least().once().and_return(
             mock_response(load_fixture(f"datepicker_{year}_{month:02d}.json"))
         )
     for year, month in ((2020, 4), (2020, 5)):
@@ -140,6 +148,7 @@ def test_start_draw_end_draw_skips_absent_draw_number(mock_response, capsys):  #
     Draw 4883 is a hole in the range: it appears in no datepicker month, so the walk
     must not collect or fetch it. Only 4882 and 4884 are aggregated into the report.
     """
+    inject_clock(date(2025, 1, 20))
     for draw_number in (4882, 4884):
         flexmock(requests).should_receive("get").with_args(
             DRAW_URL.format(n=draw_number), timeout=30
@@ -154,7 +163,7 @@ def test_start_draw_end_draw_skips_absent_draw_number(mock_response, capsys):  #
     }
     flexmock(requests).should_receive("get").with_args(
         DATEPICKER_URL.format(year=2025, month=1), timeout=30
-    ).once().and_return(mock_response(datepicker_data))
+    ).at_least().once().and_return(mock_response(datepicker_data))
 
     # The absent interior draw must never be fetched.
     flexmock(requests).should_receive("get").with_args(
@@ -185,6 +194,7 @@ def test_start_draw_end_draw_reports_and_skips_fetch_failure(mock_response, caps
     walk must print a warning to stderr, skip it, and still aggregate the rest
     of the range (4882 + 4884) into the report.
     """
+    inject_clock(date(2025, 1, 20))
     for draw_number in (4882, 4884):
         flexmock(requests).should_receive("get").with_args(
             DRAW_URL.format(n=draw_number), timeout=30
@@ -201,7 +211,9 @@ def test_start_draw_end_draw_reports_and_skips_fetch_failure(mock_response, caps
 
     flexmock(requests).should_receive("get").with_args(
         DATEPICKER_URL.format(year=2025, month=1), timeout=30
-    ).once().and_return(mock_response(load_fixture("datepicker_2025_01.json")))
+    ).at_least().once().and_return(
+        mock_response(load_fixture("datepicker_2025_01.json"))
+    )
 
     # No draw outside the range may be fetched, on either side of the range.
     for out_of_range in (4885, 4886):
@@ -228,8 +240,12 @@ def test_start_draw_end_draw_reports_and_skips_fetch_failure(mock_response, caps
     ]
 
 
-def test_start_draw_end_draw_empty_range_prints_empty_report(capsys):
+def test_start_draw_end_draw_empty_range_prints_empty_report(mock_response, capsys):
     """--start-draw/--end-draw with no collectible draw prints an empty report."""
+    inject_clock(date(2025, 5, 20))
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=5), timeout=30
+    ).and_return(mock_response(load_fixture("datepicker_2025_05.json")))
     not_found = flexmock(status_code=404)
     not_found.should_receive("raise_for_status").and_raise(
         requests.HTTPError("404 Client Error")
@@ -253,13 +269,17 @@ def test_start_draw_end_draw_anchor_returns_null_draw_prints_empty_report(
     The API answers 200 with "draw": null (plus an error payload) for a draw
     number that does not exist, instead of a 404. The report path must treat
     this like any other absent draw and print an empty report rather than
-    crash with a traceback.
+    crash with a traceback. The numeric end remains within the available data.
     """
+    inject_clock(date(2025, 5, 20))
     flexmock(requests).should_receive("get").with_args(
-        DRAW_URL.format(n=4971), timeout=30
+        DATEPICKER_URL.format(year=2025, month=5), timeout=30
+    ).and_return(mock_response(load_fixture("datepicker_2025_05.json")))
+    flexmock(requests).should_receive("get").with_args(
+        DRAW_URL.format(n=4900), timeout=30
     ).and_return(mock_response({"draw": None, "error": {"code": 404}}))
 
-    exit_code = main(["--start-draw", "4971", "--end-draw", "4999"])
+    exit_code = main(["--start-draw", "4900", "--end-draw", "4901"])
     captured = capsys.readouterr()
 
     assert exit_code == 0

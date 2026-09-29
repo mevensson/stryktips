@@ -38,7 +38,7 @@ python stryktips.py --week 2025.19
 | `--start-draw`  | Yes*     | int  | Start draw number for the prediction-quality report |
 | `--start-date`  | Yes*     | str  | Calendar date (YYYY-MM-DD); the report starts at the draw on or after it |
 | `--start-week`  | Yes*     | str  | ISO week (YYYY.WW[.N]); the report starts at the draw in that week |
-| `--end-draw`    | No       | int  | End draw number for the prediction-quality report |
+| `--end-draw`    | No       | int  | End draw number N; capped at the latest draw dated on or before today |
 | `--end-date`    | No       | str  | Calendar date (YYYY-MM-DD); the report ends at the latest draw on or before it (capped at today) |
 | `--end-week`    | No       | str  | ISO week (YYYY.WW[.N]); without `.N`, end at the latest draw on or before Sunday (capped at today); `.N` selects the N-th draw in the week |
 
@@ -93,6 +93,13 @@ into one report.
   Date and unindexed-week ends use that same bounded backward search with an
   optional date limit: search from the earlier of today and the limit, or from
   today when the limit is omitted.
+- `--end-draw N` resolves to `min(N, latest draw number dated on or before
+  today)`. It finds that latest draw using the same bounded backward search
+  as the default end: up to 12 months, including today's month. A future numeric
+  end therefore clamps silently to the latest available draw. For example,
+  when that draw is 4884, `--end-draw 4999` resolves to 4884. If the search
+  finds no draw, the tool exits 1 with an error on stderr before fetching any
+  report draws.
 - A `--start-date` bound resolves to the draw on or after the given date using
   the same month-by-month forward scan as `--date` (see above). A `--end-date`
   bound resolves to the latest draw dated on or before `min(today, date)`,
@@ -157,15 +164,17 @@ into one report.
   --start-week` (naming the end flag actually used) to stderr.
 - An explicit `--end-draw` before the `--start-draw` is an error: the tool exits
   with code 2 and prints `--start-draw must not be greater than --end-draw` to
-  stderr.
+  stderr. This validation compares the supplied numeric values before end
+  resolution or clamping.
 - When the resolved start exceeds an explicitly given `--end-*` (for example
   `--start-date 2025-05-10 --end-draw 4884`, where the date resolves to a later
   draw), the tool exits with code 1 and prints `--start bound resolved to draw
   <start>, which must not be greater than --end bound (draw <end>)` to stderr
   without fetching any draw.
-  This also applies when an explicit date/week end resolves backward to a
-  preceding draw or is capped at today: resolution does not turn an explicit
-  end into the implicit-end empty-report case.
+  This also applies when an explicit numeric end clamps below the resolved
+  start, or a date/week end resolves backward to a preceding draw or is capped
+  at today: resolution does not turn an explicit end into the implicit-end
+  empty-report case.
 - `--start-draw`/`--end-draw` may span a range of draws. The tool walks the
   datepicker
   month-by-month from the start draw to collect every draw number within

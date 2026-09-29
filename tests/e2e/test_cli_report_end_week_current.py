@@ -14,7 +14,10 @@ from flexmock import flexmock
 from stryktips import main
 from tests.e2e.report_support import (
     DATEPICKER_URL,
+    DRAW_4880_REPORT,
+    DRAW_4900_REPORT,
     DRAW_URL,
+    DRAWS_4880_TO_4881_REPORT,
     inject_clock,
     load_fixture,
 )
@@ -56,16 +59,7 @@ def test_future_end_week_clamps_to_today(  # noqa: PLR0915
 
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out.splitlines() == [
-        "eligible: 13, excluded: 0",
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert captured.out.splitlines() == DRAW_4900_REPORT
 
 
 def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
@@ -101,17 +95,7 @@ def test_current_week_indexed_end_selects_first_draw(  # noqa: PLR0915
 
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out.splitlines() == [
-        "eligible: 13, excluded: 0",
-        "0-10: 2 | 7% | 0% | -7%",
-        "10-20: 1 | 15% | 100% | 85%",
-        "20-30: 18 | 26% | 22% | -4%",
-        "30-40: 8 | 35% | 38% | 3%",
-        "40-50: 6 | 43% | 50% | 7%",
-        "50-60: 2 | 54% | 50% | -4%",
-        "60-70: 1 | 65% | 0% | -65%",
-        "80-90: 1 | 86% | 100% | 14%",
-    ]
+    assert captured.out.splitlines() == DRAW_4880_REPORT
 
 
 @pytest.mark.parametrize(
@@ -163,17 +147,7 @@ def test_excessive_end_week_index_clamps_silently_only_while_week_is_current(  #
         assert "2024.52.3" in captured.err
         assert "4881" in captured.err
         assert "2024-12-29" in captured.err
-    assert captured.out.splitlines() == [
-        "eligible: 26, excluded: 0",
-        "0-10: 2 | 7% | 0% | -7%",
-        "10-20: 7 | 16% | 29% | 13%",
-        "20-30: 34 | 26% | 26% | 0%",
-        "30-40: 14 | 34% | 29% | -5%",
-        "40-50: 10 | 43% | 40% | -3%",
-        "50-60: 5 | 53% | 60% | 7%",
-        "60-70: 5 | 64% | 60% | -4%",
-        "80-90: 1 | 86% | 100% | 14%",
-    ]
+    assert captured.out.splitlines() == DRAWS_4880_TO_4881_REPORT
 
 
 @pytest.mark.parametrize(
@@ -224,16 +198,7 @@ def test_current_week_later_or_missing_index_clamps_to_latest_draw(  # noqa: PLR
 
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out.splitlines() == [
-        "eligible: 13, excluded: 0",
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert captured.out.splitlines() == DRAW_4900_REPORT
 
 
 def test_unindexed_current_end_week_clamps_to_latest_draw(  # noqa: PLR0915
@@ -269,13 +234,4 @@ def test_unindexed_current_end_week_clamps_to_latest_draw(  # noqa: PLR0915
 
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out.splitlines() == [
-        "eligible: 13, excluded: 0",
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert captured.out.splitlines() == DRAW_4900_REPORT

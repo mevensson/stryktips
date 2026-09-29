@@ -90,7 +90,9 @@ def resolve_end(selector: DrawSelector | None, dependencies: Dependencies) -> in
     A ``DrawByWeek`` with no index is clamped to its ISO Sunday; an explicit
     index follows the current/completed/future week policy. ``None`` (no end
     selector given) resolves the latest draw on or before
-    ``dependencies.clock()``. The CLI's date-before-week-before-draw flag
+    ``dependencies.clock()``. ``DrawByNumber`` resolves to the minimum of the
+    requested number and that latest draw number, using the same bounded
+    backward search as the implicit end. The CLI's date-before-week-before-draw flag
     precedence lives in ``_end_selector``, which builds the single selector.
     """
     if selector is None:
@@ -99,7 +101,7 @@ def resolve_end(selector: DrawSelector | None, dependencies: Dependencies) -> in
         return resolve_default_end(dependencies, _parse_date(selector.value))
     if isinstance(selector, DrawByWeek):
         return _resolve_end_week(selector, dependencies)
-    return selector.number
+    return min(selector.number, resolve_default_end(dependencies))
 
 
 def resolve_default_end(dependencies: Dependencies, limit: date | None = None) -> int:

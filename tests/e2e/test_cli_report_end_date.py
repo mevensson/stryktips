@@ -17,6 +17,7 @@ from tests.e2e.report_support import (
     BACKWARD_MONTHS_FROM_MAY_2025,
     DATEPICKER_URL,
     DRAW_URL,
+    DRAWS_4881_TO_4884_REPORT,
     inject_clock,
     load_fixture,
 )
@@ -57,16 +58,7 @@ def test_start_draw_without_end_draw_defaults_to_most_recent_draw(  # noqa: PLR0
     lines = captured.out.strip().split("\n")
     assert "eligible: 47, excluded: 0" in lines[0]
     assert len(lines) == 9
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 100% | 92%",
-        "10-20: 24 | 16% | 8% | -8%",
-        "20-30: 57 | 26% | 30% | 4%",
-        "30-40: 19 | 35% | 37% | 2%",
-        "40-50: 14 | 44% | 50% | 6%",
-        "50-60: 14 | 55% | 36% | -19%",
-        "60-70: 9 | 65% | 67% | 2%",
-        "70-80: 3 | 74% | 67% | -7%",
-    ]
+    assert lines[1:] == DRAWS_4881_TO_4884_REPORT[1:]
 
 
 def test_start_draw_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
@@ -99,6 +91,7 @@ def test_start_draw_after_most_recent_draw_prints_empty_report(  # noqa: PLR0915
 
 def test_start_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     """--start-date 2025-05-10 --end-draw 4900 reuses the date resolver."""
+    inject_clock(date(2025, 5, 20))
     flexmock(requests).should_receive("get").with_args(
         DATEPICKER_URL.format(year=2025, month=5), timeout=30
     ).and_return(mock_response(load_fixture("datepicker_2025_05.json")))
@@ -215,6 +208,7 @@ def test_future_end_date_clamps_to_today(mock_response, capsys):  # noqa: PLR091
 
 def test_start_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     """--start-week 2025.19 --end-draw 4900 reuses the week resolver."""
+    inject_clock(date(2025, 5, 20))
     flexmock(requests).should_receive("get").with_args(
         DATEPICKER_URL.format(year=2025, month=5), timeout=30
     ).and_return(mock_response(load_fixture("datepicker_2025_05.json")))
@@ -348,7 +342,7 @@ _UNFETCHED_REPORT_DRAWS = (4884, 4899, 4900, 4901, 4902, 4903)
     ),
     [
         pytest.param(
-            date(2025, 6, 1),
+            date(2025, 5, 20),
             ["--start-date", "2025-05-10"],
             ["--end-draw", "4884"],
             4900,
@@ -357,7 +351,7 @@ _UNFETCHED_REPORT_DRAWS = (4884, 4899, 4900, 4901, 4902, 4903)
             id="start-date-before-draw-end",
         ),
         pytest.param(
-            date(2025, 6, 1),
+            date(2025, 5, 20),
             ["--start-week", "2025.19"],
             ["--end-draw", "4884"],
             4900,
@@ -447,7 +441,7 @@ def test_resolved_start_after_end_errors(  # noqa: PLR0913, PLR0915
         DATEPICKER_URL.format(year=2025, month=5), timeout=30
     ).and_return(mock_response(datepicker_data))
 
-    # The today month (June) is never looked up, even for a future bound.
+    # June is never looked up: numeric ends use May's pinned today.
     flexmock(requests).should_receive("get").with_args(
         DATEPICKER_URL.format(year=2025, month=6), timeout=30
     ).never()
@@ -479,6 +473,7 @@ def test_start_date_forward_scans_across_empty_months(  # noqa: PLR0915
     stderr and the report aggregates the single resolved draw, fetching nothing
     after the resolved end.
     """
+    inject_clock(date(2020, 6, 20))
     empty_data: dict[str, list[Any]] = {"resultDates": []}
     for year, month in ((2020, 4), (2020, 5)):
         flexmock(requests).should_receive("get").with_args(
