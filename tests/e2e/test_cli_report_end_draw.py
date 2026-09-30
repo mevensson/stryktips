@@ -1,6 +1,7 @@
 """End-to-end end-draw clamping through the real CLI and API adapter."""
 
 from datetime import date
+from typing import Any
 
 import requests
 from flexmock import flexmock
@@ -53,6 +54,56 @@ def test_end_draw_below_latest_stops_spanning_report_inclusively(  # noqa: PLR09
         "50-60: 11 | 55% | 36% | -19%",
         "60-70: 7 | 64% | 71% | 7%",
         "70-80: 3 | 74% | 67% | -7%",
+    ]
+
+
+def test_missing_end_draw_below_latest_remains_numeric_upper_bound(  # noqa: PLR0915
+    mock_response, capsys
+):
+    """A missing 4883 ends the short period before available draw 4884."""
+    inject_clock(date(2025, 1, 20))
+    flexmock(requests).should_receive("get").with_args(
+        DRAW_URL.format(n=4882), timeout=30
+    ).and_return(mock_response(load_fixture("draw_4882.json")))
+
+    # Synthetic January: the requested end is absent, but a later draw exists.
+    datepicker_data: dict[str, Any] = {
+        "resultDates": [
+            {"date": "2025-01-04T00:00:00+01:00", "drawNumber": 4882},
+            {"date": "2025-01-18T00:00:00+01:00", "drawNumber": 4884},
+        ]
+    }
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=1), timeout=30
+    ).at_least().once().and_return(mock_response(datepicker_data))
+
+    for out_of_range in (4883, 4884):
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=out_of_range), timeout=30
+        ).never()
+
+    # Seeing the first draw above the bound must stop the month walk here.
+    # Any other unconfigured request also fails at the requests boundary.
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=2), timeout=30
+    ).never()
+
+    exit_code = main(["--start-draw", "4882", "--end-draw", "4883"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    # Independently calculated from fixture 4882's full-time scores and
+    # normalized inverse start odds: 13 matches, 39 outcome samples.
+    assert captured.out.splitlines() == [
+        "eligible: 13, excluded: 0",
+        "10-20: 6 | 15% | 0% | -15%",
+        "20-30: 17 | 25% | 35% | 10%",
+        "30-40: 4 | 34% | 25% | -9%",
+        "40-50: 4 | 43% | 75% | 32%",
+        "50-60: 5 | 55% | 20% | -35%",
+        "60-70: 1 | 61% | 0% | -61%",
+        "70-80: 2 | 73% | 100% | 27%",
     ]
 
 
