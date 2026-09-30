@@ -107,6 +107,35 @@ def test_missing_end_draw_below_latest_remains_numeric_upper_bound(  # noqa: PLR
     ]
 
 
+def test_end_draw_clamped_below_start_errors_before_fetching_draws(
+    mock_response, capsys
+):
+    """Valid raw bounds become an ordering error after the end clamps to 4884."""
+    inject_clock(date(2025, 1, 20))
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=1), timeout=30
+    ).at_least().once().and_return(
+        mock_response(load_fixture("datepicker_2025_01.json"))
+    )
+
+    # No anchor, resolved end, published future draw, or requested end is fetched.
+    # Any other unconfigured request also fails at the requests boundary.
+    for draw_number in (4900, 4884, 4885, 4886, 4999):
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=draw_number), timeout=30
+        ).never()
+
+    exit_code = main(["--start-draw", "4900", "--end-draw", "4999"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert captured.out == ""
+    assert captured.err == (
+        "--start bound resolved to draw 4900, which must not be"
+        " greater than --end bound (draw 4884)\n"
+    )
+
+
 def test_future_end_draw_clamps_to_latest_available_draw(  # noqa: PLR0915
     mock_response, capsys
 ):
