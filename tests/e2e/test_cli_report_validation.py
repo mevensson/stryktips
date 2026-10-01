@@ -76,6 +76,19 @@ def test_start_draw_after_end_draw_errors():
     assert "--start-draw must not be greater than --end-draw" in result.stderr
 
 
+def test_start_draw_after_end_draw_rejected_before_any_request(capsys):
+    """Raw numeric ordering rejects before datepicker or report draw requests."""
+    flexmock(requests).should_receive("get").never()
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--start-draw", "4900", "--end-draw", "4884"])
+    captured = capsys.readouterr()
+
+    assert exc.value.code == 2
+    assert "error: --start-draw must not be greater than --end-draw" in captured.err
+    assert captured.out == ""
+
+
 @pytest.mark.parametrize(
     "args",
     [
