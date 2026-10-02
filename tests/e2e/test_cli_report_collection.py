@@ -4,6 +4,7 @@ These tests mock at the requests boundary so the concrete API adapter and
 parser run for real against JSON fixtures.
 """
 
+from collections import Counter
 from datetime import date
 from typing import Any
 
@@ -98,6 +99,87 @@ def test_start_draw_end_draw_spanning_months_aggregates(mock_response, capsys): 
     assert "eligible: 47, excluded: 0" in lines[0]
     assert len(lines) == 9
     assert lines[1:] == DRAWS_4881_TO_4884_REPORT[1:]
+
+
+def test_start_draw_end_draw_multi_year_period_reports_every_draw_once(  # noqa: PLR0915
+    mock_response, monkeypatch, capsys
+):
+    """A 25-month Period includes late Draws despite gaps and overlapping months."""
+    # Arrange
+    inject_clock(date(2025, 1, 20))
+    draw_dates = {
+        4999: date(2023, 1, 1),  # Below the inclusive start.
+        5000: date(2023, 1, 7),
+        5002: date(2023, 12, 16),
+        5004: date(2024, 1, 13),
+        5006: date(2024, 12, 14),
+        5008: date(2025, 1, 11),
+        5009: date(2025, 1, 18),  # Today's latest Draw, above the requested end.
+    }
+    monthly_numbers = {
+        (2023, 1): (4999, 5000),
+        (2023, 12): (5002,),
+        (2024, 1): (5002, 5004),  # Overlap across the first year boundary.
+        (2024, 12): (5006,),
+        (2025, 1): (5009, 5006, 5008),  # Unsorted, with another overlap.
+    }
+    responses = {}
+    expected_requests: Counter[str] = Counter()
+    for year, month in [
+        *((2023, month) for month in range(1, 13)),
+        *((2024, month) for month in range(1, 13)),
+        (2025, 1),
+    ]:
+        url = DATEPICKER_URL.format(year=year, month=month)
+        payload = {
+            "resultDates": [
+                {"date": draw_dates[number].isoformat(), "drawNumber": number}
+                for number in monthly_numbers.get((year, month), ())
+            ]
+        }
+        # Both 200-empty and 404 months must be crossed, including after month 12.
+        status_code = 404 if (year, month) in ((2023, 4), (2024, 7)) else 200
+        responses[url] = mock_response(payload, status_code=status_code)
+        expected_requests[url] = 1
+    # End resolution and collection independently query the terminal month.
+    expected_requests[DATEPICKER_URL.format(year=2025, month=1)] += 1
+    for number in (5000, 5002, 5004, 5006, 5008):
+        url = DRAW_URL.format(n=number)
+        responses[url] = mock_response(
+            _multi_year_draw_payload(number, draw_dates[number])
+        )
+        expected_requests[url] = 1
+
+    requested: Counter[str] = Counter()
+
+    def get(url: str, *, timeout: int) -> Any:
+        assert timeout == 30
+        # Reject absent interior numbers, out-of-range Draws, and any month
+        # beyond the terminal response rather than silently returning empties.
+        assert url in responses, f"Unexpected API request: {url}"
+        requested[url] += 1
+        return responses[url]
+
+    monkeypatch.setattr(requests, "get", get)
+    # Each Draw has two eligible Matches (one home win, one draw), one played
+    # without odds, and ten unplayed. Odds 2/4/4 give probabilities 50/25/25.
+    # Five Draws give 20 quarter-probability outcomes, five observed (25%),
+    # and 10 half-probability outcomes, five observed (50%).
+    expected_stdout = (
+        "eligible: 10, excluded: 5\n"
+        "20-30: 20 | 25% | 25% | 0%\n"
+        "50-60: 10 | 50% | 50% | 0%\n"
+    )
+
+    # Act
+    exit_code = main(["--start-draw", "5000", "--end-draw", "5008"])
+    captured = capsys.readouterr()
+
+    # Assert
+    assert exit_code == 0
+    assert captured.out == expected_stdout
+    assert captured.err == ""
+    assert requested == expected_requests
 
 
 def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: PLR0915
@@ -285,3 +367,27 @@ def test_start_draw_end_draw_anchor_returns_null_draw_prints_empty_report(
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
     assert "Traceback" not in captured.err
+
+
+def _multi_year_draw_payload(number: int, close_date: date) -> dict[str, Any]:
+    """Build a minimal 13-Match Draw with independently calculable report data."""
+    events = []
+    for event_number in range(1, 14):
+        match: dict[str, Any] = {
+            "participants": [{"mediumName": "Home"}, {"mediumName": "Away"}],
+        }
+        if event_number <= 3:
+            match["result"] = [
+                {"type": 2, "home": "0" if event_number == 2 else "1", "away": "0"}
+            ]
+        event: dict[str, Any] = {"eventNumber": event_number, "match": match}
+        if event_number <= 2:
+            event["startOdds"] = {"one": "2", "x": "4", "two": "4"}
+        events.append(event)
+    return {
+        "draw": {
+            "drawNumber": number,
+            "regCloseTime": f"{close_date.isoformat()}T15:59:00+01:00",
+            "drawEvents": events,
+        }
+    }
