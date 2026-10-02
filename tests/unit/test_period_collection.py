@@ -51,6 +51,46 @@ def test_collect_period_spanning_includes_both_bounds_in_order():
     assert [draw.draw_number for draw in draws] == [4900, 4901]
 
 
+def test_collect_period_collects_complete_multi_year_period():
+    """All Draws are collected across two year boundaries, including late Draws."""
+    draw_dates = {
+        4800: date(2023, 1, 7),
+        4801: date(2023, 6, 3),
+        4802: date(2024, 1, 6),
+        4803: date(2025, 1, 4),
+    }
+    available_draws = {
+        number: make_draw(
+            draw_number=number,
+            reg_close_time=datetime.combine(draw_date, datetime.min.time()),
+        )
+        for number, draw_date in draw_dates.items()
+    }
+    months = {
+        (draw_date.year, draw_date.month): [
+            DatepickerEntry(date=draw_date, draw_number=number)
+        ]
+        for number, draw_date in draw_dates.items()
+    }
+
+    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
+        assert (2023, 1) <= (year, month) <= (2025, 1), (
+            "collection must not walk beyond the terminal month"
+        )
+        return list(months.get((year, month), []))
+
+    dependencies = Dependencies(
+        fetch_draw=available_draws.__getitem__,
+        fetch_month_entries=fetch_month_entries,
+        clock=lambda: date(2025, 1, 4),
+        diagnostic=lambda message: None,
+    )
+
+    draws = collect_period(4800, 4803, dependencies)
+
+    assert [draw.draw_number for draw in draws] == [4800, 4801, 4802, 4803]
+
+
 def test_collect_period_walks_across_drawless_months():
     """The month walk skips empty months and still reaches the inclusive end."""
     calls: list[tuple[int, int]] = []

@@ -92,28 +92,6 @@ def test_collect_period_missing_anchor_returns_empty():
     assert draws == []
 
 
-def test_collect_period_warns_when_end_not_reached_within_scan_window():
-    """An end draw never seen within the scan window is reported as truncation."""
-    month_entry = DatepickerEntry(date=date(2020, 3, 7), draw_number=4641)
-    diagnostics: list[str] = []
-    dependencies = Dependencies(
-        fetch_draw=lambda number: make_draw(
-            draw_number=number, reg_close_time=datetime(2020, 3, 7, 15, 59)
-        ),
-        fetch_month_entries=lambda year, month: [month_entry],
-        clock=lambda: date(2020, 3, 7),
-        diagnostic=diagnostics.append,
-    )
-
-    draws = collect_period(4641, 4642, dependencies)
-
-    assert [draw.draw_number for draw in draws] == [4641]
-    assert diagnostics == [
-        "Warning: could not reach draw 4642 within 12 months of 4641,"
-        " report may be truncated."
-    ]
-
-
 def test_collect_period_spanning_requires_anchor_close_time():
     """A spanning Period without an anchor close time fails before walking months."""
     dependencies = Dependencies(
@@ -210,37 +188,44 @@ def test_collect_period_anchor_request_failure_propagates():
     assert month_lookups == []
 
 
-def test_collect_period_emits_truncation_warning_before_skip_warnings():
-    """The traversal truncation warning precedes warnings from interior fetches."""
+def test_collect_period_multi_year_period_emits_only_skip_warning():
+    """A reachable multi-year end yields only the missing interior Draw warning."""
     diagnostics: list[str] = []
+    months = {
+        (2023, 5): [
+            DatepickerEntry(date=date(2023, 5, 6), draw_number=4882),
+            DatepickerEntry(date=date(2023, 5, 13), draw_number=4883),
+        ],
+        (2025, 5): [DatepickerEntry(date=date(2025, 5, 3), draw_number=4890)],
+    }
 
     def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
-        return (
-            [
-                DatepickerEntry(date=date(2025, 5, 3), draw_number=4882),
-                DatepickerEntry(date=date(2025, 5, 10), draw_number=4883),
-            ]
-            if (year, month) == (2025, 5)
-            else []
+        assert (2023, 5) <= (year, month) <= (2025, 5), (
+            "collection must not walk beyond the terminal month"
         )
+        return list(months.get((year, month), []))
 
     dependencies = Dependencies(
         fetch_draw=_draw_fetcher(
-            {4882: make_draw(draw_number=4882)}, [], missing={4883}
+            {
+                4882: make_draw(
+                    draw_number=4882, reg_close_time=datetime(2023, 5, 6, 15, 59)
+                ),
+                4890: make_draw(
+                    draw_number=4890, reg_close_time=datetime(2025, 5, 3, 15, 59)
+                ),
+            },
+            [],
+            missing={4883},
         ),
         fetch_month_entries=fetch_month_entries,
         clock=lambda: date(2025, 5, 3),
         diagnostic=diagnostics.append,
     )
 
-    draws = collect_period(4882, 4890, dependencies)
+    collect_period(4882, 4890, dependencies)
 
-    assert [draw.draw_number for draw in draws] == [4882]
-    assert diagnostics == [
-        "Warning: could not reach draw 4890 within 12 months of 4882,"
-        " report may be truncated.",
-        "Warning: could not fetch draw 4883, skipping.",
-    ]
+    assert diagnostics == ["Warning: could not fetch draw 4883, skipping."]
 
 
 def _draw_fetcher(
