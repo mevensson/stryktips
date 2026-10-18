@@ -9,7 +9,7 @@ diagnostic behavior lives in ``test_period_collection_failures.py``.
 from datetime import date, datetime
 
 from stryktips.collection import collect_period
-from stryktips.dependencies import Dependencies
+from stryktips.dependencies import Dependencies, FetchMonthEntries
 from stryktips.models import DatepickerEntry, Draw
 from tests.builders import make_dependencies, make_draw
 
@@ -79,6 +79,62 @@ def test_collect_period_walks_across_drawless_months():
 
     assert [draw.draw_number for draw in draws] == [4641, 4642]
     assert calls == [(2020, 3), (2020, 4), (2020, 5), (2020, 6)]
+
+
+def test_collect_period_walks_all_25_months_to_the_inclusive_end():
+    """The walk crosses empty months and year boundaries to reach the end draw."""
+    months = {
+        (2023, 1): [DatepickerEntry(date=date(2023, 1, 7), draw_number=4881)],
+        (2024, 2): [DatepickerEntry(date=date(2024, 2, 3), draw_number=4882)],
+        (2025, 1): [DatepickerEntry(date=date(2025, 1, 4), draw_number=4883)],
+    }
+    close_times = {
+        4881: datetime(2023, 1, 7, 15, 59),
+        4882: datetime(2024, 2, 3, 15, 59),
+        4883: datetime(2025, 1, 4, 15, 59),
+    }
+    calls: list[tuple[int, int]] = []
+    diagnostics: list[str] = []
+    dependencies = Dependencies(
+        fetch_draw=lambda number: make_draw(
+            draw_number=number, reg_close_time=close_times[number]
+        ),
+        fetch_month_entries=_strict_month_fetcher(months, (2025, 1), calls),
+        clock=lambda: date(2023, 1, 7),
+        diagnostic=diagnostics.append,
+    )
+
+    draws = collect_period(4881, 4883, dependencies)
+
+    assert [draw.draw_number for draw in draws] == [4881, 4882, 4883]
+    assert calls == [
+        (2023, 1),
+        (2023, 2),
+        (2023, 3),
+        (2023, 4),
+        (2023, 5),
+        (2023, 6),
+        (2023, 7),
+        (2023, 8),
+        (2023, 9),
+        (2023, 10),
+        (2023, 11),
+        (2023, 12),
+        (2024, 1),
+        (2024, 2),
+        (2024, 3),
+        (2024, 4),
+        (2024, 5),
+        (2024, 6),
+        (2024, 7),
+        (2024, 8),
+        (2024, 9),
+        (2024, 10),
+        (2024, 11),
+        (2024, 12),
+        (2025, 1),
+    ]
+    assert diagnostics == []
 
 
 def test_collect_period_deduplicates_repeated_month_entries():
@@ -187,3 +243,18 @@ def test_collect_period_stops_when_an_entry_exceeds_end_without_warning():
     assert [draw.draw_number for draw in draws] == [4882, 4883]
     assert calls == [(2025, 5)]
     assert diagnostics == []
+
+
+def _strict_month_fetcher(
+    months: dict[tuple[int, int], list[DatepickerEntry]],
+    last_month: tuple[int, int],
+    calls: list[tuple[int, int]],
+) -> FetchMonthEntries:
+    """Return a datepicker lookup that records calls and rejects later months."""
+
+    def fetch(year: int, month: int) -> list[DatepickerEntry]:
+        assert (year, month) <= last_month, "walked past the final month"
+        calls.append((year, month))
+        return list(months.get((year, month), []))
+
+    return fetch
