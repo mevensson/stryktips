@@ -189,6 +189,71 @@ def test_start_draw_end_draw_spanning_25_months_aggregates_every_draw(  # noqa: 
     ]
 
 
+def test_start_draw_missing_end_spanning_25_months_stops_at_first_draw_above_bound(  # noqa: PLR0915
+    mock_response, capsys
+):
+    """Stop after 25 months when the first draw above the absent end is found."""
+    inject_clock(date(2025, 3, 20))
+    draws = (
+        (4881, "2023-01-07", ("3", "3", "3"), ("1", "0")),
+        (4882, "2024-02-03", ("2", "4", "4"), ("1", "0")),
+        (4883, "2025-01-04", ("10", "10", "1,25"), ("0", "1")),
+    )
+    for draw_number, draw_date, odds, score in draws:
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=draw_number), timeout=30
+        ).once().and_return(
+            mock_response(_two_played_events_draw(draw_number, draw_date, odds, score))
+        )
+
+    for month_offset in range(25):
+        year, month_index = divmod(month_offset, 12)
+        year += 2023
+        month = month_index + 1
+        result_dates = [
+            {"date": f"{draw_date}T00:00:00+01:00", "drawNumber": draw_number}
+            for draw_number, draw_date, _, _ in draws
+            if draw_date.startswith(f"{year}-{month:02d}-")
+        ]
+        if (year, month) == (2025, 1):
+            result_dates.append(
+                {"date": "2025-01-18T00:00:00+01:00", "drawNumber": 4885}
+            )
+        flexmock(requests).should_receive("get").with_args(
+            DATEPICKER_URL.format(year=year, month=month), timeout=30
+        ).once().and_return(mock_response({"resultDates": result_dates}))
+
+    # A later available draw keeps the requested end bound at the absent 4884.
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=3), timeout=30
+    ).once().and_return(
+        mock_response(
+            {"resultDates": [{"date": "2025-03-15T00:00:00+01:00", "drawNumber": 4886}]}
+        )
+    )
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=2), timeout=30
+    ).never()
+    for draw_number in (4884, 4885, 4886):
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=draw_number), timeout=30
+        ).never()
+
+    exit_code = main(["--start-draw", "4881", "--end-draw", "4884"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == [
+        "eligible: 3, excluded: 3",
+        "10-20: 2 | 10% | 0% | -10%",
+        "20-30: 2 | 25% | 0% | -25%",
+        "30-40: 3 | 33% | 33% | 0%",
+        "50-60: 1 | 50% | 100% | 50%",
+        "80-90: 1 | 80% | 100% | 20%",
+    ]
+
+
 def _two_played_events_draw(
     draw_number: int,
     draw_date: str,
