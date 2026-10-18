@@ -70,12 +70,12 @@ claim.
 
 Preserved behavior is load-bearing. Collection eagerly walks the month range
 before fetching any interior Draw, so a datepicker failure aborts before
-interior fetches and the truncation warning — emitted only when the scan window
-is exhausted without reaching the end — precedes skip warnings. Dedup is
-success-only: a Draw is marked seen only after it is fetched, so a Draw that
-404s is retried and re-warned if it appears in a later month. A missing anchor
-yields an empty Period, while any other request failure propagates. `MAX_SCAN_MONTHS` stays 12, and the scan limit and its
-truncation warning remain owned by #81. `main`/`create_parser` and the
-`stryktips.py` script/package entry points are unchanged. Tests target the
-public contracts through injected fakes and a fixed clock, so moving a private
-helper no longer breaks them.
+interior fetches. The Period walk is unbounded — #81 removed the 12-month scan
+cap and its truncation warning — and terminates once a monthly entry reaches or
+exceeds the end bound. `MAX_SCAN_MONTHS` still bounds resolution's forward and
+backward searches. Dedup is success-only: a Draw is marked seen only after it is
+fetched, so a Draw that 404s is retried and re-warned if it appears in a later
+month. A missing anchor yields an empty Period, while any other request failure
+propagates. `main`/`create_parser` and the `stryktips.py` script/package entry
+points are unchanged. Tests target the public contracts through injected fakes
+and a fixed clock, so moving a private helper no longer breaks them.

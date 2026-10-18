@@ -186,7 +186,10 @@ into one report.
   datepicker
   month-by-month from the start draw to collect every draw number within
   `[start, end]`, tolerating gaps (drawless months or skipped draws), then
-  folds the whole range into one aggregated report.
+  folds the whole range into one aggregated report. The Period walk is not
+  capped at 12 months: it crosses year boundaries and keeps querying later
+  months until a monthly entry reaches or exceeds the end bound, so gaps in
+  draw numbering never truncate the report silently.
 - When the start draw is absent (the API answers 404), the range is empty and
   the program prints an empty report (`eligible: 0, excluded: 0`) and exits 0.
 
