@@ -142,6 +142,87 @@ def test_start_draw_end_draw_walks_datepicker_across_drawless_months(  # noqa: P
     assert lines == ["eligible: 0, excluded: 20"]
 
 
+def test_start_draw_end_draw_spanning_25_months_aggregates_every_draw(  # noqa: PLR0915
+    mock_response, capsys
+):
+    """Collect all 25 months, including draws beyond the current traversal cap."""
+    inject_clock(date(2025, 1, 20))
+    draws = (
+        (4881, "2023-01-07", ("3", "3", "3"), ("1", "0")),
+        (4882, "2024-02-03", ("2", "4", "4"), ("1", "0")),
+        (4883, "2025-01-04", ("10", "10", "1,25"), ("0", "1")),
+    )
+    for draw_number, draw_date, odds, score in draws:
+        flexmock(requests).should_receive("get").with_args(
+            DRAW_URL.format(n=draw_number), timeout=30
+        ).once().and_return(
+            mock_response(_two_played_events_draw(draw_number, draw_date, odds, score))
+        )
+
+    for month_offset in range(25):
+        year, month_index = divmod(month_offset, 12)
+        year += 2023
+        month = month_index + 1
+        result_dates = [
+            {"date": f"{draw_date}T00:00:00+01:00", "drawNumber": draw_number}
+            for draw_number, draw_date, _, _ in draws
+            if draw_date.startswith(f"{year}-{month:02d}-")
+        ]
+        expectation = (
+            flexmock(requests)
+            .should_receive("get")
+            .with_args(DATEPICKER_URL.format(year=year, month=month), timeout=30)
+        )
+        # January 2025 also serves the latest-available endpoint lookup (#80).
+        if (year, month) == (2025, 1):
+            expectation = expectation.at_least()
+        expectation.once().and_return(mock_response({"resultDates": result_dates}))
+    flexmock(requests).should_receive("get").with_args(
+        DATEPICKER_URL.format(year=2025, month=2), timeout=30
+    ).never()
+
+    exit_code = main(["--start-draw", "4881", "--end-draw", "4883"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert captured.out.splitlines() == [
+        "eligible: 3, excluded: 3",
+        "10-20: 2 | 10% | 0% | -10%",
+        "20-30: 2 | 25% | 0% | -25%",
+        "30-40: 3 | 33% | 33% | 0%",
+        "50-60: 1 | 50% | 100% | 50%",
+        "80-90: 1 | 80% | 100% | 20%",
+    ]
+
+
+def _two_played_events_draw(
+    draw_number: int,
+    draw_date: str,
+    odds: tuple[str, str, str],
+    score: tuple[str, str],
+) -> dict[str, Any]:
+    data = load_fixture(f"draw_{draw_number}.json")
+    draw = data["draw"]
+    draw["drawNumber"] = draw_number
+    draw["regCloseTime"] = f"{draw_date}T15:59:00+01:00"
+    draw["drawEvents"] = draw["drawEvents"][:2]
+    for event in draw["drawEvents"]:
+        event["match"]["result"] = [
+            {
+                "type": 2,
+                "sportEventResultType": "Fulltime",
+                "home": score[0],
+                "away": score[1],
+            }
+        ]
+    draw["drawEvents"][0]["startOdds"] = dict(
+        zip(("one", "x", "two"), odds, strict=True)
+    )
+    draw["drawEvents"][1]["startOdds"] = None
+    return data
+
+
 def test_start_draw_end_draw_skips_absent_draw_number(mock_response, capsys):  # noqa: PLR0915
     """--start-draw 4882 --end-draw 4884 skips the draw missing from datepicker.
 
