@@ -17,22 +17,13 @@ from tests.e2e.report_support import (
     BACKWARD_MONTHS_FROM_MAY_2025,
     DATEPICKER_URL,
     DRAW_4880_REPORT,
+    DRAW_4881_REPORT,
     DRAW_4900_REPORT,
     DRAW_URL,
     DRAWS_4880_TO_4881_REPORT,
     inject_clock,
     load_fixture,
 )
-
-_CROSS_YEAR_FIRST_DRAW_REPORT = [
-    "eligible: 13, excluded: 0",
-    "10-20: 6 | 17% | 17% | 0%",
-    "20-30: 16 | 26% | 31% | 5%",
-    "30-40: 6 | 34% | 17% | -17%",
-    "40-50: 4 | 43% | 25% | -18%",
-    "50-60: 3 | 53% | 67% | 14%",
-    "60-70: 4 | 64% | 75% | 11%",
-]
 
 _CROSS_YEAR_BOTH_DRAWS_REPORT = [
     "eligible: 26, excluded: 0",
@@ -43,16 +34,6 @@ _CROSS_YEAR_BOTH_DRAWS_REPORT = [
     "50-60: 8 | 54% | 38% | -16%",
     "60-70: 5 | 63% | 60% | -3%",
     "70-80: 2 | 73% | 100% | 27%",
-]
-
-_DRAW_4881_ONLY_REPORT = [
-    "eligible: 13, excluded: 0",
-    "10-20: 6 | 17% | 17% | 0%",
-    "20-30: 16 | 26% | 31% | 5%",
-    "30-40: 6 | 34% | 17% | -17%",
-    "40-50: 4 | 43% | 25% | -18%",
-    "50-60: 3 | 53% | 67% | 14%",
-    "60-70: 4 | 64% | 75% | 11%",
 ]
 
 _FIRST_DRAW_AFTER_START_ERROR = (
@@ -386,7 +367,7 @@ def test_excessive_end_week_index_resolves_to_final_draw(  # noqa: PLR0915
     [
         pytest.param(
             "2025.01.1",
-            _CROSS_YEAR_FIRST_DRAW_REPORT,
+            DRAW_4881_REPORT,
             False,
             id="first-distinct-draw",
         ),
@@ -541,7 +522,7 @@ def test_second_draw_start_bounds_completed_end_week(  # noqa: PLR0915
     if expected_error is None:
         assert exit_code == 0
         assert captured.err == ""
-        assert captured.out.splitlines() == _DRAW_4881_ONLY_REPORT
+        assert captured.out.splitlines() == DRAW_4881_REPORT
     else:
         assert exit_code == 1
         assert captured.err.splitlines() == [expected_error]
