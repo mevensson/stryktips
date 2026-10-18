@@ -16,6 +16,7 @@ from stryktips import main
 from tests.e2e.report_support import (
     BACKWARD_MONTHS_FROM_MAY_2025,
     DATEPICKER_URL,
+    DRAW_4900_REPORT,
     DRAW_URL,
     DRAWS_4881_TO_4884_REPORT,
     inject_clock,
@@ -107,15 +108,7 @@ def test_start_date_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     assert captured.err == ""
     lines = captured.out.strip().split("\n")
     assert "eligible: 13, excluded: 0" in lines[0]
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert lines[1:] == DRAW_4900_REPORT[1:]
 
 
 @pytest.mark.parametrize("end_date", ["2025-05-10", "2025-05-11"])
@@ -151,15 +144,7 @@ def test_end_date_resolves_to_draw(mock_response, capsys, end_date):  # noqa: PL
     assert captured.err == ""
     lines = captured.out.strip().split("\n")
     assert "eligible: 13, excluded: 0" in lines[0]
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert lines[1:] == DRAW_4900_REPORT[1:]
 
 
 def test_future_end_date_clamps_to_today(mock_response, capsys):  # noqa: PLR0915
@@ -195,15 +180,7 @@ def test_future_end_date_clamps_to_today(mock_response, capsys):  # noqa: PLR091
     assert captured.err == ""
     lines = captured.out.strip().split("\n")
     assert "eligible: 13, excluded: 0" in lines[0]
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert lines[1:] == DRAW_4900_REPORT[1:]
 
 
 def test_start_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
@@ -224,15 +201,7 @@ def test_start_week_resolves_to_draw(mock_response, capsys):  # noqa: PLR0915
     assert captured.err == ""
     lines = captured.out.strip().split("\n")
     assert "eligible: 13, excluded: 0" in lines[0]
-    assert lines[1:] == [
-        "0-10: 1 | 8% | 0% | -8%",
-        "10-20: 4 | 17% | 25% | 8%",
-        "20-30: 15 | 25% | 33% | 8%",
-        "30-40: 10 | 36% | 30% | -6%",
-        "40-50: 3 | 42% | 33% | -9%",
-        "50-60: 5 | 56% | 60% | 4%",
-        "70-80: 1 | 79% | 0% | -79%",
-    ]
+    assert lines[1:] == DRAW_4900_REPORT[1:]
 
 
 def test_historical_end_date_searches_back_across_empty_months(  # noqa: PLR0915
