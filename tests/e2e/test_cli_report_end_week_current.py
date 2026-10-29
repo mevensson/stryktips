@@ -20,7 +20,44 @@ from tests.e2e.report_support import (
     DRAWS_4880_TO_4881_REPORT,
     inject_clock,
     load_fixture,
+    mock_multi_year_requests,
 )
+
+
+@pytest.mark.parametrize("end_week", ["2025.02.1", "2025.02.2", "2025.02"])
+def test_multi_year_current_end_week_clamps_between_weekly_draws_without_warning(
+    mock_response, monkeypatch, capsys, end_week
+):
+    """Only Thursday's available Draw contributes when today precedes Sunday's Draw."""
+    inject_clock(date(2025, 1, 10))
+    mock_multi_year_requests(
+        monkeypatch,
+        mock_response,
+        {
+            5000: date(2023, 1, 7),
+            5002: date(2024, 1, 13),
+            5006: date(2025, 1, 9),
+            5008: date(2025, 1, 12),
+        },
+        {
+            (2023, 1): (5000,),
+            (2024, 1): (5002,),
+            (2025, 1): (5008, 5006),
+        },
+        (5000, 5002, 5006),
+    )
+
+    exit_code = main(["--start-draw", "5000", "--end-week", end_week])
+    captured = capsys.readouterr()
+
+    # Three Draws add 6 eligible Matches, 3 odds-less, 12 quarter/6 half samples.
+    assert (exit_code, captured.out, captured.err) == (
+        0,
+        "eligible: 6, excluded: 3\n"
+        "20-30: 12 | 25% | 25% | 0%\n"
+        "50-60: 6 | 50% | 50% | 0%\n",
+        "",
+    )
 
 
 @pytest.mark.parametrize("end_week", ["2025.23", "2025.23.1", "2025.23.3"])

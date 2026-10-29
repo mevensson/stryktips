@@ -22,6 +22,7 @@ from tests.e2e.report_support import (
     DRAWS_4880_TO_4881_REPORT,
     inject_clock,
     load_fixture,
+    mock_multi_year_requests,
 )
 
 _CROSS_YEAR_FIRST_DRAW_REPORT = [
@@ -59,6 +60,46 @@ _FIRST_DRAW_AFTER_START_ERROR = (
     "--start bound resolved to draw 4881, which must not be"
     " greater than --end bound (draw 4880)"
 )
+
+
+@pytest.mark.parametrize("end_week", ["2025.02.1", "2025.02.2", "2025.02"])
+def test_multi_year_completed_end_week_includes_earlier_draws_and_selected_index(
+    mock_response, monkeypatch, capsys, end_week
+):
+    """Earlier years contribute regardless of which historical weekly Draw ends it."""
+    inject_clock(date(2025, 1, 20))
+    first_only = end_week == "2025.02.1"
+    mock_multi_year_requests(
+        monkeypatch,
+        mock_response,
+        {
+            5000: date(2023, 1, 7),
+            5002: date(2024, 1, 13),
+            5006: date(2025, 1, 9),
+            5008: date(2025, 1, 12),
+        },
+        {
+            (2023, 1): (5000,),
+            (2024, 1): (5002,),
+            (2025, 1): (5008, 5006),
+        },
+        (5000, 5002, 5006) if first_only else (5000, 5002, 5006, 5008),
+    )
+    # Each Draw adds 2 eligible, 1 excluded, 4 quarter- and 2 half-probability samples.
+    expected_stdout = (
+        "eligible: 6, excluded: 3\n"
+        "20-30: 12 | 25% | 25% | 0%\n"
+        "50-60: 6 | 50% | 50% | 0%\n"
+        if first_only
+        else "eligible: 8, excluded: 4\n"
+        "20-30: 16 | 25% | 25% | 0%\n"
+        "50-60: 8 | 50% | 50% | 0%\n"
+    )
+
+    exit_code = main(["--start-draw", "5000", "--end-week", end_week])
+    captured = capsys.readouterr()
+
+    assert (exit_code, captured.out, captured.err) == (0, expected_stdout, "")
 
 
 @pytest.mark.parametrize("end_week", ["2024.52", "2024.52.1", "2024.52.2"])

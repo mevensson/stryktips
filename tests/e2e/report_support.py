@@ -6,10 +6,14 @@ so the real API adapter and parser run against JSON fixtures.
 """
 
 import json
+from collections import Counter
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+import pytest
+import requests
 from flexmock import flexmock
 
 import stryktips.core as stryktips_core
@@ -100,3 +104,76 @@ def inject_clock(today: date) -> None:
         stryktips_core,
         create_dependencies=lambda: create_dependencies(clock=lambda: today),
     )
+
+
+def mock_multi_year_requests(  # noqa: PLR0915
+    monkeypatch: pytest.MonkeyPatch,
+    mock_response: Callable[..., Any],
+    draw_dates: dict[int, date],
+    monthly_numbers: dict[tuple[int, int], tuple[int, ...]],
+    fetched_draws: tuple[int, ...],
+) -> None:
+    """Serve only a finite Jan 2023–Jan 2025 walk and the allowed Draws.
+
+    Month lookups may repeat for endpoint resolution and collection independently.
+    Any out-of-range Draw or month past the terminal response fails immediately.
+    """
+    responses = {}
+    for year, month in [
+        *((2023, month) for month in range(1, 13)),
+        *((2024, month) for month in range(1, 13)),
+        (2025, 1),
+    ]:
+        responses[DATEPICKER_URL.format(year=year, month=month)] = mock_response(
+            {
+                "resultDates": [
+                    {"date": draw_dates[number].isoformat(), "drawNumber": number}
+                    for number in monthly_numbers.get((year, month), ())
+                ]
+            }
+        )
+    draw_urls = {DRAW_URL.format(n=number) for number in fetched_draws}
+    for number in fetched_draws:
+        responses[DRAW_URL.format(n=number)] = mock_response(
+            multi_year_draw_payload(number, draw_dates[number])
+        )
+    requested: Counter[str] = Counter()
+
+    def get(url: str, *, timeout: int) -> Any:
+        assert timeout == 30
+        assert url in responses, f"Unexpected API request: {url}"
+        requested[url] += 1
+        if url in draw_urls:
+            assert requested[url] == 1, f"Duplicate Draw fetch: {url}"
+        return responses[url]
+
+    monkeypatch.setattr(requests, "get", get)
+
+
+def multi_year_draw_payload(number: int, close_date: date) -> dict[str, Any]:
+    """Build a 13-Match Draw: two eligible, one odds-less played, ten unplayed.
+
+    Odds 2/4/4 give probabilities 50/25/25. One home win and one draw give
+    four quarter-probability samples (one observed), and two half-probability
+    samples (one observed) per Draw, so both buckets have zero calibration delta.
+    """
+    events = []
+    for event_number in range(1, 14):
+        match: dict[str, Any] = {
+            "participants": [{"mediumName": "Home"}, {"mediumName": "Away"}],
+        }
+        if event_number <= 3:
+            match["result"] = [
+                {"type": 2, "home": "0" if event_number == 2 else "1", "away": "0"}
+            ]
+        event: dict[str, Any] = {"eventNumber": event_number, "match": match}
+        if event_number <= 2:
+            event["startOdds"] = {"one": "2", "x": "4", "two": "4"}
+        events.append(event)
+    return {
+        "draw": {
+            "drawNumber": number,
+            "regCloseTime": f"{close_date.isoformat()}T15:59:00+01:00",
+            "drawEvents": events,
+        }
+    }

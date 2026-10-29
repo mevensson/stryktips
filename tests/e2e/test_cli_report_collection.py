@@ -18,6 +18,7 @@ from tests.e2e.report_support import (
     DRAWS_4881_TO_4884_REPORT,
     inject_clock,
     load_fixture,
+    multi_year_draw_payload,
 )
 
 
@@ -146,7 +147,7 @@ def test_start_draw_end_draw_multi_year_period_reports_every_draw_once(  # noqa:
     for number in (5000, 5002, 5004, 5006, 5008):
         url = DRAW_URL.format(n=number)
         responses[url] = mock_response(
-            _multi_year_draw_payload(number, draw_dates[number])
+            multi_year_draw_payload(number, draw_dates[number])
         )
         expected_requests[url] = 1
 
@@ -367,27 +368,3 @@ def test_start_draw_end_draw_anchor_returns_null_draw_prints_empty_report(
     assert exit_code == 0
     assert captured.out.strip() == "eligible: 0, excluded: 0"
     assert "Traceback" not in captured.err
-
-
-def _multi_year_draw_payload(number: int, close_date: date) -> dict[str, Any]:
-    """Build a minimal 13-Match Draw with independently calculable report data."""
-    events = []
-    for event_number in range(1, 14):
-        match: dict[str, Any] = {
-            "participants": [{"mediumName": "Home"}, {"mediumName": "Away"}],
-        }
-        if event_number <= 3:
-            match["result"] = [
-                {"type": 2, "home": "0" if event_number == 2 else "1", "away": "0"}
-            ]
-        event: dict[str, Any] = {"eventNumber": event_number, "match": match}
-        if event_number <= 2:
-            event["startOdds"] = {"one": "2", "x": "4", "two": "4"}
-        events.append(event)
-    return {
-        "draw": {
-            "drawNumber": number,
-            "regCloseTime": f"{close_date.isoformat()}T15:59:00+01:00",
-            "drawEvents": events,
-        }
-    }

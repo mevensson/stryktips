@@ -13,6 +13,7 @@ from tests.e2e.report_support import (
     DRAWS_4881_TO_4884_REPORT,
     inject_clock,
     load_fixture,
+    mock_multi_year_requests,
 )
 
 
@@ -168,3 +169,73 @@ def test_future_end_draw_clamps_to_latest_available_draw(  # noqa: PLR0915
     assert exit_code == 0
     assert captured.err == ""
     assert captured.out.splitlines() == DRAWS_4881_TO_4884_REPORT
+
+
+def test_multi_year_missing_end_draw_processes_unsorted_terminal_month(
+    mock_response, monkeypatch, capsys
+):
+    """Missing 5007 stays unclamped; 5008 terminates before eligible 5006 in JSON."""
+    inject_clock(date(2025, 1, 20))
+    mock_multi_year_requests(
+        monkeypatch,
+        mock_response,
+        {
+            5000: date(2023, 1, 7),
+            5002: date(2024, 1, 13),
+            5006: date(2025, 1, 11),
+            5008: date(2025, 1, 18),
+        },
+        {
+            (2023, 1): (5000,),
+            (2024, 1): (5002,),
+            (2025, 1): (5008, 5006),
+        },
+        (5000, 5002, 5006),
+    )
+
+    exit_code = main(["--start-draw", "5000", "--end-draw", "5007"])
+    captured = capsys.readouterr()
+
+    # Three Draws: 6 eligible Matches, 3 odds-less; 12 samples at 25%, 6 at 50%.
+    assert (exit_code, captured.out, captured.err) == (
+        0,
+        "eligible: 6, excluded: 3\n"
+        "20-30: 12 | 25% | 25% | 0%\n"
+        "50-60: 6 | 50% | 50% | 0%\n",
+        "",
+    )
+
+
+def test_multi_year_future_end_draw_clamps_before_published_future_draw(
+    mock_response, monkeypatch, capsys
+):
+    """A future numeric bound includes all 25 months through today's latest Draw."""
+    inject_clock(date(2025, 1, 10))
+    mock_multi_year_requests(
+        monkeypatch,
+        mock_response,
+        {
+            5000: date(2023, 1, 7),
+            5002: date(2024, 1, 13),
+            5006: date(2025, 1, 9),
+            5008: date(2025, 1, 12),
+        },
+        {
+            (2023, 1): (5000,),
+            (2024, 1): (5002,),
+            (2025, 1): (5008, 5006),
+        },
+        (5000, 5002, 5006),
+    )
+
+    exit_code = main(["--start-draw", "5000", "--end-draw", "5999"])
+    captured = capsys.readouterr()
+
+    # Three Draws each add two eligible Matches and one played without odds.
+    assert (exit_code, captured.out, captured.err) == (
+        0,
+        "eligible: 6, excluded: 3\n"
+        "20-30: 12 | 25% | 25% | 0%\n"
+        "50-60: 6 | 50% | 50% | 0%\n",
+        "",
+    )

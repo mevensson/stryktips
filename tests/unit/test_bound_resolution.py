@@ -230,6 +230,77 @@ def test_resolve_draw_by_week_scan_window_is_twelve_months():
     assert calls == [(2000, month) for month in range(1, 13)]
 
 
+@pytest.mark.parametrize(
+    "selector",
+    [
+        pytest.param(DrawByDate("2000-01-03"), id="date"),
+        pytest.param(DrawByWeek("2000.01"), id="week"),
+    ],
+)
+def test_resolve_draw_candidate_only_in_thirteenth_month_remains_not_found(selector):  # noqa: PLR0915 (keeps strict IO callback with its fixture)
+    """A forward candidate just outside the twelve-month window is not fetched."""
+    calls: list[tuple[int, int]] = []
+    expected_months = [(2000, month) for month in range(1, 13)]
+    months: dict[tuple[int, int], list[DatepickerEntry]] = dict.fromkeys(
+        expected_months, []
+    )
+    months[(2001, 1)] = [DatepickerEntry(date=date(2001, 1, 6), draw_number=4800)]
+
+    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
+        assert len(calls) < len(expected_months), "month thirteen must not be requested"
+        assert (year, month) == expected_months[len(calls)]
+        calls.append((year, month))
+        return list(months[(year, month)])
+
+    dependencies = Dependencies(
+        fetch_draw=_no_fetch_draw(),
+        fetch_month_entries=fetch_month_entries,
+        clock=lambda: date(2001, 1, 6),
+        diagnostic=lambda message: None,
+    )
+
+    with pytest.raises(DrawNotFound):
+        resolve_draw(selector, dependencies)
+
+    assert calls == expected_months
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [
+        pytest.param(None, id="implicit-end"),
+        pytest.param(DrawByDate("2001-01-07"), id="date-end"),
+        pytest.param(DrawByWeek("2001.01"), id="unindexed-week-end"),
+    ],
+)
+def test_resolve_end_candidate_only_in_thirteenth_month_remains_not_found(selector):  # noqa: PLR0915 (keeps strict IO callback with its fixture)
+    """Backward end policies exclude a predecessor in month thirteen alike."""
+    calls: list[tuple[int, int]] = []
+    expected_months = [(2001, 1), *[(2000, month) for month in range(12, 1, -1)]]
+    months: dict[tuple[int, int], list[DatepickerEntry]] = dict.fromkeys(
+        expected_months, []
+    )
+    months[(2000, 1)] = [DatepickerEntry(date=date(2000, 1, 8), draw_number=4800)]
+
+    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
+        assert len(calls) < len(expected_months), "month thirteen must not be requested"
+        assert (year, month) == expected_months[len(calls)]
+        calls.append((year, month))
+        return list(months[(year, month)])
+
+    dependencies = Dependencies(
+        fetch_draw=_no_fetch_draw(),
+        fetch_month_entries=fetch_month_entries,
+        clock=lambda: date(2001, 1, 7),
+        diagnostic=lambda message: None,
+    )
+
+    with pytest.raises(DrawNotFound):
+        resolve_end(selector, dependencies)
+
+    assert calls == expected_months
+
+
 def test_resolve_end_explicit_draw_within_available_data_returns_it_verbatim():
     """An explicit end draw within the available data remains unchanged."""
     dependencies = make_dependencies(

@@ -121,6 +121,92 @@ def test_collect_period_walks_across_drawless_months():
     assert calls == [(2020, 3), (2020, 4), (2020, 5), (2020, 6)]
 
 
+def test_collect_period_multi_year_gap_includes_eligible_unsorted_terminal_entry():  # noqa: PLR0915 (keeps strict IO callbacks with their fixture)
+    """A missing numeric end still includes eligible entries after an overshoot."""
+    expected_months = [
+        (year, month)
+        for year in range(2023, 2026)
+        for month in range(1, 13)
+        if (year, month) <= (2025, 1)
+    ]
+    calls: list[tuple[int, int]] = []
+    months = {
+        (2023, 1): [DatepickerEntry(date=date(2023, 1, 7), draw_number=4800)],
+        (2024, 1): [DatepickerEntry(date=date(2024, 1, 6), draw_number=4801)],
+        (2025, 1): [
+            DatepickerEntry(date=date(2025, 1, 18), draw_number=4804),
+            DatepickerEntry(date=date(2025, 1, 4), draw_number=4802),
+        ],
+    }
+    available_draws = {
+        number: make_draw(
+            draw_number=number, reg_close_time=datetime(2023, 1, 7, 15, 59)
+        )
+        for number in (4800, 4801, 4802)
+    }
+
+    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
+        assert len(calls) < len(expected_months), "walk exceeded the terminal month"
+        assert (year, month) == expected_months[len(calls)]
+        calls.append((year, month))
+        return list(months.get((year, month), []))
+
+    dependencies = Dependencies(
+        fetch_draw=available_draws.__getitem__,
+        fetch_month_entries=fetch_month_entries,
+        clock=lambda: date(2025, 1, 18),
+        diagnostic=lambda message: None,
+    )
+
+    draws = collect_period(4800, 4803, dependencies)
+
+    assert [draw.draw_number for draw in draws] == [4800, 4801, 4802]
+
+
+def test_collect_period_multi_year_overlapping_entries_fetches_each_draw_once():  # noqa: PLR0915 (keeps strict IO callbacks with their fixture)
+    """Overlapping responses across a year boundary never refetch a Draw."""
+    fetched: list[int] = []
+    months = {
+        (2023, 1): [DatepickerEntry(date=date(2023, 1, 7), draw_number=4800)],
+        (2023, 12): [
+            DatepickerEntry(date=date(2023, 12, 30), draw_number=4801),
+            DatepickerEntry(date=date(2024, 1, 6), draw_number=4802),
+        ],
+        (2024, 1): [
+            DatepickerEntry(date=date(2023, 12, 30), draw_number=4801),
+            DatepickerEntry(date=date(2024, 1, 6), draw_number=4802),
+        ],
+        (2025, 1): [DatepickerEntry(date=date(2025, 1, 4), draw_number=4803)],
+    }
+    available_draws = {
+        number: make_draw(
+            draw_number=number, reg_close_time=datetime(2023, 1, 7, 15, 59)
+        )
+        for number in (4800, 4801, 4802, 4803)
+    }
+
+    def fetch_draw(number: int) -> Draw:
+        fetched.append(number)
+        return available_draws[number]
+
+    def fetch_month_entries(year: int, month: int) -> list[DatepickerEntry]:
+        assert (2023, 1) <= (year, month) <= (2025, 1), (
+            "collection must not walk beyond the terminal month"
+        )
+        return list(months.get((year, month), []))
+
+    dependencies = Dependencies(
+        fetch_draw=fetch_draw,
+        fetch_month_entries=fetch_month_entries,
+        clock=lambda: date(2025, 1, 4),
+        diagnostic=lambda message: None,
+    )
+
+    collect_period(4800, 4803, dependencies)
+
+    assert fetched == [4800, 4801, 4802, 4803]
+
+
 def test_collect_period_deduplicates_repeated_month_entries():
     """A draw repeated within and across month responses is reported once."""
     months = {
