@@ -182,11 +182,20 @@ into one report.
   start, or a date/week end resolves backward to a preceding draw or is capped
   at today: resolution does not turn an explicit end into the implicit-end
   empty-report case.
-- `--start-draw`/`--end-draw` may span a range of draws. The tool walks the
-  datepicker
-  month-by-month from the start draw to collect every draw number within
-  `[start, end]`, tolerating gaps (drawless months or skipped draws), then
-  folds the whole range into one aggregated report.
+- A report Period has no duration limit. The tool walks the datepicker
+  month-by-month from the start draw, crossing year boundaries and drawless
+  months (including datepicker 404s), to collect every existing draw within
+  inclusive numeric bounds `[start, end]`. Overlapping monthly responses
+  contribute each draw only once, and the whole Period is folded into one
+  aggregated report without a 12-month truncation or warning.
+- The Period walk stops when a monthly response contains a draw numbered
+  **at least** the end bound. The end number can fall in a numbering gap:
+  a draw above it ends the walk but is excluded from the report, while eligible
+  draws elsewhere in that response remain included. Numeric ends are clamped
+  to the latest draw on or before today, so under stable datepicker data and
+  chronologically increasing draw numbers, the walk reaches a draw at or above
+  the bound without requiring an exact match. The 12-month limits for resolving
+  single-draw/start date or week selectors and backward end searches remain.
 - When the start draw is absent (the API answers 404), the range is empty and
   the program prints an empty report (`eligible: 0, excluded: 0`) and exits 0.
 
