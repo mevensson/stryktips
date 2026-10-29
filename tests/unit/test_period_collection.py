@@ -122,8 +122,7 @@ def test_collect_period_walks_across_drawless_months():
 
 
 def test_collect_period_deduplicates_repeated_month_entries():
-    """A draw repeated across month responses is fetched and reported once."""
-    fetched: list[int] = []
+    """A draw repeated within and across month responses is reported once."""
     months = {
         (2025, 1): [
             DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
@@ -136,22 +135,50 @@ def test_collect_period_deduplicates_repeated_month_entries():
         ],
     }
 
-    def fetch_draw(number: int) -> Draw:
-        fetched.append(number)
-        return make_draw(
-            draw_number=number, reg_close_time=datetime(2025, 1, 4, 15, 59)
-        )
-
-    dependencies = Dependencies(
-        fetch_draw=fetch_draw,
-        fetch_month_entries=lambda year, month: list(months.get((year, month), [])),
-        clock=lambda: date(2025, 1, 4),
-        diagnostic=lambda message: None,
+    dependencies = make_dependencies(
+        months=months,
+        draws={
+            number: make_draw(
+                draw_number=number, reg_close_time=datetime(2025, 1, 4, 15, 59)
+            )
+            for number in (4882, 4883, 4884)
+        },
+        today=date(2025, 1, 4),
     )
 
     draws = collect_period(4882, 4884, dependencies)
 
     assert [draw.draw_number for draw in draws] == [4882, 4883, 4884]
+
+
+def test_collect_period_fetches_repeated_month_entries_once():
+    """A draw repeated within and across month responses is fetched once."""
+    fetched: list[int] = []
+    months = {
+        (2025, 1): [
+            DatepickerEntry(date=date(2025, 1, 4), draw_number=4882),
+            DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+            DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+        ],
+        (2025, 2): [
+            DatepickerEntry(date=date(2025, 2, 1), draw_number=4884),
+            DatepickerEntry(date=date(2025, 1, 11), draw_number=4883),
+        ],
+    }
+    dependencies = make_dependencies(
+        months=months,
+        draws={
+            number: make_draw(
+                draw_number=number, reg_close_time=datetime(2025, 1, 4, 15, 59)
+            )
+            for number in (4882, 4883, 4884)
+        },
+        today=date(2025, 1, 4),
+        fetched=fetched,
+    )
+
+    collect_period(4882, 4884, dependencies)
+
     assert fetched == [4882, 4883, 4884]
 
 

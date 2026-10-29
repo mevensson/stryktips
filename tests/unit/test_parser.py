@@ -7,14 +7,30 @@ import pytest
 from stryktips import create_parser
 
 
-def test_create_parser_returns_configured_argparse_parser():
-    """create_parser returns a configured argparse parser."""
+def test_create_parser_returns_argparse_parser():
+    """create_parser exposes the argparse parser interface."""
     # Act
     parser = create_parser()
 
     # Assert
     assert isinstance(parser, argparse.ArgumentParser)
+
+
+def test_create_parser_uses_program_name():
+    """The parser identifies the CLI as stryktips.py."""
+    # Act
+    parser = create_parser()
+
+    # Assert
     assert parser.prog == "stryktips.py"
+
+
+def test_create_parser_provides_description():
+    """The parser provides a description for CLI help."""
+    # Act
+    parser = create_parser()
+
+    # Assert
     assert parser.description is not None
 
 

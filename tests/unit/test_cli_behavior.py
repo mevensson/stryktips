@@ -18,20 +18,37 @@ _FIXED_TODAY = date(2025, 1, 1)
 
 
 def test_main_draw_flag_displays_the_draw(capsys):
-    """--draw fetches that draw directly and renders its header."""
-    fetched: list[int] = []
+    """--draw renders the requested draw's header."""
     dependencies = make_dependencies(
         draws={
             4900: make_draw(draw_number=4900, draw_comment="Stryktipset v. 2025-19")
         },
-        fetched=fetched,
     )
 
-    exit_code = run_main(dependencies, ["--draw", "4900"])
+    run_main(dependencies, ["--draw", "4900"])
     captured = capsys.readouterr()
 
-    assert exit_code == 0
     assert "Stryktipset v. 2025-19 (draw 4900)" in captured.out
+
+
+def test_main_draw_flag_returns_success():
+    """Displaying an available draw exits successfully."""
+    dependencies = make_dependencies(draws={4900: make_draw(draw_number=4900)})
+
+    exit_code = run_main(dependencies, ["--draw", "4900"])
+
+    assert exit_code == 0
+
+
+def test_main_draw_flag_fetches_only_the_requested_draw():
+    """--draw fetches the requested draw exactly once."""
+    fetched: list[int] = []
+    dependencies = make_dependencies(
+        draws={4900: make_draw(draw_number=4900)}, fetched=fetched
+    )
+
+    run_main(dependencies, ["--draw", "4900"])
+
     assert fetched == [4900]
 
 
