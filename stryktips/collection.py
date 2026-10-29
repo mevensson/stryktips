@@ -9,16 +9,18 @@ does not import the CLI.
 from stryktips.api import DrawNotFoundError
 from stryktips.dependencies import Dependencies, Diagnostic
 from stryktips.models import Draw
-from stryktips.months import MAX_SCAN_MONTHS, advance_month
+from stryktips.months import advance_month
 
 
 def collect_period(start: int, end: int, dependencies: Dependencies) -> list[Draw]:
     """Collect every Draw in the inclusive ``[start, end]`` Period.
 
     A single-draw Period fetches only that Draw. A spanning Period walks the
-    datepicker by month, skips Draws that return not-found (reported through
-    ``dependencies.diagnostic``), and warns when the end is not reached within
-    the scan window. A missing anchor yields an empty Period.
+    datepicker from the anchor's month without a month limit until a response
+    contains a Draw numbered at least ``end``, including all in-range entries
+    from that month. Draws that return not-found are skipped and reported through
+    ``dependencies.diagnostic``. A missing anchor yields an empty Period without
+    walking the datepicker.
     """
     try:
         anchor = dependencies.fetch_draw(start)
@@ -59,7 +61,7 @@ def _draw_numbers_in_period(
     """Walk the datepicker month-by-month, collecting draw numbers in the Period."""
     numbers: list[int] = []
     year, month = anchor_month
-    for _ in range(MAX_SCAN_MONTHS):
+    while True:
         entries = dependencies.fetch_month_entries(year, month)
         numbers.extend(
             entry.draw_number for entry in entries if start <= entry.draw_number <= end
@@ -67,17 +69,7 @@ def _draw_numbers_in_period(
         if any(entry.draw_number >= end for entry in entries):
             break
         year, month = advance_month(year, month)
-    else:
-        _warn_truncated_period(start, end, dependencies.diagnostic)
     return numbers
-
-
-def _warn_truncated_period(start: int, end: int, diagnostic: Diagnostic) -> None:
-    """Warn that the end draw was not reached, so the report may be truncated."""
-    diagnostic(
-        f"Warning: could not reach draw {end} within {MAX_SCAN_MONTHS} months"
-        f" of {start}, report may be truncated."
-    )
 
 
 def _warn_skipped_draw(number: int, diagnostic: Diagnostic) -> None:

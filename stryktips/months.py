@@ -1,8 +1,7 @@
 """Month arithmetic and scan-window constants shared by the services.
 
-Bound resolution and Period collection both walk the calendar month-by-month
-and stop after the same bounded scan window, so the arithmetic and the limit
-live here rather than in either service.
+Bound resolution and Period collection share calendar month arithmetic.
+The scan-window limit applies only to bound resolution.
 """
 
 MONTHS_IN_YEAR = 12
