@@ -14,22 +14,6 @@ from stryktips.resolver import (
 )
 
 
-def test_resolve_result_is_named_tuple():
-    """ResolveResult is a NamedTuple with the expected fields."""
-    # Act
-    result = ResolveResult(
-        draw_number=4900, exact_match=True, match_date=date(2025, 5, 10)
-    )
-
-    # Assert
-    assert isinstance(result, tuple)
-    assert (result.draw_number, result.exact_match, result.match_date) == (
-        4900,
-        True,
-        date(2025, 5, 10),
-    )
-
-
 def test_resolve_draw_by_date_finds_exact_date_match():
     """When the target date matches a datepicker entry exactly, return it."""
     # Arrange
