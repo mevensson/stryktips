@@ -1,7 +1,8 @@
 ---
 description: Reviews code, read-only — either all code for design/quality or a diff against a ref on two axes (standards + spec) — and returns findings.
 mode: subagent
-model: openai/gpt-5.6-sol
+model: openai/gpt-6.1-sol
+variant: medium
 permission:
   edit: deny
   skill: allow

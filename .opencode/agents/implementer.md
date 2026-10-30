@@ -1,7 +1,8 @@
 ---
 description: Implements delegated work as production code and tests, follows repo standards, and commits it.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4.1-flash
+model: openai/gpt-6.1-terra
+variant: medium
 permission:
   edit: allow
   skill: allow
