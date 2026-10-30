@@ -1,7 +1,8 @@
 ---
 description: Researches external docs and library sources, read-only, and returns findings.
 mode: subagent
-model: openrouter/deepseek/deepseek-v4.1-flash
+model: openai/gpt-6.1-terra
+variant: low
 permission:
   edit: deny
   task: deny
